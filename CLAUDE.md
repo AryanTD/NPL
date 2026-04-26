@@ -23,11 +23,58 @@ This is a real product targeting real users — Nepali cricket fans.
 
 ---
 
+## Current Build Status
+
+### Done
+- `packages/types/index.ts` — all shared types + Socket.io event contracts
+- `apps/server/src/index.ts` — Express + Socket.io bootstrap, CORS, graceful shutdown
+- `apps/server/prisma/schema.prisma` — full schema (8 models, all enums)
+- `apps/server/prisma/seed.ts` — bulk-insert franchises + players via `createMany`
+- `data/players/npl-2024.json` + `npl-2025.json` — 88 players each
+
+### Not yet built
+- DB migration (need `prisma migrate dev`)
+- `src/routes/lobby.ts` — REST endpoints
+- `src/socket/auctionEngine.ts` — core game loop
+- `src/bots/` — botManager, claudeBot, botPersonalities
+- `apps/web/` — entire Next.js frontend
+
+See `ROADMAP.md` for the full ordered task list.
+
+---
+
+## Repo Layout
+
+```
+NPL/
+├── package.json              ← npm workspaces root
+├── CLAUDE.md                 ← this file
+├── ROADMAP.md                ← ordered build plan with task breakdown
+├── data/players/
+│   ├── npl-2024.json
+│   └── npl-2025.json
+├── packages/types/
+│   └── index.ts              ← @npl-auction/types (imported by server + web)
+└── apps/
+    ├── server/               ← @npl-auction/server
+    │   ├── src/
+    │   │   ├── index.ts
+    │   │   ├── routes/       ← (todo) lobby.ts
+    │   │   ├── socket/       ← (todo) auctionEngine.ts
+    │   │   └── bots/         ← (todo) botManager, claudeBot, botPersonalities
+    │   └── prisma/
+    │       ├── schema.prisma
+    │       └── seed.ts
+    └── web/                  ← (todo) Next.js 14
+```
+
+---
+
 ## NPL Auction Rules (mirror real NPL)
 
 ### Purse
 
-Each franchise gets NPR 90 lakhs (stored in paisa: 9,000,000) per auction.
+Each franchise gets NPR 90 lakhs (9,000,000) per auction. All prices in NPR integers — no paisa in business logic.
 
 ### Player Categories (Nepali players only — no overseas in auction)
 
@@ -37,10 +84,12 @@ Each franchise gets NPR 90 lakhs (stored in paisa: 9,000,000) per auction.
 | B        | 5 lakh     | 10 lakh   | Yes                   |
 | C        | 2 lakh     | 5 lakh    | Yes                   |
 
+Bid increment: 25,000 NPR minimum.
+
 ### Squad composition per team (16 players total)
 
 - 1 Marquee player (assigned by lucky draw before auction)
-- 10 auction players: exactly 3×A + 4×B + 3×C
+- 10 auction players: exactly **3×A + 4×B + 3×C**
 - 4 overseas players (pre-signed, not in auction — stored but not bid on)
 - 1 iconic local player (talent hunt pick — stored but not bid on)
 
@@ -53,49 +102,57 @@ Each franchise gets NPR 90 lakhs (stored in paisa: 9,000,000) per auction.
 5. Unsold players second round — teams that haven't filled quotas get another shot
 6. Lucky draw — if max price is hit by 2+ teams, random winner
 
-### Bidding mechanics
+### Bid validation (server-side only)
 
-- Countdown timer: 10 seconds, resets on each new bid
-- Minimum bid increment: 25,000 NPR (25k)
-- A team cannot bid if: they can't afford it OR it would leave them unable to fill
-  remaining required slots at base price
-- A team cannot bid on a category they've already filled
+A team **cannot** bid if:
+- They can't afford it (purseRemaining < currentBid + 25k)
+- It would leave them unable to fill remaining required slots at base price
+- They've already filled that category's quota (countA === 3, countB === 4, countC === 3)
 
 ### The 8 NPL Franchises
 
-1. Kathmandu Gorkhas (was Gurkhas in 2024)
-2. Pokhara Avengers
-3. Chitwan Rhinos
-4. Biratnagar Kings
-5. Janakpur Bolts
-6. Lumbini Lions
-7. Sudurpaschim Royals
-8. Karnali Yaks
+| # | Name | Short | City | Primary | Secondary |
+|---|------|-------|------|---------|-----------|
+| 1 | Kathmandu Gorkhas | KTM | Kathmandu | #1B3A6B | #C9A84C |
+| 2 | Pokhara Avengers | PKR | Pokhara | #C0392B | #FFFFFF |
+| 3 | Chitwan Rhinos | CHT | Chitwan | #196F3D | #F4D03F |
+| 4 | Biratnagar Kings | BRT | Biratnagar | #6C3483 | #F9E79F |
+| 5 | Janakpur Bolts | JNK | Janakpur | #1A5276 | #F39C12 |
+| 6 | Lumbini Lions | LMB | Lumbini | #922B21 | #FAD7A0 |
+| 7 | Sudurpaschim Royals | SDR | Sudurpaschim | #0E6655 | #A9DFBF |
+| 8 | Karnali Yaks | KRN | Karnali | #4A235A | #D7BDE2 |
 
 ---
 
 ## Bot Personalities
 
-Bots use the Claude API to reason about bids. Each has a personality that shapes
-its system prompt:
+Bots use `claude-sonnet-4-6` to reason about each bid. Personality shapes the system prompt.
 
-- **AGGRESSIVE** — bids hard on star players, willing to go near max, risks budget
-- **CONSERVATIVE** — rarely exceeds base price by much, saves budget for later
-- **ROLE_HUNTER** — only competes hard for specific roles their squad needs
-- **BUDGET_SNIPER** — passes early rounds, swoops with saved budget in Cat B/C
-- **BALANCED** — mirrors a sensible real team manager, no extreme behavior
+| Personality | Behaviour |
+|---|---|
+| AGGRESSIVE | Bids hard on star players, willing to go to max, risks budget |
+| CONSERVATIVE | Rarely exceeds base price by much, saves for later |
+| ROLE_HUNTER | Only competes hard for specific roles the squad needs |
+| BUDGET_SNIPER | Passes Cat A, swoops with saved budget in Cat B/C |
+| BALANCED | Sensible manager — no extreme behaviour |
 
-Bot "thinking" delay: 1.5–3.5s (random) to feel human. Show a typing indicator.
+Bot thinking delay: **1.5–3.5s** (random). Always emit `lobby:bot_thinking` first.
+Bots run entirely server-side — the client never sees bot logic or Claude API calls.
 
 ---
 
-## Data
+## Prisma Schema — Model Summary
 
-- `data/players/npl-2024.json` — NPL 2024 season player pool
-- `data/players/npl-2025.json` — NPL 2025 season player pool
-- Player fields: id, name, category, role, base_price, season, is_marquee, stats
-- Roles: BAT | BOWL | AR (all-rounder) | WK (wicketkeeper)
-- All prices stored in NPR (not paisa) in data files, converted on seed
+| Model | Key fields |
+|---|---|
+| `Player` | id (from JSON), name, category, role, basePrice, season, isMarquee, flat stat columns |
+| `Franchise` | name, shortName, city, colorPrimary, colorSecondary |
+| `Lobby` | code (6-char), status, season |
+| `LobbySeat` | lobbyId, franchiseId, seatType, userId?, botPersonality?, purseRemaining, countA/B/C |
+| `AuctionQueue` | lobbyId, playerId, phase, position, isUnsold, isDone |
+| `Bid` | lobbyId, seatId, playerId, franchiseId, amount |
+| `AuctionResult` | lobbyId, playerId (unique), franchiseId, finalPrice, wasLuckyDraw |
+| `SquadSlot` | lobbyId, franchiseId, playerId, slotType (MARQUEE/AUCTION/OVERSEAS/ICONIC), pricePaid |
 
 ---
 
@@ -103,22 +160,28 @@ Bot "thinking" delay: 1.5–3.5s (random) to feel human. Show a typing indicator
 
 ### Server → Client
 
-- `lobby:state` — full lobby state on join
-- `lobby:player_revealed` — next player card shown to all
-- `lobby:bid_placed` — { seatId, amount, franchiseName }
-- `lobby:timer_tick` — { secondsLeft }
-- `lobby:player_sold` — { playerId, seatId, finalPrice }
-- `lobby:player_unsold` — player passes to unsold pool
-- `lobby:lucky_draw` — max price hit, animating draw...
-- `lobby:marquee_assigned` — { playerId, franchiseId }
-- `lobby:bot_thinking` — show bot deliberation indicator
-- `lobby:auction_complete` — all slots filled, show squads
-- `lobby:error` — something went wrong
+| Event | Payload |
+|---|---|
+| `lobby:state` | Full `Lobby` object (sent on join/reconnect) |
+| `lobby:player_revealed` | `Player` |
+| `lobby:bid_placed` | `{ seatId, franchiseName, amount, timestamp }` |
+| `lobby:timer_tick` | `{ secondsLeft }` |
+| `lobby:player_sold` | `{ playerId, seatId, franchiseName, finalPrice }` |
+| `lobby:player_unsold` | `{ playerId, playerName }` |
+| `lobby:lucky_draw` | `{ playerId, contenderSeatIds }` |
+| `lobby:marquee_assigned` | `{ playerId, playerName, franchiseId, franchiseName }` |
+| `lobby:bot_thinking` | `{ seatId, franchiseName }` |
+| `lobby:auction_complete` | `{ seats: LobbySeat[] }` |
+| `lobby:error` | `{ message, code? }` |
 
 ### Client → Server
 
-- `lobby:place_bid` — { lobbyId, amount }
-- `lobby:pass` — human explicitly passes
+| Event | Payload |
+|---|---|
+| `lobby:place_bid` | `{ lobbyId, amount }` |
+| `lobby:pass` | `{ lobbyId }` |
+
+All event types are in `packages/types/index.ts` as `ServerToClientEvents` / `ClientToServerEvents`.
 
 ---
 
@@ -130,17 +193,16 @@ npm run dev              # runs both web + server concurrently
 
 # Server only
 cd apps/server
-npm run dev              # nodemon on port 3001
-
-# Web only
-cd apps/web
-npm run dev              # Next.js on port 3000
+npm run dev              # nodemon → ts-node on port 3001
+npm run build            # tsc → dist/src/index.js
+npm run start            # node dist/src/index.js
 
 # Database
 cd apps/server
-npx prisma migrate dev   # run migrations
-npx prisma db seed       # seed NPL player data
+npx prisma migrate dev   # create/run migrations
+npx prisma db seed       # seed franchises + players
 npx prisma studio        # visual DB browser
+npx prisma generate      # regenerate client after schema change
 ```
 
 ---
@@ -150,7 +212,7 @@ npx prisma studio        # visual DB browser
 ### apps/server/.env
 
 ```
-DATABASE_URL=postgresql://...
+DATABASE_URL=postgresql://user:password@localhost:5432/npl_auction
 ANTHROPIC_API_KEY=sk-ant-...
 CLIENT_URL=http://localhost:3000
 PORT=3001
@@ -168,12 +230,15 @@ CLERK_SECRET_KEY=sk_...
 
 ## Architecture Decisions
 
-- Game state lives on the server (single source of truth), never trust client
-- All bid validation happens server-side before broadcasting
-- Bots run entirely on server — client never knows bot internals
-- Socket rooms = lobby IDs (e.g. room "ABC123")
-- Prices always in NPR integers (no decimals, no paisa in business logic)
-- Use optimistic UI for bid button (disable immediately on click, re-enable on rejection)
+- **Game state lives on the server** — `Map<lobbyId, AuctionState>` in memory, never trust client
+- **All bid validation server-side** — client optimistically disables the button but server decides
+- **Bots are server-only** — Claude API key never touches the browser
+- **Socket rooms = lobby IDs** — `socket.join(lobbyId)` on connect, all broadcasts to room
+- **Prices always NPR integers** — no decimals, no paisa in business logic
+- **Player IDs are stable strings** — not cuid, set from JSON (e.g. `npl-sandeep-lamichhane`)
+- **2025 stats win for marquee players** — seed merges both JSON files into a Map, 2025 overwrites
+- **tsconfig rootDir is `.`** — covers both `src/` and `prisma/` so `tsc --noEmit` catches seed.ts too
+- **start script is `dist/src/index.js`** — not `dist/index.js`, because rootDir is `.`
 
 ---
 
@@ -184,3 +249,5 @@ CLERK_SECRET_KEY=sk_...
 - Don't use `any` in TypeScript — shared types live in `packages/types/`
 - Don't hardcode franchise names — always read from DB
 - Don't start building fantasy scoring until auction engine is solid
+- Don't add `node_modules/` to git — covered by `.gitignore`
+- Don't run `prisma migrate` without a valid `DATABASE_URL` in `.env`

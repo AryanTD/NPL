@@ -11,8 +11,6 @@ out/
 .env.local
 .env.*.local
 
-# Prisma
-apps/server/prisma/migrations/
 
 # Logs
 *.log
@@ -30,3 +28,7 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# Misc
+apps/web/.env.local
+settings.local.json
