@@ -11,6 +11,8 @@ out/
 .env.local
 .env.*.local
 
+# Prisma
+apps/server/prisma/migrations/
 
 # Logs
 *.log
