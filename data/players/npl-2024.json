@@ -1,0 +1,797 @@
+{
+  "season": 2024,
+  "players": [
+    {
+      "id": "npl-sandeep-lamichhane",
+      "name": "Sandeep Lamichhane",
+      "category": "A",
+      "role": "BOWL",
+      "base_price": 1000000,
+      "is_marquee": true,
+      "stats": { "runs": 210, "wickets": 72, "batting_avg": 9.1, "strike_rate": 88.4, "bowling_avg": 18.2, "economy": 7.6 }
+    },
+    {
+      "id": "npl-kushal-malla",
+      "name": "Kushal Malla",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": true,
+      "stats": { "runs": 1180, "wickets": 6, "batting_avg": 31.2, "strike_rate": 146.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "npl-aasif-sheikh",
+      "name": "Aasif Sheikh",
+      "category": "A",
+      "role": "WK",
+      "base_price": 1000000,
+      "is_marquee": true,
+      "stats": { "runs": 940, "wickets": 0, "batting_avg": 27.6, "strike_rate": 130.5, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "npl-sompal-kami",
+      "name": "Sompal Kami",
+      "category": "A",
+      "role": "AR",
+      "base_price": 1000000,
+      "is_marquee": true,
+      "stats": { "runs": 398, "wickets": 58, "batting_avg": 17.4, "strike_rate": 116.2, "bowling_avg": 23.1, "economy": 8.5 }
+    },
+    {
+      "id": "npl-karan-kc",
+      "name": "Karan KC",
+      "category": "A",
+      "role": "AR",
+      "base_price": 1000000,
+      "is_marquee": true,
+      "stats": { "runs": 285, "wickets": 64, "batting_avg": 14.8, "strike_rate": 106.4, "bowling_avg": 22.4, "economy": 9.1 }
+    },
+    {
+      "id": "npl-rohit-paudel",
+      "name": "Rohit Paudel",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": true,
+      "stats": { "runs": 1520, "wickets": 2, "batting_avg": 37.1, "strike_rate": 140.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "npl-kushal-bhurtel",
+      "name": "Kushal Bhurtel",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": true,
+      "stats": { "runs": 1260, "wickets": 0, "batting_avg": 33.8, "strike_rate": 150.3, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "npl-dipendra-airee",
+      "name": "Dipendra Singh Airee",
+      "category": "A",
+      "role": "AR",
+      "base_price": 1000000,
+      "is_marquee": true,
+      "stats": { "runs": 640, "wickets": 38, "batting_avg": 25.2, "strike_rate": 159.4, "bowling_avg": 28.3, "economy": 9.4 }
+    },
+    {
+      "id": "2024-a-001",
+      "name": "Gyanendra Malla",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 1340, "wickets": 4, "batting_avg": 30.5, "strike_rate": 138.2, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-a-002",
+      "name": "Sagar Pun",
+      "category": "A",
+      "role": "AR",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 520, "wickets": 48, "batting_avg": 20.2, "strike_rate": 124.6, "bowling_avg": 25.8, "economy": 8.9 }
+    },
+    {
+      "id": "2024-a-003",
+      "name": "Binod Bhandari",
+      "category": "A",
+      "role": "WK",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 880, "wickets": 0, "batting_avg": 24.1, "strike_rate": 128.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-a-004",
+      "name": "Prithu Baskota",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 1040, "wickets": 0, "batting_avg": 28.9, "strike_rate": 135.7, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-a-005",
+      "name": "Shahab Alam",
+      "category": "A",
+      "role": "BOWL",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 142, "wickets": 54, "batting_avg": 10.4, "strike_rate": 95.2, "bowling_avg": 21.6, "economy": 8.2 }
+    },
+    {
+      "id": "2024-a-006",
+      "name": "Lalit Rajbanshi",
+      "category": "A",
+      "role": "BOWL",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 98, "wickets": 61, "batting_avg": 7.8, "strike_rate": 82.1, "bowling_avg": 20.4, "economy": 7.9 }
+    },
+    {
+      "id": "2024-a-007",
+      "name": "Sushan Bhari",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 920, "wickets": 0, "batting_avg": 26.3, "strike_rate": 133.1, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-a-008",
+      "name": "Bikram Sob",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 860, "wickets": 0, "batting_avg": 22.8, "strike_rate": 131.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-a-009",
+      "name": "Pawan Sarraf",
+      "category": "A",
+      "role": "AR",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 480, "wickets": 32, "batting_avg": 19.6, "strike_rate": 120.8, "bowling_avg": 28.1, "economy": 9.3 }
+    },
+    {
+      "id": "2024-a-010",
+      "name": "Subash Khakurel",
+      "category": "A",
+      "role": "WK",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 740, "wickets": 0, "batting_avg": 21.4, "strike_rate": 125.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-a-011",
+      "name": "Aarif Sheikh",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 980, "wickets": 0, "batting_avg": 27.2, "strike_rate": 137.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-a-012",
+      "name": "Kamal Singh Airee",
+      "category": "A",
+      "role": "BOWL",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 120, "wickets": 49, "batting_avg": 8.6, "strike_rate": 90.3, "bowling_avg": 22.9, "economy": 8.7 }
+    },
+    {
+      "id": "2024-a-013",
+      "name": "Naresh Budhayer",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 780, "wickets": 0, "batting_avg": 20.1, "strike_rate": 126.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-a-014",
+      "name": "Raju Rijal",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 830, "wickets": 0, "batting_avg": 22.4, "strike_rate": 130.2, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-a-015",
+      "name": "Govinda Bista",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 720, "wickets": 0, "batting_avg": 19.8, "strike_rate": 128.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-a-016",
+      "name": "Rahul Hamal",
+      "category": "A",
+      "role": "BOWL",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 108, "wickets": 45, "batting_avg": 8.2, "strike_rate": 84.6, "bowling_avg": 24.2, "economy": 9.0 }
+    },
+    {
+      "id": "2024-b-001",
+      "name": "Prashant Singh",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 360, "wickets": 26, "batting_avg": 16.8, "strike_rate": 112.4, "bowling_avg": 30.1, "economy": 9.6 }
+    },
+    {
+      "id": "2024-b-002",
+      "name": "Sagar Dhakal",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 320, "wickets": 28, "batting_avg": 15.2, "strike_rate": 108.8, "bowling_avg": 31.4, "economy": 9.8 }
+    },
+    {
+      "id": "2024-b-003",
+      "name": "Bibek Yadav",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 78, "wickets": 38, "batting_avg": 6.8, "strike_rate": 78.4, "bowling_avg": 26.8, "economy": 9.2 }
+    },
+    {
+      "id": "2024-b-004",
+      "name": "Nishan Khadka",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 680, "wickets": 0, "batting_avg": 18.6, "strike_rate": 122.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-b-005",
+      "name": "Surya Tamang",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 62, "wickets": 34, "batting_avg": 6.2, "strike_rate": 74.8, "bowling_avg": 27.6, "economy": 9.4 }
+    },
+    {
+      "id": "2024-b-006",
+      "name": "Sandip Sunar",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 620, "wickets": 0, "batting_avg": 17.4, "strike_rate": 119.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-b-007",
+      "name": "Mehboob Alam",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 52, "wickets": 41, "batting_avg": 5.8, "strike_rate": 76.2, "bowling_avg": 25.4, "economy": 8.8 }
+    },
+    {
+      "id": "2024-b-008",
+      "name": "Sagar Regmi",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 88, "wickets": 36, "batting_avg": 7.4, "strike_rate": 82.6, "bowling_avg": 28.2, "economy": 9.6 }
+    },
+    {
+      "id": "2024-b-009",
+      "name": "Binod Khalid",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 340, "wickets": 22, "batting_avg": 14.6, "strike_rate": 110.4, "bowling_avg": 32.8, "economy": 10.1 }
+    },
+    {
+      "id": "2024-b-010",
+      "name": "Swastik Chhetri",
+      "category": "B",
+      "role": "WK",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 540, "wickets": 0, "batting_avg": 16.2, "strike_rate": 116.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-b-011",
+      "name": "Sumit Maharjan",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 560, "wickets": 0, "batting_avg": 16.8, "strike_rate": 118.2, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-b-012",
+      "name": "Samir Sapkota",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 68, "wickets": 32, "batting_avg": 6.4, "strike_rate": 79.6, "bowling_avg": 29.4, "economy": 9.8 }
+    },
+    {
+      "id": "2024-b-013",
+      "name": "Arpan Lama",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 480, "wickets": 0, "batting_avg": 15.4, "strike_rate": 114.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-b-014",
+      "name": "Akash Chand",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 76, "wickets": 35, "batting_avg": 6.8, "strike_rate": 80.4, "bowling_avg": 27.8, "economy": 9.3 }
+    },
+    {
+      "id": "2024-b-015",
+      "name": "Sagar Thapa",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 500, "wickets": 0, "batting_avg": 15.8, "strike_rate": 115.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-b-016",
+      "name": "Aasif Ansari",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 298, "wickets": 20, "batting_avg": 14.2, "strike_rate": 108.4, "bowling_avg": 34.2, "economy": 10.4 }
+    },
+    {
+      "id": "2024-b-017",
+      "name": "Niran Bhatta",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 440, "wickets": 0, "batting_avg": 14.8, "strike_rate": 112.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-b-018",
+      "name": "Pushkar Bhandari",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 58, "wickets": 30, "batting_avg": 6.2, "strike_rate": 76.8, "bowling_avg": 30.6, "economy": 10.0 }
+    },
+    {
+      "id": "2024-b-019",
+      "name": "Sushil Paudel",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 460, "wickets": 0, "batting_avg": 15.2, "strike_rate": 113.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-b-020",
+      "name": "Yuvraj KC",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 268, "wickets": 18, "batting_avg": 13.6, "strike_rate": 106.2, "bowling_avg": 35.8, "economy": 10.6 }
+    },
+    {
+      "id": "2024-b-021",
+      "name": "Amrit Rai",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 420, "wickets": 0, "batting_avg": 14.2, "strike_rate": 111.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-b-022",
+      "name": "Bipul Sharki",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 310, "wickets": 24, "batting_avg": 14.8, "strike_rate": 109.6, "bowling_avg": 33.4, "economy": 10.2 }
+    },
+    {
+      "id": "2024-b-023",
+      "name": "Sachin Regmi",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 64, "wickets": 33, "batting_avg": 6.6, "strike_rate": 78.2, "bowling_avg": 28.8, "economy": 9.7 }
+    },
+    {
+      "id": "2024-b-024",
+      "name": "Anish Ansari",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 280, "wickets": 16, "batting_avg": 13.2, "strike_rate": 104.8, "bowling_avg": 36.6, "economy": 10.8 }
+    },
+    {
+      "id": "2024-b-025",
+      "name": "Dip Prakash Bohra",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 400, "wickets": 0, "batting_avg": 13.8, "strike_rate": 109.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-b-026",
+      "name": "Rajesh Pulami Magar",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 60, "wickets": 31, "batting_avg": 6.0, "strike_rate": 77.4, "bowling_avg": 29.8, "economy": 9.9 }
+    },
+    {
+      "id": "2024-b-027",
+      "name": "Bikash Bhurtel",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 380, "wickets": 0, "batting_avg": 13.4, "strike_rate": 108.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-b-028",
+      "name": "Rupesh Shahi",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 260, "wickets": 14, "batting_avg": 12.8, "strike_rate": 103.4, "bowling_avg": 37.4, "economy": 11.0 }
+    },
+    {
+      "id": "2024-b-029",
+      "name": "Sunil Dhamala",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 360, "wickets": 0, "batting_avg": 12.8, "strike_rate": 107.2, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-b-030",
+      "name": "Rohit KC",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 70, "wickets": 29, "batting_avg": 6.4, "strike_rate": 79.8, "bowling_avg": 31.2, "economy": 10.2 }
+    },
+    {
+      "id": "2024-b-031",
+      "name": "Ashish Bohara",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 340, "wickets": 0, "batting_avg": 12.4, "strike_rate": 106.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-b-032",
+      "name": "Aryan Koirala",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 320, "wickets": 0, "batting_avg": 12.0, "strike_rate": 105.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-b-033",
+      "name": "Bibek Bhattarai",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 240, "wickets": 12, "batting_avg": 12.4, "strike_rate": 102.6, "bowling_avg": 38.2, "economy": 11.2 }
+    },
+    {
+      "id": "2024-b-034",
+      "name": "Bikram Rawat",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 54, "wickets": 27, "batting_avg": 5.8, "strike_rate": 75.6, "bowling_avg": 32.4, "economy": 10.4 }
+    },
+    {
+      "id": "2024-b-035",
+      "name": "Hari Chauhan",
+      "category": "B",
+      "role": "WK",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 420, "wickets": 0, "batting_avg": 13.8, "strike_rate": 110.2, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-b-036",
+      "name": "Prabhat Thapa",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 300, "wickets": 0, "batting_avg": 11.6, "strike_rate": 104.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-c-001",
+      "name": "Sagar Tamang",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 220, "wickets": 0, "batting_avg": 10.8, "strike_rate": 98.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-c-002",
+      "name": "Ajay Kumar Shah",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 180, "wickets": 0, "batting_avg": 9.6, "strike_rate": 94.2, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-c-003",
+      "name": "Roshan Yadav",
+      "category": "C",
+      "role": "BOWL",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 38, "wickets": 22, "batting_avg": 5.4, "strike_rate": 70.4, "bowling_avg": 34.6, "economy": 10.8 }
+    },
+    {
+      "id": "2024-c-004",
+      "name": "Sarkar Raut",
+      "category": "C",
+      "role": "AR",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 160, "wickets": 10, "batting_avg": 10.2, "strike_rate": 96.4, "bowling_avg": 40.2, "economy": 11.4 }
+    },
+    {
+      "id": "2024-c-005",
+      "name": "Krishna Karki",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 200, "wickets": 0, "batting_avg": 10.4, "strike_rate": 96.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-c-006",
+      "name": "Santosh Sunar",
+      "category": "C",
+      "role": "BOWL",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 32, "wickets": 20, "batting_avg": 5.2, "strike_rate": 68.8, "bowling_avg": 36.2, "economy": 11.2 }
+    },
+    {
+      "id": "2024-c-007",
+      "name": "Dipak Bohara",
+      "category": "C",
+      "role": "AR",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 148, "wickets": 8, "batting_avg": 9.8, "strike_rate": 94.6, "bowling_avg": 42.4, "economy": 11.8 }
+    },
+    {
+      "id": "2024-c-008",
+      "name": "Bikalpa Thapa",
+      "category": "C",
+      "role": "BOWL",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 28, "wickets": 18, "batting_avg": 4.8, "strike_rate": 66.4, "bowling_avg": 38.4, "economy": 11.6 }
+    },
+    {
+      "id": "2024-c-009",
+      "name": "Ronit More",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 168, "wickets": 0, "batting_avg": 9.2, "strike_rate": 92.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-c-010",
+      "name": "Avi Karmacharya",
+      "category": "C",
+      "role": "WK",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 190, "wickets": 0, "batting_avg": 10.0, "strike_rate": 95.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-c-011",
+      "name": "Rahul Shukla",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 172, "wickets": 0, "batting_avg": 9.4, "strike_rate": 93.2, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-c-012",
+      "name": "Bishal Bikram",
+      "category": "C",
+      "role": "BOWL",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 24, "wickets": 16, "batting_avg": 4.6, "strike_rate": 64.8, "bowling_avg": 40.6, "economy": 12.0 }
+    },
+    {
+      "id": "2024-c-013",
+      "name": "Sachin Kandel",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 158, "wickets": 0, "batting_avg": 8.8, "strike_rate": 91.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-c-014",
+      "name": "Aakash Rana",
+      "category": "C",
+      "role": "AR",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 138, "wickets": 6, "batting_avg": 9.2, "strike_rate": 92.8, "bowling_avg": 44.8, "economy": 12.2 }
+    },
+    {
+      "id": "2024-c-015",
+      "name": "Pradeep Airee",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 148, "wickets": 0, "batting_avg": 8.6, "strike_rate": 90.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-c-016",
+      "name": "Dharma Raj Tharu",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 142, "wickets": 0, "batting_avg": 8.4, "strike_rate": 89.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-c-017",
+      "name": "Nirajan Khatri",
+      "category": "C",
+      "role": "BOWL",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 22, "wickets": 15, "batting_avg": 4.4, "strike_rate": 62.6, "bowling_avg": 42.0, "economy": 12.4 }
+    },
+    {
+      "id": "2024-c-018",
+      "name": "Ushan Acharya",
+      "category": "C",
+      "role": "AR",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 128, "wickets": 4, "batting_avg": 8.8, "strike_rate": 91.4, "bowling_avg": 46.6, "economy": 12.6 }
+    },
+    {
+      "id": "2024-c-019",
+      "name": "Saurav Gupta",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 136, "wickets": 0, "batting_avg": 8.2, "strike_rate": 88.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-c-020",
+      "name": "Bikash Dura",
+      "category": "C",
+      "role": "BOWL",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 20, "wickets": 14, "batting_avg": 4.2, "strike_rate": 61.4, "bowling_avg": 43.8, "economy": 12.8 }
+    },
+    {
+      "id": "2024-c-021",
+      "name": "Sanjay Shah",
+      "category": "C",
+      "role": "AR",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 118, "wickets": 4, "batting_avg": 8.4, "strike_rate": 90.2, "bowling_avg": 48.2, "economy": 13.0 }
+    },
+    {
+      "id": "2024-c-022",
+      "name": "Subash Rana",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 126, "wickets": 0, "batting_avg": 7.8, "strike_rate": 87.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-c-023",
+      "name": "Kiran Paudel",
+      "category": "C",
+      "role": "WK",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 158, "wickets": 0, "batting_avg": 9.0, "strike_rate": 92.0, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-c-024",
+      "name": "Dipesh Shrestha",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 112, "wickets": 0, "batting_avg": 7.4, "strike_rate": 86.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-c-025",
+      "name": "Manish Budha",
+      "category": "C",
+      "role": "BOWL",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 18, "wickets": 13, "batting_avg": 4.0, "strike_rate": 60.2, "bowling_avg": 45.4, "economy": 13.2 }
+    },
+    {
+      "id": "2024-c-026",
+      "name": "Saroj Poudel",
+      "category": "C",
+      "role": "AR",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 108, "wickets": 3, "batting_avg": 7.8, "strike_rate": 88.4, "bowling_avg": 50.0, "economy": 13.4 }
+    },
+    {
+      "id": "2024-c-027",
+      "name": "Suman Karki",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 104, "wickets": 0, "batting_avg": 7.2, "strike_rate": 85.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2024-c-028",
+      "name": "Laxman Saud",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 96, "wickets": 0, "batting_avg": 7.0, "strike_rate": 84.8, "bowling_avg": null, "economy": null }
+    }
+  ]
+}

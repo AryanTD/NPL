@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum PlayerCategory {
+  A
+  B
+  C
+}
+
+enum PlayerRole {
+  BAT
+  BOWL
+  AR
+  WK
+}
+
+enum SlotType {
+  MARQUEE
+  AUCTION
+  OVERSEAS
+  ICONIC
+}
+
+enum LobbyStatus {
+  WAITING
+  MARQUEE_DRAW
+  AUCTION
+  COMPLETE
+}
+
+enum AuctionPhase {
+  MARQUEE_DRAW
+  CATEGORY_A
+  CATEGORY_B
+  CATEGORY_C
+  UNSOLD_ROUND
+  COMPLETE
+}
+
+enum SeatType {
+  HUMAN
+  BOT
+  EMPTY
+}
+
+enum BotPersonality {
+  AGGRESSIVE
+  CONSERVATIVE
+  ROLE_HUNTER
+  BUDGET_SNIPER
+  BALANCED
+}
+
+// ─── Player ──────────────────────────────────────────────────────────────────
+
+model Player {
+  id          String         @id
+  name        String
+  category    PlayerCategory
+  role        PlayerRole
+  basePrice   Int            // NPR
+  season      Int            // 2024 | 2025
+  isMarquee   Boolean        @default(false)
+
+  // Stats (flat columns for query efficiency)
+  runs        Int            @default(0)
+  wickets     Int            @default(0)
+  battingAvg  Float?
+  strikeRate  Float?
+  bowlingAvg  Float?
+  economy     Float?
+
+  squadSlots    SquadSlot[]
+  auctionQueues AuctionQueue[]
+  bids          Bid[]
+  auctionResult AuctionResult?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([season])
+  @@index([category])
+  @@index([isMarquee])
+}
+
+// ─── Franchise ───────────────────────────────────────────────────────────────
+
+model Franchise {
+  id             String @id @default(cuid())
+  name           String @unique
+  shortName      String @unique
+  city           String
+  colorPrimary   String // hex, e.g. "#1B3A6B"
+  colorSecondary String // hex, e.g. "#C9A84C"
+
+  lobbySeats    LobbySeat[]
+  squadSlots    SquadSlot[]
+  bids          Bid[]
+  auctionResult AuctionResult[]
+
+  createdAt DateTime @default(now())
+}
+
+// ─── Lobby ───────────────────────────────────────────────────────────────────
+
+model Lobby {
+  id        String      @id @default(cuid())
+  code      String      @unique // 6-char join code
+  status    LobbyStatus @default(WAITING)
+  season    Int         // which player pool to use
+
+  seats         LobbySeat[]
+  auctionQueues AuctionQueue[]
+  bids          Bid[]
+  auctionResults AuctionResult[]
+  squadSlots    SquadSlot[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([code])
+  @@index([status])
+}
+
+// ─── LobbySeat ───────────────────────────────────────────────────────────────
+
+model LobbySeat {
+  id             String          @id @default(cuid())
+  lobbyId        String
+  franchiseId    String
+  seatType       SeatType        @default(EMPTY)
+
+  // Human seat
+  userId         String?         // Clerk user ID
+  displayName    String?
+
+  // Bot seat
+  botPersonality BotPersonality?
+
+  purseRemaining Int             // NPR; starts at 9_000_000 (90 lakhs)
+
+  // Quota tracking — how many of each category acquired
+  countA         Int             @default(0)
+  countB         Int             @default(0)
+  countC         Int             @default(0)
+
+  lobby     Lobby     @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
+  franchise Franchise @relation(fields: [franchiseId], references: [id])
+  bids      Bid[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([lobbyId, franchiseId])
+  @@index([lobbyId])
+  @@index([userId])
+}
+
+// ─── AuctionQueue ─────────────────────────────────────────────────────────────
+// Ordered list of players to be auctioned in a lobby (one row per player slot)
+
+model AuctionQueue {
+  id       String       @id @default(cuid())
+  lobbyId  String
+  playerId String
+  phase    AuctionPhase // which round this player belongs to
+  position Int          // order within the phase
+  isUnsold Boolean      @default(false) // moved to unsold round
+  isDone   Boolean      @default(false) // sold or permanently unsold
+
+  lobby  Lobby  @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([lobbyId, playerId])
+  @@index([lobbyId, phase, isDone])
+}
+
+// ─── Bid ─────────────────────────────────────────────────────────────────────
+
+model Bid {
+  id          String @id @default(cuid())
+  lobbyId     String
+  seatId      String
+  playerId    String
+  franchiseId String
+  amount      Int    // NPR
+
+  lobby     Lobby     @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
+  seat      LobbySeat @relation(fields: [seatId], references: [id])
+  player    Player    @relation(fields: [playerId], references: [id])
+  franchise Franchise @relation(fields: [franchiseId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([lobbyId, playerId])
+  @@index([seatId])
+}
+
+// ─── AuctionResult ───────────────────────────────────────────────────────────
+// One row per player sold in a lobby
+
+model AuctionResult {
+  id           String  @id @default(cuid())
+  lobbyId      String
+  playerId     String  @unique // sold once per overall auction
+  franchiseId  String
+  finalPrice   Int     // NPR
+  wasLuckyDraw Boolean @default(false)
+
+  lobby     Lobby     @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
+  player    Player    @relation(fields: [playerId], references: [id])
+  franchise Franchise @relation(fields: [franchiseId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([lobbyId])
+  @@index([franchiseId])
+}
+
+// ─── SquadSlot ───────────────────────────────────────────────────────────────
+// Final squad — one row per player per franchise per lobby
+
+model SquadSlot {
+  id          String   @id @default(cuid())
+  lobbyId     String
+  franchiseId String
+  playerId    String
+  slotType    SlotType
+  pricePaid   Int      // NPR; 0 for pre-assigned (OVERSEAS / ICONIC)
+
+  lobby     Lobby     @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
+  franchise Franchise @relation(fields: [franchiseId], references: [id])
+  player    Player    @relation(fields: [playerId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([lobbyId, playerId])
+  @@index([lobbyId, franchiseId])
+}

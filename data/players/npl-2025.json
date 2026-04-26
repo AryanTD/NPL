@@ -1,0 +1,797 @@
+{
+  "season": 2025,
+  "players": [
+    {
+      "id": "npl-sandeep-lamichhane",
+      "name": "Sandeep Lamichhane",
+      "category": "A",
+      "role": "BOWL",
+      "base_price": 1000000,
+      "is_marquee": true,
+      "stats": { "runs": 228, "wickets": 84, "batting_avg": 9.4, "strike_rate": 90.2, "bowling_avg": 17.6, "economy": 7.4 }
+    },
+    {
+      "id": "npl-kushal-malla",
+      "name": "Kushal Malla",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": true,
+      "stats": { "runs": 1360, "wickets": 8, "batting_avg": 33.6, "strike_rate": 150.2, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "npl-aasif-sheikh",
+      "name": "Aasif Sheikh",
+      "category": "A",
+      "role": "WK",
+      "base_price": 1000000,
+      "is_marquee": true,
+      "stats": { "runs": 1080, "wickets": 0, "batting_avg": 29.8, "strike_rate": 133.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "npl-sompal-kami",
+      "name": "Sompal Kami",
+      "category": "A",
+      "role": "AR",
+      "base_price": 1000000,
+      "is_marquee": true,
+      "stats": { "runs": 448, "wickets": 66, "batting_avg": 18.6, "strike_rate": 118.8, "bowling_avg": 22.4, "economy": 8.3 }
+    },
+    {
+      "id": "npl-karan-kc",
+      "name": "Karan KC",
+      "category": "A",
+      "role": "AR",
+      "base_price": 1000000,
+      "is_marquee": true,
+      "stats": { "runs": 320, "wickets": 74, "batting_avg": 15.8, "strike_rate": 108.6, "bowling_avg": 21.8, "economy": 8.8 }
+    },
+    {
+      "id": "npl-rohit-paudel",
+      "name": "Rohit Paudel",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": true,
+      "stats": { "runs": 1740, "wickets": 2, "batting_avg": 39.8, "strike_rate": 143.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "npl-kushal-bhurtel",
+      "name": "Kushal Bhurtel",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": true,
+      "stats": { "runs": 1440, "wickets": 0, "batting_avg": 36.4, "strike_rate": 154.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "npl-dipendra-airee",
+      "name": "Dipendra Singh Airee",
+      "category": "A",
+      "role": "AR",
+      "base_price": 1000000,
+      "is_marquee": true,
+      "stats": { "runs": 720, "wickets": 44, "batting_avg": 26.8, "strike_rate": 162.8, "bowling_avg": 27.6, "economy": 9.2 }
+    },
+    {
+      "id": "2025-a-001",
+      "name": "Gyanendra Malla",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 1480, "wickets": 4, "batting_avg": 32.2, "strike_rate": 140.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-a-002",
+      "name": "Sagar Pun",
+      "category": "A",
+      "role": "AR",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 568, "wickets": 54, "batting_avg": 21.4, "strike_rate": 126.8, "bowling_avg": 24.6, "economy": 8.7 }
+    },
+    {
+      "id": "2025-a-003",
+      "name": "Binod Bhandari",
+      "category": "A",
+      "role": "WK",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 960, "wickets": 0, "batting_avg": 25.8, "strike_rate": 131.2, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-a-004",
+      "name": "Prithu Baskota",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 1120, "wickets": 0, "batting_avg": 30.4, "strike_rate": 138.2, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-a-005",
+      "name": "Shahab Alam",
+      "category": "A",
+      "role": "BOWL",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 158, "wickets": 62, "batting_avg": 11.2, "strike_rate": 97.4, "bowling_avg": 20.8, "economy": 8.0 }
+    },
+    {
+      "id": "2025-a-006",
+      "name": "Lalit Rajbanshi",
+      "category": "A",
+      "role": "BOWL",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 112, "wickets": 68, "batting_avg": 8.2, "strike_rate": 84.4, "bowling_avg": 19.8, "economy": 7.7 }
+    },
+    {
+      "id": "2025-a-007",
+      "name": "Sushan Bhari",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 1000, "wickets": 0, "batting_avg": 27.6, "strike_rate": 135.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-a-008",
+      "name": "Pawan Sarraf",
+      "category": "A",
+      "role": "AR",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 528, "wickets": 36, "batting_avg": 20.8, "strike_rate": 122.6, "bowling_avg": 27.2, "economy": 9.1 }
+    },
+    {
+      "id": "2025-a-009",
+      "name": "Subash Khakurel",
+      "category": "A",
+      "role": "WK",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 820, "wickets": 0, "batting_avg": 22.8, "strike_rate": 128.2, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-a-010",
+      "name": "Aarif Sheikh",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 1060, "wickets": 0, "batting_avg": 28.6, "strike_rate": 139.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-a-011",
+      "name": "Kamal Singh Airee",
+      "category": "A",
+      "role": "BOWL",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 136, "wickets": 56, "batting_avg": 9.2, "strike_rate": 92.6, "bowling_avg": 22.2, "economy": 8.5 }
+    },
+    {
+      "id": "2025-a-012",
+      "name": "Naresh Budhayer",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 860, "wickets": 0, "batting_avg": 21.6, "strike_rate": 128.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-a-013",
+      "name": "Raju Rijal",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 900, "wickets": 0, "batting_avg": 23.6, "strike_rate": 132.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-a-014",
+      "name": "Govinda Bista",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 800, "wickets": 0, "batting_avg": 21.2, "strike_rate": 130.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-a-015",
+      "name": "Rahul Hamal",
+      "category": "A",
+      "role": "BOWL",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 124, "wickets": 52, "batting_avg": 8.8, "strike_rate": 86.8, "bowling_avg": 23.6, "economy": 8.8 }
+    },
+    {
+      "id": "2025-a-016",
+      "name": "Bikram Sob",
+      "category": "A",
+      "role": "BAT",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": { "runs": 940, "wickets": 0, "batting_avg": 24.4, "strike_rate": 133.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-b-001",
+      "name": "Prashant Singh",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 400, "wickets": 30, "batting_avg": 17.6, "strike_rate": 114.8, "bowling_avg": 29.4, "economy": 9.4 }
+    },
+    {
+      "id": "2025-b-002",
+      "name": "Sagar Dhakal",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 360, "wickets": 32, "batting_avg": 16.4, "strike_rate": 111.2, "bowling_avg": 30.6, "economy": 9.6 }
+    },
+    {
+      "id": "2025-b-003",
+      "name": "Bibek Yadav",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 88, "wickets": 44, "batting_avg": 7.4, "strike_rate": 80.6, "bowling_avg": 25.8, "economy": 8.9 }
+    },
+    {
+      "id": "2025-b-004",
+      "name": "Nishan Khadka",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 740, "wickets": 0, "batting_avg": 19.8, "strike_rate": 124.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-b-005",
+      "name": "Surya Tamang",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 72, "wickets": 40, "batting_avg": 6.8, "strike_rate": 77.2, "bowling_avg": 26.8, "economy": 9.1 }
+    },
+    {
+      "id": "2025-b-006",
+      "name": "Sandip Sunar",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 680, "wickets": 0, "batting_avg": 18.6, "strike_rate": 121.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-b-007",
+      "name": "Mehboob Alam",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 60, "wickets": 47, "batting_avg": 6.2, "strike_rate": 78.4, "bowling_avg": 24.6, "economy": 8.6 }
+    },
+    {
+      "id": "2025-b-008",
+      "name": "Swastik Chhetri",
+      "category": "B",
+      "role": "WK",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 600, "wickets": 0, "batting_avg": 17.4, "strike_rate": 119.2, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-b-009",
+      "name": "Sumit Maharjan",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 620, "wickets": 0, "batting_avg": 18.2, "strike_rate": 120.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-b-010",
+      "name": "Samir Sapkota",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 76, "wickets": 38, "batting_avg": 7.0, "strike_rate": 81.8, "bowling_avg": 28.4, "economy": 9.5 }
+    },
+    {
+      "id": "2025-b-011",
+      "name": "Arpan Lama",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 540, "wickets": 0, "batting_avg": 16.8, "strike_rate": 116.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-b-012",
+      "name": "Sagar Thapa",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 560, "wickets": 0, "batting_avg": 17.2, "strike_rate": 117.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-b-013",
+      "name": "Niran Bhatta",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 500, "wickets": 0, "batting_avg": 16.0, "strike_rate": 114.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-b-014",
+      "name": "Yuvraj KC",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 308, "wickets": 22, "batting_avg": 14.4, "strike_rate": 108.6, "bowling_avg": 34.4, "economy": 10.4 }
+    },
+    {
+      "id": "2025-b-015",
+      "name": "Amrit Rai",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 480, "wickets": 0, "batting_avg": 15.6, "strike_rate": 113.2, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-b-016",
+      "name": "Bipul Sharki",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 348, "wickets": 28, "batting_avg": 15.6, "strike_rate": 111.8, "bowling_avg": 32.2, "economy": 9.9 }
+    },
+    {
+      "id": "2025-b-017",
+      "name": "Binod Khalid",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 380, "wickets": 26, "batting_avg": 15.8, "strike_rate": 112.6, "bowling_avg": 31.8, "economy": 9.8 }
+    },
+    {
+      "id": "2025-b-018",
+      "name": "Dip Prakash Bohra",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 440, "wickets": 0, "batting_avg": 14.8, "strike_rate": 111.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-b-019",
+      "name": "Bikash Bhurtel",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 420, "wickets": 0, "batting_avg": 14.2, "strike_rate": 110.2, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-b-020",
+      "name": "Rupesh Shahi",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 298, "wickets": 18, "batting_avg": 13.6, "strike_rate": 105.8, "bowling_avg": 36.0, "economy": 10.7 }
+    },
+    {
+      "id": "2025-b-021",
+      "name": "Hari Chauhan",
+      "category": "B",
+      "role": "WK",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 468, "wickets": 0, "batting_avg": 14.8, "strike_rate": 112.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-b-022",
+      "name": "Prabhat Thapa",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 340, "wickets": 0, "batting_avg": 12.8, "strike_rate": 106.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-b-023",
+      "name": "Aryan Koirala",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 360, "wickets": 0, "batting_avg": 13.2, "strike_rate": 107.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-b-024",
+      "name": "Suraj Rana",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 66, "wickets": 34, "batting_avg": 6.8, "strike_rate": 80.2, "bowling_avg": 30.0, "economy": 9.9 }
+    },
+    {
+      "id": "2025-b-025",
+      "name": "Nirmal Tamang",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 272, "wickets": 16, "batting_avg": 13.0, "strike_rate": 103.8, "bowling_avg": 37.8, "economy": 11.0 }
+    },
+    {
+      "id": "2025-b-026",
+      "name": "Anish Ansari",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 316, "wickets": 18, "batting_avg": 13.8, "strike_rate": 106.4, "bowling_avg": 35.4, "economy": 10.6 }
+    },
+    {
+      "id": "2025-b-027",
+      "name": "Sachin Regmi",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 72, "wickets": 38, "batting_avg": 7.2, "strike_rate": 80.4, "bowling_avg": 27.8, "economy": 9.4 }
+    },
+    {
+      "id": "2025-b-028",
+      "name": "Rohit KC",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 80, "wickets": 34, "batting_avg": 7.0, "strike_rate": 81.4, "bowling_avg": 30.4, "economy": 9.9 }
+    },
+    {
+      "id": "2025-b-029",
+      "name": "Bibek Bhattarai",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 276, "wickets": 14, "batting_avg": 13.4, "strike_rate": 104.6, "bowling_avg": 37.0, "economy": 10.9 }
+    },
+    {
+      "id": "2025-b-030",
+      "name": "Sushil Paudel",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 500, "wickets": 0, "batting_avg": 16.2, "strike_rate": 115.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-b-031",
+      "name": "Aasif Ansari",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 336, "wickets": 22, "batting_avg": 14.8, "strike_rate": 110.2, "bowling_avg": 33.0, "economy": 10.1 }
+    },
+    {
+      "id": "2025-b-032",
+      "name": "Akash Chand",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 84, "wickets": 41, "batting_avg": 7.4, "strike_rate": 82.6, "bowling_avg": 26.8, "economy": 9.0 }
+    },
+    {
+      "id": "2025-b-033",
+      "name": "Ashish Bohara",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 380, "wickets": 0, "batting_avg": 13.4, "strike_rate": 108.2, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-b-034",
+      "name": "Rajesh Pulami Magar",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 68, "wickets": 36, "batting_avg": 6.4, "strike_rate": 79.2, "bowling_avg": 28.6, "economy": 9.6 }
+    },
+    {
+      "id": "2025-b-035",
+      "name": "Sunil Dhamala",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 400, "wickets": 0, "batting_avg": 13.8, "strike_rate": 109.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-b-036",
+      "name": "Bikram Rawat",
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": { "runs": 62, "wickets": 31, "batting_avg": 6.2, "strike_rate": 77.8, "bowling_avg": 31.4, "economy": 10.1 }
+    },
+    {
+      "id": "2025-c-001",
+      "name": "Sagar Tamang",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 258, "wickets": 0, "batting_avg": 11.8, "strike_rate": 100.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-c-002",
+      "name": "Ajay Kumar Shah",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 210, "wickets": 0, "batting_avg": 10.6, "strike_rate": 96.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-c-003",
+      "name": "Roshan Yadav",
+      "category": "C",
+      "role": "BOWL",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 44, "wickets": 26, "batting_avg": 5.8, "strike_rate": 72.6, "bowling_avg": 33.4, "economy": 10.5 }
+    },
+    {
+      "id": "2025-c-004",
+      "name": "Krishna Karki",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 236, "wickets": 0, "batting_avg": 11.4, "strike_rate": 99.2, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-c-005",
+      "name": "Santosh Sunar",
+      "category": "C",
+      "role": "BOWL",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 38, "wickets": 24, "batting_avg": 5.6, "strike_rate": 71.0, "bowling_avg": 34.8, "economy": 10.8 }
+    },
+    {
+      "id": "2025-c-006",
+      "name": "Dipak Bohara",
+      "category": "C",
+      "role": "AR",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 168, "wickets": 10, "batting_avg": 10.6, "strike_rate": 96.8, "bowling_avg": 41.0, "economy": 11.6 }
+    },
+    {
+      "id": "2025-c-007",
+      "name": "Ronit More",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 196, "wickets": 0, "batting_avg": 10.2, "strike_rate": 94.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-c-008",
+      "name": "Avi Karmacharya",
+      "category": "C",
+      "role": "WK",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 218, "wickets": 0, "batting_avg": 10.8, "strike_rate": 97.4, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-c-009",
+      "name": "Aakash Rana",
+      "category": "C",
+      "role": "AR",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 158, "wickets": 8, "batting_avg": 10.0, "strike_rate": 95.2, "bowling_avg": 43.2, "economy": 11.9 }
+    },
+    {
+      "id": "2025-c-010",
+      "name": "Pradeep Airee",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 172, "wickets": 0, "batting_avg": 9.6, "strike_rate": 93.2, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-c-011",
+      "name": "Dharma Raj Tharu",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 164, "wickets": 0, "batting_avg": 9.2, "strike_rate": 91.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-c-012",
+      "name": "Ushan Acharya",
+      "category": "C",
+      "role": "AR",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 148, "wickets": 6, "batting_avg": 9.8, "strike_rate": 93.8, "bowling_avg": 45.0, "economy": 12.2 }
+    },
+    {
+      "id": "2025-c-013",
+      "name": "Saurav Gupta",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 156, "wickets": 0, "batting_avg": 8.8, "strike_rate": 90.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-c-014",
+      "name": "Sanjay Shah",
+      "category": "C",
+      "role": "AR",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 138, "wickets": 5, "batting_avg": 9.2, "strike_rate": 92.4, "bowling_avg": 47.6, "economy": 12.7 }
+    },
+    {
+      "id": "2025-c-015",
+      "name": "Subash Rana",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 146, "wickets": 0, "batting_avg": 8.6, "strike_rate": 89.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-c-016",
+      "name": "Kiran Paudel",
+      "category": "C",
+      "role": "WK",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 182, "wickets": 0, "batting_avg": 9.8, "strike_rate": 94.0, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-c-017",
+      "name": "Nirajan Khatri",
+      "category": "C",
+      "role": "BOWL",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 26, "wickets": 18, "batting_avg": 4.8, "strike_rate": 64.6, "bowling_avg": 40.8, "economy": 12.1 }
+    },
+    {
+      "id": "2025-c-018",
+      "name": "Bishal Bikram",
+      "category": "C",
+      "role": "BOWL",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 30, "wickets": 20, "batting_avg": 5.0, "strike_rate": 67.4, "bowling_avg": 39.2, "economy": 11.8 }
+    },
+    {
+      "id": "2025-c-019",
+      "name": "Manish Budha",
+      "category": "C",
+      "role": "BOWL",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 22, "wickets": 16, "batting_avg": 4.4, "strike_rate": 62.8, "bowling_avg": 44.0, "economy": 12.9 }
+    },
+    {
+      "id": "2025-c-020",
+      "name": "Sarkar Raut",
+      "category": "C",
+      "role": "AR",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 178, "wickets": 12, "batting_avg": 10.8, "strike_rate": 98.2, "bowling_avg": 38.8, "economy": 11.1 }
+    },
+    {
+      "id": "2025-c-021",
+      "name": "Saroj Poudel",
+      "category": "C",
+      "role": "AR",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 128, "wickets": 4, "batting_avg": 8.6, "strike_rate": 90.6, "bowling_avg": 48.4, "economy": 13.0 }
+    },
+    {
+      "id": "2025-c-022",
+      "name": "Suman Karki",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 124, "wickets": 0, "batting_avg": 7.8, "strike_rate": 87.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-c-023",
+      "name": "Laxman Saud",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 116, "wickets": 0, "batting_avg": 7.4, "strike_rate": 86.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-c-024",
+      "name": "Dipesh Shrestha",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 132, "wickets": 0, "batting_avg": 8.2, "strike_rate": 88.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-c-025",
+      "name": "Bikash Dura",
+      "category": "C",
+      "role": "BOWL",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 24, "wickets": 17, "batting_avg": 4.6, "strike_rate": 63.6, "bowling_avg": 42.6, "economy": 12.5 }
+    },
+    {
+      "id": "2025-c-026",
+      "name": "Sachin Kandel",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 178, "wickets": 0, "batting_avg": 9.6, "strike_rate": 93.8, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-c-027",
+      "name": "Rahul Shukla",
+      "category": "C",
+      "role": "BAT",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 194, "wickets": 0, "batting_avg": 10.0, "strike_rate": 95.6, "bowling_avg": null, "economy": null }
+    },
+    {
+      "id": "2025-c-028",
+      "name": "Bikalpa Thapa",
+      "category": "C",
+      "role": "BOWL",
+      "base_price": 200000,
+      "is_marquee": false,
+      "stats": { "runs": 32, "wickets": 21, "batting_avg": 5.2, "strike_rate": 68.2, "bowling_avg": 37.6, "economy": 11.4 }
+    }
+  ]
+}
