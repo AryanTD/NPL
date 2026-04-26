@@ -30,3 +30,7 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# Misc
+apps/web/.env.local
+settings.local.json

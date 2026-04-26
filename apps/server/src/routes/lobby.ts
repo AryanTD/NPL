@@ -1,0 +1,258 @@
+import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+import { Prisma, BotPersonality, SeatType } from '@prisma/client';
+import prisma from '../lib/prisma';
+
+const router = Router();
+
+const PURSE_START = 9_000_000; // NPR 90 lakhs
+
+const BOT_PERSONALITIES: BotPersonality[] = [
+  'AGGRESSIVE',
+  'CONSERVATIVE',
+  'ROLE_HUNTER',
+  'BUDGET_SNIPER',
+  'BALANCED',
+];
+
+function randomCode(): string {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+function randomPersonality(): BotPersonality {
+  return BOT_PERSONALITIES[Math.floor(Math.random() * BOT_PERSONALITIES.length)];
+}
+
+// ─── Franchise cache ──────────────────────────────────────────────────────────
+// Franchises are seeded once and never change at runtime.
+
+let franchiseCache: Awaited<ReturnType<typeof prisma.franchise.findMany>> | null = null;
+
+async function getFranchises() {
+  if (!franchiseCache) {
+    franchiseCache = await prisma.franchise.findMany({ orderBy: { name: 'asc' } });
+  }
+  return franchiseCache;
+}
+
+// ─── POST /lobby/create ───────────────────────────────────────────────────────
+
+const CreateSchema = z.object({
+  userId:      z.string().min(1),
+  displayName: z.string().min(1),
+  season:      z.number().int().min(2024).max(2025).default(2025),
+});
+
+router.post('/create', async (req: Request, res: Response): Promise<void> => {
+  const parsed = CreateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const { userId, displayName, season } = parsed.data;
+
+  const franchises = await getFranchises();
+  if (franchises.length !== 8) {
+    res.status(500).json({ error: 'Franchises not seeded — run prisma db seed first' });
+    return;
+  }
+
+  // Retry loop: generate a code and insert; on unique-constraint collision, try again.
+  // This is safe under concurrency unlike the check-then-act pattern.
+  let lobby: Awaited<ReturnType<typeof prisma.lobby.create>> & {
+    seats: (Awaited<ReturnType<typeof prisma.lobbySeat.findMany>>[number] & {
+      franchise: typeof franchises[number];
+    })[];
+  };
+
+  for (;;) {
+    const code = randomCode();
+    try {
+      lobby = await prisma.lobby.create({
+        data: {
+          code,
+          season,
+          seats: {
+            create: franchises.map((franchise, i) => {
+              const isCreator = i === 0;
+              return {
+                franchiseId:    franchise.id,
+                seatType:       isCreator ? SeatType.HUMAN : SeatType.BOT,
+                userId:         isCreator ? userId : null,
+                displayName:    isCreator ? displayName : null,
+                botPersonality: isCreator ? null : randomPersonality(),
+                purseRemaining: PURSE_START,
+              };
+            }),
+          },
+        },
+        include: {
+          seats: {
+            include: { franchise: true },
+            orderBy: { franchise: { name: 'asc' } },
+          },
+        },
+      });
+      break; // success
+    } catch (err) {
+      // P2002 = unique constraint violation — code collision, retry
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        continue;
+      }
+      res.status(500).json({ error: 'Failed to create lobby' });
+      return;
+    }
+  }
+
+  const creatorSeat = lobby.seats.find((s) => s.userId === userId)!;
+
+  res.status(201).json({
+    lobbyId:       lobby.id,
+    code:          lobby.code,
+    seatId:        creatorSeat.id,
+    franchiseName: creatorSeat.franchise.name,
+    seats:         lobby.seats.map(formatSeat),
+  });
+});
+
+// ─── POST /lobby/join/:code ───────────────────────────────────────────────────
+
+const JoinSchema = z.object({
+  userId:      z.string().min(1),
+  displayName: z.string().min(1),
+});
+
+router.post('/join/:code', async (req: Request, res: Response): Promise<void> => {
+  const parsed = JoinSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const { userId, displayName } = parsed.data;
+  const code = req.params.code.toUpperCase();
+
+  try {
+    const lobby = await prisma.lobby.findUnique({
+      where: { code },
+      include: {
+        seats: { include: { franchise: true }, orderBy: { franchise: { name: 'asc' } } },
+      },
+    });
+
+    if (!lobby) {
+      res.status(404).json({ error: 'Lobby not found' });
+      return;
+    }
+    if (lobby.status !== 'WAITING') {
+      res.status(409).json({ error: 'Auction has already started' });
+      return;
+    }
+
+    // If user already has a seat, return it (idempotent)
+    const existing = lobby.seats.find((s) => s.userId === userId);
+    if (existing) {
+      res.json({
+        lobbyId:       lobby.id,
+        code:          lobby.code,
+        seatId:        existing.id,
+        franchiseName: existing.franchise.name,
+        seats:         lobby.seats.map(formatSeat),
+      });
+      return;
+    }
+
+    // Claim the first available BOT seat
+    const botSeatIndex = lobby.seats.findIndex((s) => s.seatType === SeatType.BOT);
+    if (botSeatIndex === -1) {
+      res.status(409).json({ error: 'Lobby is full' });
+      return;
+    }
+
+    const updated = await prisma.lobbySeat.update({
+      where: { id: lobby.seats[botSeatIndex].id },
+      data: { seatType: SeatType.HUMAN, userId, displayName, botPersonality: null },
+      include: { franchise: true },
+    });
+
+    // Patch the in-memory seat list — avoids a second DB round-trip
+    const allSeats = lobby.seats.map((s, i) =>
+      i === botSeatIndex ? { ...s, ...updated } : s,
+    );
+
+    res.json({
+      lobbyId:       lobby.id,
+      code:          lobby.code,
+      seatId:        updated.id,
+      franchiseName: updated.franchise.name,
+      seats:         allSeats.map(formatSeat),
+    });
+  } catch {
+    res.status(500).json({ error: 'Failed to join lobby' });
+  }
+});
+
+// ─── GET /lobby/:id ───────────────────────────────────────────────────────────
+
+router.get('/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const lobby = await prisma.lobby.findUnique({
+      where: { id: req.params.id },
+      include: {
+        seats: {
+          include: { franchise: true },
+          orderBy: { franchise: { name: 'asc' } },
+        },
+      },
+    });
+
+    if (!lobby) {
+      res.status(404).json({ error: 'Lobby not found' });
+      return;
+    }
+
+    res.json({
+      id:        lobby.id,
+      code:      lobby.code,
+      status:    lobby.status,
+      season:    lobby.season,
+      createdAt: lobby.createdAt,
+      seats:     lobby.seats.map(formatSeat),
+    });
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch lobby' });
+  }
+});
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatSeat(seat: {
+  id: string;
+  seatType: SeatType;
+  userId: string | null;
+  displayName: string | null;
+  botPersonality: BotPersonality | null;
+  purseRemaining: number;
+  countA: number;
+  countB: number;
+  countC: number;
+  franchise: { id: string; name: string; shortName: string; colorPrimary: string; colorSecondary: string };
+}) {
+  return {
+    seatId:         seat.id,
+    seatType:       seat.seatType,
+    franchiseId:    seat.franchise.id,
+    franchiseName:  seat.franchise.name,
+    shortName:      seat.franchise.shortName,
+    colorPrimary:   seat.franchise.colorPrimary,
+    colorSecondary: seat.franchise.colorSecondary,
+    userId:         seat.userId ?? undefined,
+    displayName:    seat.displayName ?? undefined,
+    botPersonality: seat.botPersonality ?? undefined,
+    purseRemaining: seat.purseRemaining,
+    categoryCount:  { A: seat.countA, B: seat.countB, C: seat.countC },
+  };
+}
+
+export default router;

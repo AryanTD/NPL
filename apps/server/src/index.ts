@@ -9,6 +9,7 @@ import type {
   InterServerEvents,
   SocketData,
 } from '@npl-auction/types';
+import lobbyRoutes from './routes/lobby';
 
 const app = express();
 const httpServer = createServer(app);
@@ -43,6 +44,10 @@ io.on('connection', (socket) => {
     console.log(`[socket] disconnected: ${socket.id} — ${reason}`);
   });
 });
+
+// ─── Routes ──────────────────────────────────────────────────────────────────
+
+app.use('/lobby', lobbyRoutes);
 
 // ─── Health check ────────────────────────────────────────────────────────────
 
