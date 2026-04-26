@@ -28,8 +28,8 @@ export type SeatType = 'HUMAN' | 'BOT' | 'EMPTY';
 export interface PlayerStats {
   runs: number;
   wickets: number;
-  batting_avg: number;
-  strike_rate: number;
+  batting_avg: number | null;
+  strike_rate: number | null;
   bowling_avg: number | null;
   economy: number | null;
 }
