@@ -31,12 +31,15 @@ This is a real product targeting real users — Nepali cricket fans.
 - `apps/server/prisma/schema.prisma` — full schema (8 models, all enums)
 - `apps/server/prisma/seed.ts` — bulk-insert franchises + players via `createMany`
 - `data/players/npl-2024.json` + `npl-2025.json` — 88 players each
+- DB migration applied to Railway (`20260426165922_init`), DB seeded
+- `src/lib/prisma.ts` — singleton Prisma client
+- `src/routes/lobby.ts` — `POST /lobby/create`, `POST /lobby/join/:code`, `GET /lobby/:id`
+- `src/bots/botPersonalities.ts` — all 5 personality configs
+- `src/bots/claudeBot.ts` — mock heuristic bot (real Claude API deferred)
+- `src/bots/botManager.ts` — think delay + `AbortSignal` cancellation
 
 ### Not yet built
-- DB migration (need `prisma migrate dev`)
-- `src/routes/lobby.ts` — REST endpoints
 - `src/socket/auctionEngine.ts` — core game loop
-- `src/bots/` — botManager, claudeBot, botPersonalities
 - `apps/web/` — entire Next.js frontend
 
 See `ROADMAP.md` for the full ordered task list.
@@ -59,9 +62,10 @@ NPL/
     ├── server/               ← @npl-auction/server
     │   ├── src/
     │   │   ├── index.ts
-    │   │   ├── routes/       ← (todo) lobby.ts
+    │   │   ├── lib/prisma.ts
+    │   │   ├── routes/lobby.ts
     │   │   ├── socket/       ← (todo) auctionEngine.ts
-    │   │   └── bots/         ← (todo) botManager, claudeBot, botPersonalities
+    │   │   └── bots/         ← botManager.ts, claudeBot.ts (mock), botPersonalities.ts
     │   └── prisma/
     │       ├── schema.prisma
     │       └── seed.ts
