@@ -180,6 +180,12 @@ export interface ServerToClientEvents {
 
 /** Events the CLIENT emits to the SERVER */
 export interface ClientToServerEvents {
+  /** Associate this socket with a lobby seat (send immediately on connect) */
+  'lobby:join': (data: { lobbyId: string; userId: string; seatId: string }) => void;
+
+  /** Host starts the auction (lobby must be in WAITING status) */
+  'lobby:start': (data: { lobbyId: string }) => void;
+
   /** Human places a bid */
   'lobby:place_bid': (data: { lobbyId: string; amount: number }) => void;
 

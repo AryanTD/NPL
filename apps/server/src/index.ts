@@ -10,6 +10,7 @@ import type {
   SocketData,
 } from '@npl-auction/types';
 import lobbyRoutes from './routes/lobby';
+import { registerAuctionHandlers } from './socket/auctionEngine';
 
 const app = express();
 const httpServer = createServer(app);
@@ -39,10 +40,7 @@ export const io = new Server<
 
 io.on('connection', (socket) => {
   console.log(`[socket] connected: ${socket.id}`);
-
-  socket.on('disconnect', (reason) => {
-    console.log(`[socket] disconnected: ${socket.id} — ${reason}`);
-  });
+  registerAuctionHandlers(io, socket);
 });
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
