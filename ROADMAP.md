@@ -12,91 +12,16 @@ Pick up from here at the start of any session. Work tasks in order — each buil
 | Shared TypeScript types | `packages/types/index.ts` |
 | Server bootstrap | `apps/server/src/index.ts` |
 | Prisma schema (8 models) | `apps/server/prisma/schema.prisma` |
+| DB migration applied | `apps/server/prisma/migrations/20260426165922_init/` |
+| DB seeded | 8 franchises + 168 players on Railway |
 | DB seed script | `apps/server/prisma/seed.ts` |
 | Player data (2024 + 2025) | `data/players/npl-2024.json`, `data/players/npl-2025.json` |
 | Server config | `apps/server/tsconfig.json`, `nodemon.json`, `.env.example`, `package.json` |
-
----
-
-## 🔲 Task 1 — DB Migration  *(tiny, ~5 min)*
-
-**Prerequisite for everything.**
-
-```bash
-cd apps/server
-npx prisma migrate dev --name init
-npx prisma db seed
-```
-
-Verify: `npx prisma studio` — should show 8 franchises + ~168 players.
-
----
-
-## 🔲 Task 2 — Lobby REST API  *(small)*
-
-**File:** `apps/server/src/routes/lobby.ts`
-
-- `POST /lobby/create`
-  - Validate auth (Clerk userId from header)
-  - Generate random 6-char uppercase code
-  - Create `Lobby` row
-  - Create 8 `LobbySeat` rows: 1 HUMAN (creator) + 7 BOT (random personalities), each with `purseRemaining: 9_000_000`
-  - Return `{ lobbyId, code, seatId }`
-
-- `POST /lobby/join/:code`
-  - Find lobby by code, check status is WAITING
-  - Find first EMPTY or re-assign a BOT seat to HUMAN
-  - Return `{ lobbyId, seatId, franchiseName }`
-
-- `GET /lobby/:id`
-  - Return full lobby + seats (no bot internals)
-
-**Wire into** `apps/server/src/index.ts`:
-```ts
-import lobbyRoutes from './routes/lobby';
-app.use('/lobby', lobbyRoutes);
-```
-
----
-
-## 🔲 Task 3 — Bot System  *(small)*
-
-### `apps/server/src/bots/botPersonalities.ts`
-
-```ts
-interface PersonalityConfig {
-  aggressionMultiplier: number;   // 1.0 = base, 1.5 = aggressive
-  maxPriceWillingness: number;    // 0.0–1.0 fraction of max price willing to pay
-  roleWeights: Record<PlayerRole, number>;
-  categoryBias: Record<PlayerCategory, number>;
-  description: string;            // used in Claude system prompt
-}
-```
-
-Export one config per personality: AGGRESSIVE, CONSERVATIVE, ROLE_HUNTER, BUDGET_SNIPER, BALANCED.
-
-### `apps/server/src/bots/claudeBot.ts`
-
-- Input: `AuctionState` + `LobbySeat` (the bot's seat) + `PersonalityConfig`
-- Build system prompt from personality description
-- Build user message: current player, current bid, purse left, quotas remaining, other teams' state
-- Call `claude-sonnet-4-6` with max_tokens ~200
-- Parse response → `{ action: 'BID' | 'PASS', amount?: number }`
-- Clamp amount to valid increment and affordability
-
-### `apps/server/src/bots/botManager.ts`
-
-```ts
-async function triggerBotDecision(
-  io: Server, lobbyId: string, seatId: string, state: AuctionState
-): Promise<void>
-```
-
-- Emit `lobby:bot_thinking` to room
-- `await randomDelay(1500, 3500)`
-- Call `claudeBot.decide(state, seat, personality)`
-- If BID: validate + apply bid (reuse same validation logic as human bids)
-- If PASS: do nothing
+| Prisma singleton | `apps/server/src/lib/prisma.ts` |
+| Lobby REST API | `apps/server/src/routes/lobby.ts` |
+| Bot personalities | `apps/server/src/bots/botPersonalities.ts` |
+| Bot mock + interface | `apps/server/src/bots/claudeBot.ts` |
+| Bot manager | `apps/server/src/bots/botManager.ts` |
 
 ---
 
@@ -177,7 +102,9 @@ After Cat C completes:
 When all teams have filled 3A + 4B + 3C:
 - Update `Lobby.status = COMPLETE`
 - Emit `lobby:auction_complete { seats }` to room
-- Clear in-memory state
+- Clear in-memory state and cancel all bot `AbortController`s
+
+**Bot integration note:** After each `lobby:player_revealed`, trigger all bot seats via `triggerBotDecision()`. Create one `AbortController` per player reveal — call `controller.abort()` in `resolveCurrentPlayer()` before advancing.
 
 ---
 
@@ -242,9 +169,7 @@ Subscribe to all server events, compose:
 ## Build Order Summary
 
 ```
-Task 1 (DB)  ──►  Task 2 (REST)  ──►  Task 4 (Engine)  ──►  Task 8 (Auction UI)
-                                  ▲              ▲
-              Task 3 (Bots) ──────┘              │
-                                                 │
-Task 5 (FE setup)  ──►  Task 6 (Landing)  ──►  Task 7 (Lobby)  ──────────────────►┘
+Task 4 (Engine)  ──►  Task 8 (Auction UI)
+                            ▲
+Task 5 (FE setup)  ──►  Task 6 (Landing)  ──►  Task 7 (Lobby)  ──►┘
 ```
