@@ -37,10 +37,16 @@ This is a real product targeting real users — Nepali cricket fans.
 - `src/bots/botPersonalities.ts` — all 5 personality configs
 - `src/bots/claudeBot.ts` — mock heuristic bot (real Claude API deferred)
 - `src/bots/botManager.ts` — think delay + `AbortSignal` cancellation
+- `src/socket/auctionEngine.ts` — full auction engine (state machine, timer, bid validation, lucky draw, bots, phase transitions)
+- `packages/types/index.ts` — `lobby:join` + `lobby:start` added to `ClientToServerEvents`
+- `apps/web/` — Next.js 14 scaffold (Tailwind, App Router, Clerk v5, socket.io-client, framer-motion)
+- `apps/web/app/layout.tsx` — `<ClerkProvider>` root layout
+- `apps/web/lib/socket.ts` — singleton typed `socket.io-client` export
 
 ### Not yet built
-- `src/socket/auctionEngine.ts` — core game loop
-- `apps/web/` — entire Next.js frontend
+- `apps/web/app/page.tsx` — landing page (Task 6)
+- `apps/web/app/lobby/page.tsx` — lobby waiting room (Task 7)
+- `apps/web/app/auction/[lobbyId]/page.tsx` — auction room (Task 8)
 
 See `ROADMAP.md` for the full ordered task list.
 
@@ -64,12 +70,17 @@ NPL/
     │   │   ├── index.ts
     │   │   ├── lib/prisma.ts
     │   │   ├── routes/lobby.ts
-    │   │   ├── socket/       ← (todo) auctionEngine.ts
+    │   │   ├── socket/       ← auctionEngine.ts
     │   │   └── bots/         ← botManager.ts, claudeBot.ts (mock), botPersonalities.ts
     │   └── prisma/
     │       ├── schema.prisma
     │       └── seed.ts
-    └── web/                  ← (todo) Next.js 14
+    └── web/                  ← Next.js 14 (App Router, Tailwind, Clerk, socket.io-client)
+        ├── app/
+        │   ├── layout.tsx    ← ClerkProvider root layout
+        │   └── page.tsx      ← (todo) landing page
+        └── lib/
+            └── socket.ts     ← singleton typed socket.io-client
 ```
 
 ---

@@ -25,7 +25,7 @@ Pick up from here at the start of any session. Work tasks in order — each buil
 
 ---
 
-## 🔲 Task 4 — Auction Engine  *(large — split into two sessions)*
+## ✅ Task 4 — Auction Engine
 
 **File:** `apps/server/src/socket/auctionEngine.ts`
 
@@ -108,7 +108,7 @@ When all teams have filled 3A + 4B + 3C:
 
 ---
 
-## 🔲 Task 5 — Frontend Setup  *(small)*
+## ✅ Task 5 — Frontend Setup
 
 ```bash
 cd apps
@@ -126,6 +126,22 @@ Add to `apps/web/package.json` dependencies:
 - `app/layout.tsx` — `<ClerkProvider>` wrapping `{children}`
 - `lib/socket.ts` — singleton `io(SERVER_URL)` export
 - `.env.local` from `.env.example`
+
+---
+
+## 🔲 Task 5b — Auction Engine Optimizations *(carry-over, do before Task 8)*
+
+Identified issues from `/optimize` review — apply before frontend wires up to the engine:
+
+- **Critical**: Break recursive `revealNextPlayer → resolveCurrentPlayer → sellPlayer` chain with `setImmediate`
+- **High**: Remove `Map.get` inside `setInterval` tick — capture `state` in closure
+- **High**: Track max-price bidders in memory (`Set<seatId>`) instead of querying DB in `resolveCurrentPlayer`
+- **High**: Merge two sequential `auctionQueue.updateMany` calls (isDone + isUnsold) into one
+- **Medium**: Replace `state.seats.find()` O(n) with `Map<seatId, LobbySeat>` for O(1) bid lookups
+- **Medium**: Hoist `PHASE_ORDER` array to module-level constant (avoid per-call allocation)
+- **Medium**: Replace 8 sequential `squadSlot.create` in marquee draw with one `createMany`
+- **Low**: Wrap `JSON.parse` in all socket handlers with a safe `parsePayload` helper
+- **Low**: Pass already-loaded lobby seats from `lobby:start` into `startAuction` (avoid duplicate DB fetch)
 
 ---
 
