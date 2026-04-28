@@ -85,7 +85,14 @@ function formatSeatFromDb(
 
 export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
   // ── lobby:join ──────────────────────────────────────────────────────────────
-  socket.on('lobby:join', async ({ lobbyId, userId, seatId }) => {
+  socket.on('lobby:join', async (data) => {
+    const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+    const { lobbyId, userId, seatId } = parsed;
+    if (!lobbyId || !userId || !seatId) {
+      socket.emit('lobby:error', { message: 'Missing lobbyId, userId, or seatId', code: 'BAD_PAYLOAD' });
+      return;
+    }
+
     socket.data.userId  = userId;
     socket.data.lobbyId = lobbyId;
     socket.data.seatId  = seatId;
