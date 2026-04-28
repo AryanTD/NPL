@@ -129,7 +129,12 @@ export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
   });
 
   // ── lobby:start ─────────────────────────────────────────────────────────────
-  socket.on('lobby:start', async ({ lobbyId }) => {
+  socket.on('lobby:start', async (data) => {
+    const { lobbyId } = typeof data === 'string' ? JSON.parse(data) : data;
+    if (!lobbyId) {
+      socket.emit('lobby:error', { message: 'Missing lobbyId', code: 'BAD_PAYLOAD' });
+      return;
+    }
     try {
       const lobby = await prisma.lobby.findUnique({
         where: { id: lobbyId },
@@ -159,7 +164,12 @@ export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
   });
 
   // ── lobby:place_bid ─────────────────────────────────────────────────────────
-  socket.on('lobby:place_bid', ({ lobbyId, amount }) => {
+  socket.on('lobby:place_bid', (data) => {
+    const { lobbyId, amount } = typeof data === 'string' ? JSON.parse(data) : data;
+    if (!lobbyId || amount == null) {
+      socket.emit('lobby:error', { message: 'Missing lobbyId or amount', code: 'BAD_PAYLOAD' });
+      return;
+    }
     const seatId = socket.data.seatId;
     if (!seatId) {
       socket.emit('lobby:error', { message: 'Not joined to a lobby', code: 'NOT_JOINED' });
@@ -170,7 +180,8 @@ export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
 
   // ── lobby:pass ──────────────────────────────────────────────────────────────
   socket.on('lobby:pass', (data) => {
-    console.log(`[auction] lobby:pass — lobbyId ${data.lobbyId} seat ${socket.data.seatId}`);
+    const { lobbyId } = typeof data === 'string' ? JSON.parse(data) : data;
+    console.log(`[auction] lobby:pass — lobbyId ${lobbyId} seat ${socket.data.seatId}`);
   });
 
   // ── disconnect ──────────────────────────────────────────────────────────────
