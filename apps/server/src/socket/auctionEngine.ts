@@ -443,6 +443,30 @@ async function revealNextPlayer(io: IoServer, lobbyId: string): Promise<void> {
   state.botController = controller;
 
   io.to(lobbyId).emit('lobby:player_revealed', player);
+
+  // Send upcoming queue (next 5 players)
+  const upcoming = await prisma.auctionQueue.findMany({
+    where: {
+      lobbyId,
+      phase: state.phase as import('@prisma/client').AuctionPhase,
+      isDone: false,
+      playerId: { not: player.id }, // exclude current player
+    },
+    orderBy: { position: 'asc' },
+    take: 5,
+    include: { player: true },
+  });
+
+  io.to(lobbyId).emit('lobby:queue_update', {
+    upcoming: upcoming.map(q => ({
+      playerId: q.playerId,
+      playerName: q.player.name,
+      category: q.player.category,
+      role: q.player.role,
+      basePrice: q.player.basePrice,
+    })),
+  });
+
   startPlayerTimer(io, lobbyId);
 
   // Trigger all bot seats (fire-and-forget)

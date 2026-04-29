@@ -176,6 +176,17 @@ export interface ServerToClientEvents {
 
   /** Server-side error */
   'lobby:error': (data: { message: string; code?: string }) => void;
+
+  /** Upcoming players queue */
+  'lobby:queue_update': (data: {
+    upcoming: Array<{
+      playerId: string;
+      playerName: string;
+      category: PlayerCategory;
+      role: PlayerRole;
+      basePrice: number;
+    }>;
+  }) => void;
 }
 
 /** Events the CLIENT emits to the SERVER */

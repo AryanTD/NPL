@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
-import type { BidEvent, Lobby, LobbySeat, Player } from '@npl-auction/types';
+import type { BidEvent, Lobby, LobbySeat, Player, PlayerCategory, PlayerRole } from '@npl-auction/types';
 import socket from '../../../lib/socket';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -147,6 +147,15 @@ function AuctionPage() {
   // Sold/unsold counts
   const [soldCount,        setSoldCount]        = useState(0);
 
+  // Upcoming queue
+  const [upcomingQueue,    setUpcomingQueue]    = useState<Array<{
+    playerId: string;
+    playerName: string;
+    category: PlayerCategory;
+    role: PlayerRole;
+    basePrice: number;
+  }>>([]);
+
   // Ref so socket closures always see the latest currentPlayer
   const currentPlayerRef = useRef<Player | null>(null);
   useEffect(() => { currentPlayerRef.current = currentPlayer; }, [currentPlayer]);
@@ -259,6 +268,16 @@ function AuctionPage() {
       pushFeed(`MARQUEE — ${playerName} → ${meta(franchiseName).shortName}`);
     });
 
+    socket.on('lobby:queue_update', ({ upcoming }: { upcoming: Array<{
+      playerId: string;
+      playerName: string;
+      category: PlayerCategory;
+      role: PlayerRole;
+      basePrice: number;
+    }> }) => {
+      setUpcomingQueue(upcoming);
+    });
+
     socket.on('lobby:bot_thinking', () => {
       // Subtle — no visible indicator needed beyond bid placement
     });
@@ -285,6 +304,7 @@ function AuctionPage() {
       socket.off('lobby:player_unsold');
       socket.off('lobby:lucky_draw');
       socket.off('lobby:marquee_assigned');
+      socket.off('lobby:queue_update');
       socket.off('lobby:bot_thinking');
       socket.off('lobby:auction_complete');
       socket.off('lobby:error');
@@ -400,20 +420,32 @@ function AuctionPage() {
             COMING UP
           </div>
           <div style={{ flex: 1, overflow: 'auto', padding: 6 }}>
-            {/* Queue not available from server events — show live feed entries as context */}
-            {feedLog.length === 0 ? (
+            {upcomingQueue.length === 0 ? (
               <div style={{ padding: '20px 8px', fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>
                 Auction starting…
               </div>
-            ) : feedLog.slice(1).map((msg, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'flex-start', gap: 6,
-                padding: '6px 8px', borderBottom: '1px solid #0c0f1c',
-              }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--border2)', flexShrink: 0, marginTop: 4 }} />
-                <div style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.4 }}>{msg}</div>
-              </div>
-            ))}
+            ) : (
+              upcomingQueue.map((player, i) => (
+                <div key={player.playerId} style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 6,
+                  padding: '6px 8px', borderBottom: '1px solid #0c0f1c',
+                }}>
+                  <div style={{
+                    width: 6, height: 6, borderRadius: '50%',
+                    background: CAT_COLOR[player.category] ?? CAT_COLOR.MARQUEE,
+                    flexShrink: 0, marginTop: 4,
+                  }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {player.playerName}
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 1 }}>
+                      {ROLE_BADGE[player.role] ?? player.role} · {fmtNPR(player.basePrice)}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
