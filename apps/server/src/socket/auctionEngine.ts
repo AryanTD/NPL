@@ -29,11 +29,23 @@ const TIMER_SECONDS  = 10;
 const LUCKY_DRAW_MS  = 3_000;
 const MARQUEE_GAP_MS = 500;
 
+// Change 2: Hoist PHASE_ORDER to module-level constant
+const PHASE_ORDER: AuctionState['phase'][] = [
+  'MARQUEE_DRAW',
+  'CATEGORY_A',
+  'CATEGORY_B',
+  'CATEGORY_C',
+  'UNSOLD_ROUND',
+  'COMPLETE',
+];
+
 // ─── In-memory state ──────────────────────────────────────────────────────────
 
 interface LiveAuctionState extends AuctionState {
-  timerId:       NodeJS.Timeout | null;
-  botController: AbortController | null;
+  timerId:         NodeJS.Timeout | null;
+  botController:   AbortController | null;
+  maxPriceBidders: Set<string>;       // Change 6: track max-price bidders in memory
+  seatsMap:        Map<string, LobbySeat>; // Change 7: O(1) seat lookup
 }
 
 const auctionStates = new Map<string, LiveAuctionState>();
@@ -51,6 +63,11 @@ function fisherYates<T>(arr: T[]): T[] {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+// Change 1: parsePayload helper — eliminates repeated inline ternary
+function parsePayload<T>(data: T | string): T {
+  return typeof data === 'string' ? JSON.parse(data) : data;
 }
 
 function formatSeatFromDb(
@@ -86,8 +103,7 @@ function formatSeatFromDb(
 export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
   // ── lobby:join ──────────────────────────────────────────────────────────────
   socket.on('lobby:join', async (data) => {
-    const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-    const { lobbyId, userId, seatId } = parsed;
+    const { lobbyId, userId, seatId } = parsePayload(data);
     if (!lobbyId || !userId || !seatId) {
       socket.emit('lobby:error', { message: 'Missing lobbyId, userId, or seatId', code: 'BAD_PAYLOAD' });
       return;
@@ -130,7 +146,7 @@ export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
 
   // ── lobby:start ─────────────────────────────────────────────────────────────
   socket.on('lobby:start', async (data) => {
-    const { lobbyId } = typeof data === 'string' ? JSON.parse(data) : data;
+    const { lobbyId } = parsePayload(data);
     if (!lobbyId) {
       socket.emit('lobby:error', { message: 'Missing lobbyId', code: 'BAD_PAYLOAD' });
       return;
@@ -156,7 +172,8 @@ export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
         return;
       }
 
-      await startAuction(io, lobbyId, lobby.season);
+      // Change 3: pass already-loaded seats to avoid a redundant DB fetch in startAuction
+      await startAuction(io, lobbyId, lobby.season, lobby.seats);
     } catch (err) {
       console.error('[auction] lobby:start error', err);
       socket.emit('lobby:error', { message: 'Failed to start auction' });
@@ -165,7 +182,7 @@ export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
 
   // ── lobby:place_bid ─────────────────────────────────────────────────────────
   socket.on('lobby:place_bid', (data) => {
-    const { lobbyId, amount } = typeof data === 'string' ? JSON.parse(data) : data;
+    const { lobbyId, amount } = parsePayload(data);
     if (!lobbyId || amount == null) {
       socket.emit('lobby:error', { message: 'Missing lobbyId or amount', code: 'BAD_PAYLOAD' });
       return;
@@ -180,7 +197,7 @@ export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
 
   // ── lobby:pass ──────────────────────────────────────────────────────────────
   socket.on('lobby:pass', (data) => {
-    const { lobbyId } = typeof data === 'string' ? JSON.parse(data) : data;
+    const { lobbyId } = parsePayload(data);
     console.log(`[auction] lobby:pass — lobbyId ${lobbyId} seat ${socket.data.seatId}`);
   });
 
@@ -192,9 +209,17 @@ export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
 
 // ─── startAuction ─────────────────────────────────────────────────────────────
 
-async function startAuction(io: IoServer, lobbyId: string, season: number): Promise<void> {
-  // Load seats with franchises
-  const seats = await prisma.lobbySeat.findMany({
+// Change 3: accept preloadedSeats so lobby:start doesn't fetch twice
+type DbSeatWithFranchise = Parameters<typeof formatSeatFromDb>[0];
+
+async function startAuction(
+  io: IoServer,
+  lobbyId: string,
+  season: number,
+  preloadedSeats?: DbSeatWithFranchise[],
+): Promise<void> {
+  // Reuse seats already loaded by the lobby:start handler if available
+  const seats = preloadedSeats ?? await prisma.lobbySeat.findMany({
     where: { lobbyId },
     include: { franchise: true },
     orderBy: { franchise: { name: 'asc' } },
@@ -225,6 +250,8 @@ async function startAuction(io: IoServer, lobbyId: string, season: number): Prom
 
   // Initialise in-memory state
   const liveSeats: LobbySeat[] = seats.map(formatSeatFromDb);
+  // Change 7: build seatsMap once so handleBid/sellPlayer use O(1) lookups
+  const seatsMap = new Map(liveSeats.map((s) => [s.seatId, s]));
 
   const state: LiveAuctionState = {
     lobbyId,
@@ -238,6 +265,8 @@ async function startAuction(io: IoServer, lobbyId: string, season: number): Prom
     luckyDrawContenders: [],
     timerId:             null,
     botController:       null,
+    maxPriceBidders:     new Set(),
+    seatsMap,
   };
   auctionStates.set(lobbyId, state);
 
@@ -257,22 +286,23 @@ async function runMarqueeDraw(io: IoServer, lobbyId: string, season: number): Pr
 
   const shuffled = fisherYates(marquees);
 
+  // Change 4: batch all marquee SquadSlot inserts in one createMany
+  await prisma.squadSlot.createMany({
+    data: state.seats.map((seat, i) => ({
+      lobbyId,
+      franchiseId: seat.franchiseId,
+      playerId:    shuffled[i % shuffled.length].id,
+      slotType:    SlotType.MARQUEE,
+      pricePaid:   0,
+    })),
+  });
+
+  // Update in-memory state + emit per seat (delay between reveals still needed)
   for (let i = 0; i < state.seats.length; i++) {
     const seat   = state.seats[i];
-    const player = shuffled[i % shuffled.length]; // wrap in case of mismatch
+    const player = shuffled[i % shuffled.length];
 
-    await prisma.squadSlot.create({
-      data: {
-        lobbyId,
-        franchiseId: seat.franchiseId,
-        playerId:    player.id,
-        slotType:    SlotType.MARQUEE,
-        pricePaid:   0,
-      },
-    });
-
-    // Update in-memory squad
-    state.seats[i].squad.push({
+    seat.squad.push({
       franchiseId: seat.franchiseId,
       playerId:    player.id,
       player: {
@@ -316,6 +346,9 @@ async function runMarqueeDraw(io: IoServer, lobbyId: string, season: number): Pr
 async function revealNextPlayer(io: IoServer, lobbyId: string): Promise<void> {
   const state = auctionStates.get(lobbyId);
   if (!state) return;
+
+  // Change 6: reset max-price bidder set for each new player
+  state.maxPriceBidders = new Set();
 
   const next = await prisma.auctionQueue.findFirst({
     where: { lobbyId, phase: state.phase as import('@prisma/client').AuctionPhase, isDone: false },
@@ -402,16 +435,14 @@ function startPlayerTimer(io: IoServer, lobbyId: string): void {
 
   if (state.timerId) clearInterval(state.timerId);
 
+  // Change 8: capture `state` in closure — no Map.get on every tick
   state.timerId = setInterval(() => {
-    const s = auctionStates.get(lobbyId);
-    if (!s) return;
+    state.timerSeconds--;
+    io.to(lobbyId).emit('lobby:timer_tick', { secondsLeft: state.timerSeconds });
 
-    s.timerSeconds--;
-    io.to(lobbyId).emit('lobby:timer_tick', { secondsLeft: s.timerSeconds });
-
-    if (s.timerSeconds <= 0) {
-      clearInterval(s.timerId!);
-      s.timerId = null;
+    if (state.timerSeconds <= 0) {
+      clearInterval(state.timerId!);
+      state.timerId = null;
       resolveCurrentPlayer(io, lobbyId).catch((err) => {
         console.error('[auction] resolveCurrentPlayer error', err);
       });
@@ -449,8 +480,8 @@ function handleBid(
     return;
   }
 
-  // 2. Valid seat in this lobby
-  const seat = state.seats.find((s) => s.seatId === seatId);
+  // 2. Valid seat in this lobby — Change 7: O(1) seatsMap lookup
+  const seat = state.seatsMap.get(seatId);
   if (!seat) {
     socket.emit('lobby:error', { message: 'Seat not found in this lobby', code: 'INVALID_SEAT' });
     return;
@@ -508,6 +539,11 @@ function handleBid(
   state.currentBid   = { seatId, franchiseName: seat.franchiseName, amount };
   state.timerSeconds = TIMER_SECONDS; // timer setInterval reads this on next tick
 
+  // Change 6: track max-price bidders in memory to avoid DB query at resolve time
+  if (amount === MAX_PRICE[category]) {
+    state.maxPriceBidders.add(seatId);
+  }
+
   const bidEvent = {
     seatId,
     franchiseName: seat.franchiseName,
@@ -534,7 +570,7 @@ async function resolveCurrentPlayer(io: IoServer, lobbyId: string): Promise<void
   const state = auctionStates.get(lobbyId);
   if (!state || !state.currentPlayer) return;
 
-  // Abort any in-flight bot decisions (wired in commit 4)
+  // Abort any in-flight bot decisions
   state.botController?.abort();
 
   // Clear any residual timer
@@ -546,35 +582,32 @@ async function resolveCurrentPlayer(io: IoServer, lobbyId: string): Promise<void
   const player   = state.currentPlayer;
   const category = player.category;
 
-  // Mark queue entry done
+  if (!state.currentBid) {
+    // ── Unsold ───────────────────────────────────────────────────────────────
+    // Change 5: merge two sequential updateMany calls into one
+    await prisma.auctionQueue.updateMany({
+      where: { lobbyId, playerId: player.id, isDone: false },
+      data:  { isDone: true, isUnsold: true },
+    });
+    state.unsoldPool.push(player);
+    io.to(lobbyId).emit('lobby:player_unsold', { playerId: player.id, playerName: player.name });
+    state.currentPlayer = null;
+    // Change 9: break recursive call chain with setImmediate
+    setImmediate(() => revealNextPlayer(io, lobbyId).catch(console.error));
+    return;
+  }
+
+  // ── Sold path ────────────────────────────────────────────────────────────────
   await prisma.auctionQueue.updateMany({
     where: { lobbyId, playerId: player.id, isDone: false },
     data:  { isDone: true },
   });
 
-  if (!state.currentBid) {
-    // ── Unsold ───────────────────────────────────────────────────────────────
-    await prisma.auctionQueue.updateMany({
-      where: { lobbyId, playerId: player.id },
-      data:  { isUnsold: true },
-    });
-    state.unsoldPool.push(player);
-    io.to(lobbyId).emit('lobby:player_unsold', { playerId: player.id, playerName: player.name });
-    state.currentPlayer = null;
-    await revealNextPlayer(io, lobbyId);
-    return;
-  }
-
-  // ── Sold path ────────────────────────────────────────────────────────────────
   const winningAmount = state.currentBid.amount;
 
   if (winningAmount === MAX_PRICE[category]) {
-    // Collect all seats that hit max price in DB bids for this player
-    const maxBids = await prisma.bid.findMany({
-      where: { lobbyId, playerId: player.id, amount: MAX_PRICE[category] },
-      distinct: ['seatId'],
-    });
-    const contenders = maxBids.map((b) => b.seatId);
+    // Change 6: use in-memory set instead of DB query
+    const contenders = [...state.maxPriceBidders];
 
     if (contenders.length > 1) {
       await runLuckyDraw(io, lobbyId, contenders);
@@ -599,7 +632,8 @@ async function sellPlayer(
 
   const player   = state.currentPlayer;
   const category = player.category;
-  const seat     = state.seats.find((s) => s.seatId === winningSeatId);
+  // Change 7: O(1) seatsMap lookup
+  const seat     = state.seatsMap.get(winningSeatId);
   if (!seat) return;
 
   // DB transaction: deduct purse, increment count, create SquadSlot + AuctionResult
@@ -633,7 +667,7 @@ async function sellPlayer(
   ]);
 
   // Update in-memory seat
-  seat.purseRemaining       -= finalPrice;
+  seat.purseRemaining          -= finalPrice;
   seat.categoryCount[category] += 1;
   seat.squad.push({
     franchiseId: seat.franchiseId,
@@ -652,7 +686,8 @@ async function sellPlayer(
 
   state.currentPlayer = null;
   state.currentBid    = null;
-  await revealNextPlayer(io, lobbyId);
+  // Change 9: break recursive call chain with setImmediate
+  setImmediate(() => revealNextPlayer(io, lobbyId).catch(console.error));
 }
 
 // ─── runLuckyDraw ─────────────────────────────────────────────────────────────
@@ -689,16 +724,9 @@ async function advancePhase(io: IoServer, lobbyId: string): Promise<void> {
   const state = auctionStates.get(lobbyId);
   if (!state) return;
 
-  const order: AuctionState['phase'][] = [
-    'MARQUEE_DRAW',
-    'CATEGORY_A',
-    'CATEGORY_B',
-    'CATEGORY_C',
-    'UNSOLD_ROUND',
-    'COMPLETE',
-  ];
-  const idx  = order.indexOf(state.phase);
-  const next = order[idx + 1] ?? 'COMPLETE';
+  // Change 2: use module-level PHASE_ORDER constant
+  const idx  = PHASE_ORDER.indexOf(state.phase);
+  const next = PHASE_ORDER[idx + 1] ?? 'COMPLETE';
 
   console.log(`[auction] advancePhase ${state.phase} → ${next} lobbyId=${lobbyId}`);
   state.phase = next;
