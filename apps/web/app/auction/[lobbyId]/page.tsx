@@ -197,23 +197,34 @@ function AuctionPage() {
       setTimerSeconds(secondsLeft);
     });
 
-    socket.on('lobby:player_sold', ({ seatId: winnerId, franchiseName, finalPrice }: {
+    socket.on('lobby:player_sold', ({ playerId, seatId: winnerId, franchiseName, finalPrice }: {
       playerId: string; seatId: string; franchiseName: string; finalPrice: number;
     }) => {
-      const cat = currentPlayerRef.current?.category;
+      const player = currentPlayerRef.current;
+      const cat = player?.category;
       const m = meta(franchiseName);
-      if (cat) {
+      if (cat && player) {
         setSeats(prev => prev.map(s => {
           if (s.seatId !== winnerId) return s;
           return {
             ...s,
             purseRemaining: s.purseRemaining - finalPrice,
             categoryCount: { ...s.categoryCount, [cat]: s.categoryCount[cat] + 1 },
+            squad: [
+              ...s.squad,
+              {
+                franchiseId: s.franchiseId,
+                playerId,
+                player,
+                slotType: 'AUCTION' as const,
+                pricePaid: finalPrice,
+              },
+            ],
           };
         }));
       }
       setSoldCount(c => c + 1);
-      pushFeed(`SOLD — ${currentPlayerRef.current?.name ?? ''} → ${meta(franchiseName).shortName} for ${fmtNPR(finalPrice)}`);
+      pushFeed(`SOLD — ${player?.name ?? ''} → ${meta(franchiseName).shortName} for ${fmtNPR(finalPrice)}`);
 
       if (luckyActive) {
         // Lucky draw: set winner so overlay can reveal it

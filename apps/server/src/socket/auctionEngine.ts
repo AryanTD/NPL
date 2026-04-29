@@ -9,6 +9,7 @@ import type {
   LobbySeat,
   Player,
   PlayerCategory,
+  PlayerRole,
 } from '@npl-auction/types';
 import prisma from '../lib/prisma';
 import { triggerBotDecision } from '../bots/botManager';
@@ -81,9 +82,53 @@ function formatSeatFromDb(
     countA: number;
     countB: number;
     countC: number;
-    franchise: { id: string; name: string; shortName: string };
+    franchise: { id: string; name: string; shortName: string; city: string; colorPrimary: string; colorSecondary: string; createdAt: Date };
+    squadSlots?: Array<{
+      playerId: string;
+      player: {
+        id: string;
+        name: string;
+        category: string;
+        role: string;
+        basePrice: number;
+        season: number;
+        isMarquee: boolean;
+        runs: number;
+        wickets: number;
+        battingAvg: number | null;
+        strikeRate: number | null;
+        bowlingAvg: number | null;
+        economy: number | null;
+      };
+      slotType: string;
+      pricePaid: number;
+    }>;
   },
 ): LobbySeat {
+  const squad: LobbySeat['squad'] = (seat.squadSlots ?? []).map(slot => ({
+    franchiseId: seat.franchise.id,
+    playerId: slot.playerId,
+    player: {
+      id: slot.player.id,
+      name: slot.player.name,
+      category: slot.player.category as PlayerCategory,
+      role: slot.player.role as PlayerRole,
+      base_price: slot.player.basePrice,
+      season: slot.player.season,
+      is_marquee: slot.player.isMarquee,
+      stats: {
+        runs: slot.player.runs,
+        wickets: slot.player.wickets,
+        batting_avg: slot.player.battingAvg,
+        strike_rate: slot.player.strikeRate,
+        bowling_avg: slot.player.bowlingAvg,
+        economy: slot.player.economy,
+      },
+    },
+    slotType: slot.slotType as SlotType,
+    pricePaid: slot.pricePaid,
+  }));
+
   return {
     seatId:         seat.id,
     seatType:       seat.seatType as LobbySeat['seatType'],
@@ -93,7 +138,7 @@ function formatSeatFromDb(
     displayName:    seat.displayName ?? undefined,
     botPersonality: seat.botPersonality as LobbySeat['botPersonality'] ?? undefined,
     purseRemaining: seat.purseRemaining,
-    squad:          [],
+    squad,
     categoryCount:  { A: seat.countA, B: seat.countB, C: seat.countC },
   };
 }
@@ -119,7 +164,13 @@ export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
         where: { id: lobbyId },
         include: {
           seats: {
-            include: { franchise: true },
+            include: {
+              franchise: true,
+              squadSlots: {
+                include: { player: true },
+                orderBy: { createdAt: 'asc' },
+              },
+            },
             orderBy: { franchise: { name: 'asc' } },
           },
         },
@@ -291,6 +342,7 @@ async function runMarqueeDraw(io: IoServer, lobbyId: string, season: number): Pr
     data: state.seats.map((seat, i) => ({
       lobbyId,
       franchiseId: seat.franchiseId,
+      lobbySeatId: seat.seatId,
       playerId:    shuffled[i % shuffled.length].id,
       slotType:    SlotType.MARQUEE,
       pricePaid:   0,
@@ -650,6 +702,7 @@ async function sellPlayer(
       data: {
         lobbyId,
         franchiseId: seat.franchiseId,
+        lobbySeatId: seat.seatId,
         playerId:    player.id,
         slotType:    SlotType.AUCTION,
         pricePaid:   finalPrice,
