@@ -81,7 +81,7 @@ model Player {
   squadSlots    SquadSlot[]
   auctionQueues AuctionQueue[]
   bids          Bid[]
-  auctionResult AuctionResult?
+  auctionResults AuctionResult[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -212,7 +212,7 @@ model Bid {
 model AuctionResult {
   id           String  @id @default(cuid())
   lobbyId      String
-  playerId     String  @unique // sold once per overall auction
+  playerId     String
   franchiseId  String
   finalPrice   Int     // NPR
   wasLuckyDraw Boolean @default(false)
@@ -223,6 +223,7 @@ model AuctionResult {
 
   createdAt DateTime @default(now())
 
+  @@unique([lobbyId, playerId])
   @@index([lobbyId])
   @@index([franchiseId])
 }

@@ -37,16 +37,19 @@ This is a real product targeting real users — Nepali cricket fans.
 - `src/bots/botPersonalities.ts` — all 5 personality configs
 - `src/bots/claudeBot.ts` — mock heuristic bot (real Claude API deferred)
 - `src/bots/botManager.ts` — think delay + `AbortSignal` cancellation
-- `src/socket/auctionEngine.ts` — full auction engine (state machine, timer, bid validation, lucky draw, bots, phase transitions)
+- `src/socket/auctionEngine.ts` — full auction engine (state machine, timer, bid validation, lucky draw, bots, phase transitions) + all Task 5b optimizations applied
 - `packages/types/index.ts` — `lobby:join` + `lobby:start` added to `ClientToServerEvents`
 - `apps/web/` — Next.js 14 scaffold (Tailwind, App Router, Clerk v5, socket.io-client, framer-motion)
-- `apps/web/app/layout.tsx` — `<ClerkProvider>` root layout
+- `apps/web/app/globals.css` — design tokens (13 CSS vars), Google Fonts, keyframes + animation classes
+- `apps/web/app/layout.tsx` — `<ClerkProvider>` root layout + Google Fonts `<link>` tags
 - `apps/web/lib/socket.ts` — singleton typed `socket.io-client` export
+- `apps/web/app/page.tsx` — landing page (logo lockup, Clerk gate, 3-state card: default/create/join)
+- `apps/web/app/lobby/page.tsx` — lobby waiting room (socket lifecycle, 8 seat cards, auction format sidebar, START AUCTION with 3s countdown, marquee draw screen)
+- `apps/web/app/auction/[lobbyId]/page.tsx` — auction room (player card, timer, bid controls, queue panel, squad panel, teams bar, lucky draw overlay)
 
 ### Not yet built
-- `apps/web/app/page.tsx` — landing page (Task 6)
-- `apps/web/app/lobby/page.tsx` — lobby waiting room (Task 7)
-- `apps/web/app/auction/[lobbyId]/page.tsx` — auction room (Task 8)
+- Fantasy scoring system (post-auction)
+- Real Claude API integration for bots (currently mock heuristic)
 
 See `ROADMAP.md` for the full ordered task list.
 
@@ -77,8 +80,14 @@ NPL/
     │       └── seed.ts
     └── web/                  ← Next.js 14 (App Router, Tailwind, Clerk, socket.io-client)
         ├── app/
-        │   ├── layout.tsx    ← ClerkProvider root layout
-        │   └── page.tsx      ← (todo) landing page
+        │   ├── globals.css   ← design tokens, fonts, keyframes
+        │   ├── layout.tsx    ← ClerkProvider root layout + Google Fonts
+        │   ├── page.tsx      ← landing page (create/join/quick-play)
+        │   ├── lobby/
+        │   │   └── page.tsx  ← lobby waiting room (socket, seat grid, start, marquee draw)
+        │   └── auction/
+        │       └── [lobbyId]/
+        │           └── page.tsx ← auction room (player card, timer, bid controls, queue, squad, teams bar, lucky draw)
         └── lib/
             └── socket.ts     ← singleton typed socket.io-client
 ```
