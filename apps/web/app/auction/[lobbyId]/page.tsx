@@ -1,23 +1,11 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { memo, Suspense, useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import type { BidEvent, Lobby, LobbySeat, Player, PlayerCategory, PlayerRole } from '@npl-auction/types';
 import socket from '../../../lib/socket';
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const FRANCHISE_META: Record<string, { shortName: string; primary: string; secondary: string; city: string }> = {
-  'Kathmandu Gorkhas':   { shortName: 'KTM', primary: '#1B3A6B', secondary: '#C9A84C', city: 'Kathmandu'    },
-  'Pokhara Avengers':    { shortName: 'PKR', primary: '#C0392B', secondary: '#FFFFFF', city: 'Pokhara'      },
-  'Chitwan Rhinos':      { shortName: 'CHT', primary: '#196F3D', secondary: '#F4D03F', city: 'Chitwan'      },
-  'Biratnagar Kings':    { shortName: 'BRT', primary: '#6C3483', secondary: '#F9E79F', city: 'Biratnagar'   },
-  'Janakpur Bolts':      { shortName: 'JNK', primary: '#1A5276', secondary: '#F39C12', city: 'Janakpur'     },
-  'Lumbini Lions':       { shortName: 'LMB', primary: '#922B21', secondary: '#FAD7A0', city: 'Lumbini'      },
-  'Sudurpaschim Royals': { shortName: 'SDR', primary: '#0E6655', secondary: '#A9DFBF', city: 'Sudurpaschim' },
-  'Karnali Yaks':        { shortName: 'KRN', primary: '#4A235A', secondary: '#D7BDE2', city: 'Karnali'      },
-};
+import { meta } from '../../../lib/franchiseMeta';
 
 const CAT_COLOR: Record<string, string> = {
   A: '#F59E0B', B: '#60A5FA', C: '#34D399', MARQUEE: '#F472B6',
@@ -42,10 +30,6 @@ const ROLE_BADGE: Record<string, string> = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function meta(name: string) {
-  return FRANCHISE_META[name] ?? { shortName: '???', primary: '#5b6f9a', secondary: '#e4e9f4', city: '' };
-}
 
 function fmtNPR(n: number): string {
   if (n >= 1_000_000) return `रू${(n / 100_000).toFixed(1).replace('.0', '')}L`;
@@ -128,7 +112,6 @@ function AuctionPage() {
   const [auctionPhase,     setAuctionPhase]     = useState('MARQUEE_DRAW');
   const [currentPlayer,    setCurrentPlayer]    = useState<Player | null>(null);
   const [currentBid,       setCurrentBid]       = useState<CurrentBidInfo | null>(null);
-  const [timerSeconds,     setTimerSeconds]     = useState(TIMER_MAX);
   const [bidPanelState,    setBidPanelState]    = useState<BidPanelState>('bidding');
   const [soldInfo,         setSoldInfo]         = useState<{ franchiseName: string; primary: string; price: number } | null>(null);
   const [feedLog,          setFeedLog]          = useState<string[]>([]);
@@ -171,19 +154,21 @@ function AuctionPage() {
 
     socket.connect();
 
-    socket.on('connect', () => {
+    // Named handlers so each socket.off call removes exactly the handler this
+    // effect registered — prevents stale/duplicate listeners on re-render.
+    const onConnect = () => {
       socket.emit('lobby:join', { lobbyId, userId: user.id, seatId });
-    });
+    };
 
-    socket.on('lobby:state', (lobby: Lobby) => {
+    const onState = (lobby: Lobby) => {
       setSeats(lobby.seats);
       setLobbyCode(lobby.code);
-    });
+    };
 
-    socket.on('lobby:player_revealed', (player: Player) => {
+    const onPlayerRevealed = (player: Player) => {
       setCurrentPlayer(player);
       setCurrentBid(null);
-      setTimerSeconds(TIMER_MAX);
+      // timerSeconds is owned by <TimerDisplay /> — no reset needed here
       setBidPanelState('bidding');
       setSoldInfo(null);
       setBidPending(false);
@@ -193,20 +178,19 @@ function AuctionPage() {
       setAuctionPhase(`CATEGORY_${player.category}`);
       setPlayerKey(k => k + 1);
       pushFeed(`${CAT_LABEL[player.category] ?? player.category} · ${player.name} · Base ${fmtNPR(player.base_price)}`);
-    });
+    };
 
-    socket.on('lobby:bid_placed', (event: BidEvent) => {
+    const onBidPlaced = (event: BidEvent) => {
       const m = meta(event.franchiseName);
       setCurrentBid({ seatId: event.seatId, franchiseName: event.franchiseName, amount: event.amount });
       setBidPending(false);
       pushFeed(`${m.shortName} bids ${fmtNPR(event.amount)}`);
-    });
+    };
 
-    socket.on('lobby:timer_tick', ({ secondsLeft }: { secondsLeft: number }) => {
-      setTimerSeconds(secondsLeft);
-    });
+    // lobby:timer_tick is intentionally NOT handled here.
+    // <TimerDisplay /> subscribes directly so only that component re-renders each tick.
 
-    socket.on('lobby:player_sold', ({ playerId, seatId: winnerId, franchiseName, finalPrice }: {
+    const onPlayerSold = ({ playerId, seatId: winnerId, franchiseName, finalPrice }: {
       playerId: string; seatId: string; franchiseName: string; finalPrice: number;
     }) => {
       const player = currentPlayerRef.current;
@@ -236,78 +220,78 @@ function AuctionPage() {
       pushFeed(`SOLD — ${player?.name ?? ''} → ${meta(franchiseName).shortName} for ${fmtNPR(finalPrice)}`);
 
       if (luckyActive) {
-        // Lucky draw: set winner so overlay can reveal it
         setLuckyWinner(winnerId);
       } else {
-        // Normal sold flow
         setSoldInfo({ franchiseName, primary: m.primary, price: finalPrice });
         setBidPanelState('sold');
         setCurrentPlayer(null);
         setCurrentBid(null);
       }
-    });
+    };
 
-    socket.on('lobby:player_unsold', ({ playerName }: { playerId: string; playerName: string }) => {
+    const onPlayerUnsold = ({ playerName }: { playerId: string; playerName: string }) => {
       setBidPanelState('unsold');
       setCurrentPlayer(null);
       setCurrentBid(null);
       pushFeed(`UNSOLD — ${playerName} returned to pool`);
-    });
+    };
 
-    socket.on('lobby:lucky_draw', ({ contenderSeatIds }: { playerId: string; contenderSeatIds: string[] }) => {
+    const onLuckyDraw = ({ contenderSeatIds }: { playerId: string; contenderSeatIds: string[] }) => {
       setLuckyActive(true);
       setLuckyContenders(contenderSeatIds);
       setLuckyWinner(null);
       pushFeed(`MAX PRICE HIT — Lucky draw for ${currentPlayerRef.current?.name ?? ''}!`);
-    });
+    };
 
-    socket.on('lobby:marquee_assigned', ({ playerName, franchiseName }: {
+    const onMarqueeAssigned = ({ playerName, franchiseName }: {
       playerId: string; playerName: string; franchiseId: string; franchiseName: string;
     }) => {
       setAuctionPhase('MARQUEE_DRAW');
       pushFeed(`MARQUEE — ${playerName} → ${meta(franchiseName).shortName}`);
-    });
+    };
 
-    socket.on('lobby:queue_update', ({ upcoming }: { upcoming: Array<{
-      playerId: string;
-      playerName: string;
-      category: PlayerCategory;
-      role: PlayerRole;
-      basePrice: number;
+    const onQueueUpdate = ({ upcoming }: { upcoming: Array<{
+      playerId: string; playerName: string; category: PlayerCategory; role: PlayerRole; basePrice: number;
     }> }) => {
       setUpcomingQueue(upcoming);
-    });
+    };
 
-    socket.on('lobby:bot_thinking', () => {
-      // Subtle — no visible indicator needed beyond bid placement
-    });
-
-    socket.on('lobby:auction_complete', ({ seats: done }: { seats: LobbySeat[] }) => {
+    const onAuctionComplete = ({ seats: done }: { seats: LobbySeat[] }) => {
       setAuctionComplete(true);
       setFinalSeats(done);
       setCurrentPlayer(null);
       setCurrentBid(null);
-    });
+    };
 
-    socket.on('lobby:error', ({ message }: { message: string }) => {
+    const onError = ({ message }: { message: string }) => {
       setBidPending(false);
       pushFeed(`Error: ${message}`);
-    });
+    };
+
+    socket.on('connect',               onConnect);
+    socket.on('lobby:state',           onState);
+    socket.on('lobby:player_revealed', onPlayerRevealed);
+    socket.on('lobby:bid_placed',      onBidPlaced);
+    socket.on('lobby:player_sold',     onPlayerSold);
+    socket.on('lobby:player_unsold',   onPlayerUnsold);
+    socket.on('lobby:lucky_draw',      onLuckyDraw);
+    socket.on('lobby:marquee_assigned',onMarqueeAssigned);
+    socket.on('lobby:queue_update',    onQueueUpdate);
+    socket.on('lobby:auction_complete',onAuctionComplete);
+    socket.on('lobby:error',           onError);
 
     return () => {
-      socket.off('connect');
-      socket.off('lobby:state');
-      socket.off('lobby:player_revealed');
-      socket.off('lobby:bid_placed');
-      socket.off('lobby:timer_tick');
-      socket.off('lobby:player_sold');
-      socket.off('lobby:player_unsold');
-      socket.off('lobby:lucky_draw');
-      socket.off('lobby:marquee_assigned');
-      socket.off('lobby:queue_update');
-      socket.off('lobby:bot_thinking');
-      socket.off('lobby:auction_complete');
-      socket.off('lobby:error');
+      socket.off('connect',               onConnect);
+      socket.off('lobby:state',           onState);
+      socket.off('lobby:player_revealed', onPlayerRevealed);
+      socket.off('lobby:bid_placed',      onBidPlaced);
+      socket.off('lobby:player_sold',     onPlayerSold);
+      socket.off('lobby:player_unsold',   onPlayerUnsold);
+      socket.off('lobby:lucky_draw',      onLuckyDraw);
+      socket.off('lobby:marquee_assigned',onMarqueeAssigned);
+      socket.off('lobby:queue_update',    onQueueUpdate);
+      socket.off('lobby:auction_complete',onAuctionComplete);
+      socket.off('lobby:error',           onError);
       socket.disconnect();
     };
   }, [lobbyId, seatId, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -317,8 +301,6 @@ function AuctionPage() {
   const mySeat         = seats.find(s => s.seatId === seatId) ?? null;
   const isUserLeading  = currentBid?.seatId === seatId;
   const bidderMeta     = currentBid ? meta(currentBid.franchiseName) : null;
-  const timerPct       = (timerSeconds / TIMER_MAX) * 100;
-  const timerColor     = timerSeconds <= 3 ? '#ef4444' : timerSeconds <= 6 ? '#f59e0b' : 'var(--green)';
   const catCfg         = currentPlayer ? {
     color: CAT_COLOR[currentPlayer.category] ?? '#888',
     label: CAT_LABEL[currentPlayer.category] ?? currentPlayer.category,
@@ -542,24 +524,8 @@ function AuctionPage() {
                   <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Base price — no bids yet</div>
                 )}
 
-                {/* Timer */}
-                <div style={{ marginTop: 14, marginBottom: 14 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                    <span style={{ fontSize: 11, color: 'var(--muted)' }}>Timer</span>
-                    <span style={{
-                      fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 15, color: timerColor,
-                      animation: timerSeconds <= 5 ? 'pulse-fade .5s ease-in-out infinite' : 'none',
-                    }}>
-                      {String(timerSeconds).padStart(2, '0')}s
-                    </span>
-                  </div>
-                  <div style={{ height: 3, background: 'var(--border2)', borderRadius: 2, overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%', width: `${timerPct}%`, background: timerColor, borderRadius: 2,
-                      transition: 'width 1s linear, background .3s',
-                    }} />
-                  </div>
-                </div>
+                {/* Timer — isolated component so parent doesn't re-render on every tick */}
+                <TimerDisplay />
 
                 {/* Bid buttons */}
                 {isUserLeading ? (
@@ -799,6 +765,43 @@ function AuctionPage() {
     </div>
   );
 }
+
+// ─── TimerDisplay ─────────────────────────────────────────────────────────────
+// Isolated so only this component re-renders on each timer tick (~200 saves per auction).
+// Mounts fresh when a new player is revealed (parent conditional), so state auto-resets.
+
+const TimerDisplay = memo(function TimerDisplay() {
+  const [secs, setSecs] = useState(TIMER_MAX);
+
+  useEffect(() => {
+    const onTick = ({ secondsLeft }: { secondsLeft: number }) => setSecs(secondsLeft);
+    socket.on('lobby:timer_tick', onTick);
+    return () => { socket.off('lobby:timer_tick', onTick); };
+  }, []);
+
+  const timerPct   = (secs / TIMER_MAX) * 100;
+  const timerColor = secs <= 3 ? '#ef4444' : secs <= 6 ? '#f59e0b' : 'var(--green)';
+
+  return (
+    <div style={{ marginTop: 14, marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+        <span style={{ fontSize: 11, color: 'var(--muted)' }}>Timer</span>
+        <span style={{
+          fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 15, color: timerColor,
+          animation: secs <= 5 ? 'pulse-fade .5s ease-in-out infinite' : 'none',
+        }}>
+          {String(secs).padStart(2, '0')}s
+        </span>
+      </div>
+      <div style={{ height: 3, background: 'var(--border2)', borderRadius: 2, overflow: 'hidden' }}>
+        <div style={{
+          height: '100%', width: `${timerPct}%`, background: timerColor, borderRadius: 2,
+          transition: 'width 1s linear, background .3s',
+        }} />
+      </div>
+    </div>
+  );
+});
 
 // ─── FranchiseCrest ───────────────────────────────────────────────────────────
 

@@ -25,14 +25,15 @@ function randomPersonality(): BotPersonality {
 
 // ─── Franchise cache ──────────────────────────────────────────────────────────
 // Franchises are seeded once and never change at runtime.
+// Cache the Promise so concurrent requests share the same in-flight query.
 
-let franchiseCache: Awaited<ReturnType<typeof prisma.franchise.findMany>> | null = null;
+let franchiseCachePromise: Promise<Awaited<ReturnType<typeof prisma.franchise.findMany>>> | null = null;
 
-async function getFranchises() {
-  if (!franchiseCache) {
-    franchiseCache = await prisma.franchise.findMany({ orderBy: { name: 'asc' } });
+function getFranchises() {
+  if (!franchiseCachePromise) {
+    franchiseCachePromise = prisma.franchise.findMany({ orderBy: { name: 'asc' } });
   }
-  return franchiseCache;
+  return franchiseCachePromise;
 }
 
 // ─── POST /lobby/create ───────────────────────────────────────────────────────
@@ -170,21 +171,37 @@ router.post('/join/:code', async (req: Request, res: Response): Promise<void> =>
     }
 
     // Claim the first available BOT seat
-    const botSeatIndex = lobby.seats.findIndex((s) => s.seatType === SeatType.BOT);
-    if (botSeatIndex === -1) {
+    const botSeat = lobby.seats.find((s) => s.seatType === SeatType.BOT);
+    if (!botSeat) {
       res.status(409).json({ error: 'Lobby is full' });
       return;
     }
 
-    const updated = await prisma.lobbySeat.update({
-      where: { id: lobby.seats[botSeatIndex].id },
+    // Optimistic lock: only succeed if the seat is still a BOT seat.
+    // Guards against two simultaneous join requests claiming the same seat.
+    const claimResult = await prisma.lobbySeat.updateMany({
+      where: { id: botSeat.id, seatType: SeatType.BOT },
       data: { seatType: SeatType.HUMAN, userId, displayName, botPersonality: null },
+    });
+
+    if (claimResult.count === 0) {
+      res.status(409).json({ error: 'Seat just taken, please retry' });
+      return;
+    }
+
+    const updated = await prisma.lobbySeat.findUnique({
+      where: { id: botSeat.id },
       include: { franchise: true },
     });
 
-    // Patch the in-memory seat list — avoids a second DB round-trip
-    const allSeats = lobby.seats.map((s, i) =>
-      i === botSeatIndex ? { ...s, ...updated } : s,
+    if (!updated) {
+      res.status(500).json({ error: 'Failed to claim seat' });
+      return;
+    }
+
+    // Patch the in-memory seat list — avoids an extra full-lobby fetch
+    const allSeats = lobby.seats.map((s) =>
+      s.id === botSeat.id ? { ...s, ...updated } : s,
     );
 
     res.json({

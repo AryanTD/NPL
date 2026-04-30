@@ -42,11 +42,16 @@ const PHASE_ORDER: AuctionState['phase'][] = [
 
 // ─── In-memory state ──────────────────────────────────────────────────────────
 
+interface QueueEntry {
+  player: Player;
+}
+
 interface LiveAuctionState extends AuctionState {
-  timerId:         NodeJS.Timeout | null;
-  botController:   AbortController | null;
-  maxPriceBidders: Set<string>;       // Change 6: track max-price bidders in memory
-  seatsMap:        Map<string, LobbySeat>; // Change 7: O(1) seat lookup
+  timerId:          NodeJS.Timeout | null;
+  botController:    AbortController | null;
+  maxPriceBidders:  Set<string>;            // track max-price bidders in memory
+  seatsMap:         Map<string, LobbySeat>; // O(1) seat lookup
+  phaseQueueCache:  QueueEntry[] | null;    // in-memory queue — avoids repeated DB queries
 }
 
 const auctionStates = new Map<string, LiveAuctionState>();
@@ -55,6 +60,33 @@ const auctionStates = new Map<string, LiveAuctionState>();
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Convert a raw Prisma player row to the shared Player type
+function dbPlayerToPlayer(p: {
+  id: string; name: string; category: string; role: string;
+  basePrice: number; season: number; isMarquee: boolean;
+  runs: number; wickets: number;
+  battingAvg: number | null; strikeRate: number | null;
+  bowlingAvg: number | null; economy: number | null;
+}): Player {
+  return {
+    id:         p.id,
+    name:       p.name,
+    category:   p.category as PlayerCategory,
+    role:       p.role as PlayerRole,
+    base_price: p.basePrice,
+    season:     p.season,
+    is_marquee: p.isMarquee,
+    stats: {
+      runs:        p.runs,
+      wickets:     p.wickets,
+      batting_avg: p.battingAvg,
+      strike_rate: p.strikeRate,
+      bowling_avg: p.bowlingAvg,
+      economy:     p.economy,
+    },
+  };
 }
 
 function fisherYates<T>(arr: T[]): T[] {
@@ -255,6 +287,29 @@ export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
   // ── disconnect ──────────────────────────────────────────────────────────────
   socket.on('disconnect', (reason) => {
     console.log(`[auction] disconnect — socket ${socket.id} reason ${reason}`);
+
+    const { lobbyId } = socket.data;
+    if (!lobbyId) return;
+
+    // After a 30s grace period, clean up the auction state if the room is empty.
+    // This prevents a memory leak when all clients disconnect mid-auction.
+    setTimeout(() => {
+      const state = auctionStates.get(lobbyId);
+      if (!state) return;
+
+      const room      = io.sockets.adapter.rooms.get(lobbyId);
+      const remaining = room ? room.size : 0;
+
+      if (remaining === 0) {
+        state.botController?.abort();
+        if (state.timerId) {
+          clearInterval(state.timerId);
+          state.timerId = null;
+        }
+        auctionStates.delete(lobbyId);
+        console.log(`[auction] cleaned up abandoned lobby=${lobbyId}`);
+      }
+    }, 30_000);
   });
 }
 
@@ -276,9 +331,6 @@ async function startAuction(
     orderBy: { franchise: { name: 'asc' } },
   });
 
-  // Flip lobby status to AUCTION
-  await prisma.lobby.update({ where: { id: lobbyId }, data: { status: 'AUCTION' } });
-
   // Fetch all non-marquee players for this season, split by category
   const players = await prisma.player.findMany({
     where: { season, isMarquee: false },
@@ -290,14 +342,18 @@ async function startAuction(
     C: fisherYates(players.filter((p) => p.category === 'C')),
   };
 
-  // Bulk-insert AuctionQueue rows
-  await prisma.auctionQueue.createMany({
-    data: [
-      ...byCategory.A.map((p, i) => ({ lobbyId, playerId: p.id, phase: AuctionPhase.CATEGORY_A, position: i })),
-      ...byCategory.B.map((p, i) => ({ lobbyId, playerId: p.id, phase: AuctionPhase.CATEGORY_B, position: i })),
-      ...byCategory.C.map((p, i) => ({ lobbyId, playerId: p.id, phase: AuctionPhase.CATEGORY_C, position: i })),
-    ],
-  });
+  const queueData = [
+    ...byCategory.A.map((p, i) => ({ lobbyId, playerId: p.id, phase: AuctionPhase.CATEGORY_A, position: i })),
+    ...byCategory.B.map((p, i) => ({ lobbyId, playerId: p.id, phase: AuctionPhase.CATEGORY_B, position: i })),
+    ...byCategory.C.map((p, i) => ({ lobbyId, playerId: p.id, phase: AuctionPhase.CATEGORY_C, position: i })),
+  ];
+
+  // Atomically flip lobby to AUCTION and create the auction queue.
+  // If the queue insert fails, the lobby won't be left stranded in AUCTION status.
+  await prisma.$transaction([
+    prisma.lobby.update({ where: { id: lobbyId }, data: { status: 'AUCTION' } }),
+    prisma.auctionQueue.createMany({ data: queueData }),
+  ]);
 
   // Initialise in-memory state
   const liveSeats: LobbySeat[] = seats.map(formatSeatFromDb);
@@ -318,6 +374,7 @@ async function startAuction(
     botController:       null,
     maxPriceBidders:     new Set(),
     seatsMap,
+    phaseQueueCache:     null,
   };
   auctionStates.set(lobbyId, state);
 
@@ -399,39 +456,27 @@ async function revealNextPlayer(io: IoServer, lobbyId: string): Promise<void> {
   const state = auctionStates.get(lobbyId);
   if (!state) return;
 
-  // Change 6: reset max-price bidder set for each new player
   state.maxPriceBidders = new Set();
 
-  const next = await prisma.auctionQueue.findFirst({
-    where: { lobbyId, phase: state.phase as import('@prisma/client').AuctionPhase, isDone: false },
-    orderBy: { position: 'asc' },
-    include: { player: true },
-  });
+  // Load the phase queue from DB once per phase — subsequent calls use the in-memory cache.
+  // This eliminates ~20+ redundant DB round-trips per auction round.
+  if (state.phaseQueueCache === null) {
+    const rows = await prisma.auctionQueue.findMany({
+      where: { lobbyId, phase: state.phase as AuctionPhase, isDone: false },
+      orderBy: { position: 'asc' },
+      include: { player: true },
+    });
+    state.phaseQueueCache = rows.map(row => ({ player: dbPlayerToPlayer(row.player) }));
+  }
 
-  if (!next) {
+  // Shift next player from the in-memory queue (O(1))
+  const entry = state.phaseQueueCache.shift();
+  if (!entry) {
     await advancePhase(io, lobbyId);
     return;
   }
 
-  const p = next.player;
-  const player: Player = {
-    id:         p.id,
-    name:       p.name,
-    category:   p.category as PlayerCategory,
-    role:       p.role as import('@npl-auction/types').PlayerRole,
-    base_price: p.basePrice,
-    season:     p.season,
-    is_marquee: p.isMarquee,
-    stats: {
-      runs:        p.runs,
-      wickets:     p.wickets,
-      batting_avg: p.battingAvg,
-      strike_rate: p.strikeRate,
-      bowling_avg: p.bowlingAvg,
-      economy:     p.economy,
-    },
-  };
-
+  const player   = entry.player;
   const category = player.category;
 
   state.currentPlayer = player;
@@ -444,26 +489,15 @@ async function revealNextPlayer(io: IoServer, lobbyId: string): Promise<void> {
 
   io.to(lobbyId).emit('lobby:player_revealed', player);
 
-  // Send upcoming queue (next 5 players)
-  const upcoming = await prisma.auctionQueue.findMany({
-    where: {
-      lobbyId,
-      phase: state.phase as import('@prisma/client').AuctionPhase,
-      isDone: false,
-      playerId: { not: player.id }, // exclude current player
-    },
-    orderBy: { position: 'asc' },
-    take: 5,
-    include: { player: true },
-  });
-
+  // Upcoming queue: use the remaining cache slice — no DB query needed
+  const upcomingSlice = state.phaseQueueCache.slice(0, 5);
   io.to(lobbyId).emit('lobby:queue_update', {
-    upcoming: upcoming.map(q => ({
-      playerId: q.playerId,
-      playerName: q.player.name,
-      category: q.player.category,
-      role: q.player.role,
-      basePrice: q.player.basePrice,
+    upcoming: upcomingSlice.map(e => ({
+      playerId:   e.player.id,
+      playerName: e.player.name,
+      category:   e.player.category,
+      role:       e.player.role,
+      basePrice:  e.player.base_price,
     })),
   });
 
@@ -473,7 +507,6 @@ async function revealNextPlayer(io: IoServer, lobbyId: string): Promise<void> {
   for (const seat of state.seats) {
     if (seat.seatType !== 'BOT' || !seat.botPersonality) continue;
 
-    const currentBidAmount = null; // no bids yet at reveal time
     const buffer = minPurseBuffer(seat, category);
 
     triggerBotDecision(
@@ -486,7 +519,7 @@ async function revealNextPlayer(io: IoServer, lobbyId: string): Promise<void> {
         purseRemaining: seat.purseRemaining,
         minPurseBuffer: buffer,
       },
-      currentBidAmount,
+      null, // no bids yet at reveal time
       BASE_PRICE[category],
       MAX_PRICE[category],
       category as import('@prisma/client').PlayerCategory,
@@ -801,7 +834,9 @@ async function advancePhase(io: IoServer, lobbyId: string): Promise<void> {
   const state = auctionStates.get(lobbyId);
   if (!state) return;
 
-  // Change 2: use module-level PHASE_ORDER constant
+  // Invalidate the queue cache so the next phase loads fresh from DB
+  state.phaseQueueCache = null;
+
   const idx  = PHASE_ORDER.indexOf(state.phase);
   const next = PHASE_ORDER[idx + 1] ?? 'COMPLETE';
 
