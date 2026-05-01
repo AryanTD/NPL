@@ -1,85 +1,46 @@
-import { BotPersonality, PlayerCategory, PlayerRole } from '@prisma/client';
+import { PlayerRole } from '@prisma/client'
 
-export interface PersonalityConfig {
-  // How far above base price the bot is willing to go (multiplier on base price)
-  // e.g. 1.4 means willing to bid up to 1.4× base price before backing off
-  aggressionMultiplier: number;
+export type PersonalityType = 'AGGRESSIVE' | 'CONSERVATIVE' | 'ROLE_HUNTER' | 'BUDGET_SNIPER' | 'BALANCED'
 
-  // Fraction of MAX price the bot is willing to reach (0.0–1.0)
-  // e.g. 0.9 means will bid up to 90% of the category max price
-  maxPriceWillingness: number;
-
-  // Probability (0.0–1.0) of opening a bid when no one else has bid yet
-  openingBidChance: number;
-
-  // How much the bot weights each role when deciding to compete hard
-  roleWeights: Record<PlayerRole, number>;
-
-  // Per-category willingness multiplier (relative — higher = more eager)
-  categoryEagerness: Record<PlayerCategory, number>;
-
-  // Plain-English description — will be used in the future Claude system prompt
-  description: string;
+export interface BotPersonality {
+  type: PersonalityType
+  aggressionMult: number
+  humanRivalMult: number
+  minQuality: number
+  minDelay: number
+  maxDelay: number
+  normalIncrement: number
+  urgentIncrement: number
 }
 
-export const PERSONALITIES: Record<BotPersonality, PersonalityConfig> = {
-  AGGRESSIVE: {
-    aggressionMultiplier: 1.6,
-    maxPriceWillingness:  0.95,
-    openingBidChance:     0.85,
-    roleWeights:    { BAT: 1.2, BOWL: 1.2, AR: 1.3, WK: 1.0 },
-    categoryEagerness: { A: 1.4, B: 1.1, C: 0.8 },
-    description:
-      'You are an aggressive franchise manager who bids hard on star players. ' +
-      'You are willing to approach the maximum price and accept budget risk. ' +
-      'You prioritise winning the best players over saving money.',
-  },
+export const PERSONALITIES: Record<PersonalityType, BotPersonality> = {
+  AGGRESSIVE:    { type: 'AGGRESSIVE',    aggressionMult: 1.35, humanRivalMult: 1.15, minQuality: 45, minDelay:  500, maxDelay: 1200, normalIncrement:  50_000, urgentIncrement: 100_000 },
+  CONSERVATIVE:  { type: 'CONSERVATIVE',  aggressionMult: 0.80, humanRivalMult: 1.03, minQuality: 60, minDelay: 2500, maxDelay: 4000, normalIncrement:  25_000, urgentIncrement:  50_000 },
+  ROLE_HUNTER:   { type: 'ROLE_HUNTER',   aggressionMult: 1.20, humanRivalMult: 1.10, minQuality: 50, minDelay: 1500, maxDelay: 2500, normalIncrement:  25_000, urgentIncrement: 100_000 },
+  BUDGET_SNIPER: { type: 'BUDGET_SNIPER', aggressionMult: 0.75, humanRivalMult: 1.05, minQuality: 65, minDelay: 2000, maxDelay: 3500, normalIncrement:  25_000, urgentIncrement:  25_000 },
+  BALANCED:      { type: 'BALANCED',      aggressionMult: 1.00, humanRivalMult: 1.08, minQuality: 55, minDelay: 1500, maxDelay: 2500, normalIncrement:  25_000, urgentIncrement:  50_000 },
+}
 
-  CONSERVATIVE: {
-    aggressionMultiplier: 1.15,
-    maxPriceWillingness:  0.65,
-    openingBidChance:     0.45,
-    roleWeights:    { BAT: 1.0, BOWL: 1.0, AR: 1.0, WK: 1.0 },
-    categoryEagerness: { A: 0.8, B: 1.0, C: 1.1 },
-    description:
-      'You are a conservative franchise manager who rarely exceeds base price by much. ' +
-      'You protect your budget for later rounds and avoid bidding wars. ' +
-      'You are happy to let marquee players go if the price gets too high.',
-  },
+// Budget allocation fractions out of 9,000,000 total purse
+export const CATEGORY_BUDGET_SHARE: Record<string, number> = {
+  MARQUEE: 0.30,
+  A:       0.30,
+  B:       0.25,
+  C:       0.15,
+}
 
-  ROLE_HUNTER: {
-    aggressionMultiplier: 1.5,
-    maxPriceWillingness:  0.85,
-    openingBidChance:     0.55,
-    roleWeights:    { BAT: 0.7, BOWL: 0.7, AR: 1.8, WK: 1.6 },
-    categoryEagerness: { A: 1.0, B: 1.2, C: 1.2 },
-    description:
-      'You are a role-focused franchise manager who only competes hard for specific ' +
-      'roles your squad is missing. You go all-in for all-rounders and wicketkeepers ' +
-      'but largely ignore pure batsmen and bowlers unless the price is a bargain.',
-  },
+// Total slots per category per team
+export const CATEGORY_SLOTS: Record<string, number> = {
+  MARQUEE: 1,
+  A:       3,
+  B:       4,
+  C:       3,
+}
 
-  BUDGET_SNIPER: {
-    aggressionMultiplier: 1.1,
-    maxPriceWillingness:  0.75,
-    openingBidChance:     0.25,
-    roleWeights:    { BAT: 1.0, BOWL: 1.0, AR: 1.1, WK: 1.0 },
-    categoryEagerness: { A: 0.4, B: 1.3, C: 1.5 },
-    description:
-      'You are a patient budget sniper. You deliberately pass on Category A players ' +
-      'to save budget, then swoop aggressively in Categories B and C when other teams ' +
-      'have spent out. You look for undervalued players that slip through.',
-  },
-
-  BALANCED: {
-    aggressionMultiplier: 1.3,
-    maxPriceWillingness:  0.78,
-    openingBidChance:     0.60,
-    roleWeights:    { BAT: 1.0, BOWL: 1.0, AR: 1.1, WK: 1.0 },
-    categoryEagerness: { A: 1.0, B: 1.0, C: 1.0 },
-    description:
-      'You are a sensible, well-rounded franchise manager. You bid on good players ' +
-      'across all categories without extreme behaviour. You balance budget preservation ' +
-      'with squad quality and avoid unnecessary bidding wars.',
-  },
-};
+export function assignPersonalities(botFranchiseIds: string[]): Record<string, PersonalityType> {
+  const types = Object.keys(PERSONALITIES) as PersonalityType[]
+  const shuffled = [...types].sort(() => Math.random() - 0.5)
+  const result: Record<string, PersonalityType> = {}
+  botFranchiseIds.forEach((id, i) => { result[id] = shuffled[i % shuffled.length] })
+  return result
+}
