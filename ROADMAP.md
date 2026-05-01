@@ -173,3 +173,73 @@ Task 4 (Engine)  ──►  Task 8 (Auction UI)
                             ▲
 Task 5 (FE setup)  ──►  Task 6 (Landing)  ──►  Task 7 (Lobby)  ──►┘
 ```
+
+---
+
+## 🔄 Task 9 — Algorithmic Bot Decision System
+
+**Branch:** `feat/algorithmic-bots` (worktree at `.worktrees/algorithmic-bots`)
+**Plan file:** `.claude/plans/scalable-jingling-key.md`
+
+**Goal:** Replace mock heuristic bot (`claudeBot.ts`) with a fully algorithmic, personality-driven system that re-evaluates every bid in real time. No AI/LLM calls — pure deterministic logic with controlled randomness.
+
+**Architecture:**
+- `botPersonalities.ts` — static config (new BotPersonality interface, PERSONALITIES, CATEGORY_BUDGET_SHARE, CATEGORY_SLOTS)
+- `botDecision.ts` — pure `decideBid()` function, zero side effects, fully unit-testable
+- `botManager.ts` — per-bot AbortController timers, roster tracking, re-evaluates on every bid placed
+- `auctionEngine.ts` — wires the above into auction lifecycle (reveal / bid / sold / unsold)
+
+**Spec discrepancies resolved:**
+- `baseValue` → `basePrice` (matches Prisma schema)
+- String roles `'Batsman'` → Prisma enum `PlayerRole.BAT`
+- Files stay in `src/bots/` (not `src/socket/` as the spec says)
+- `isHumanWinner` added to `BotDecisionInput` (was a footnote in spec)
+
+### Subtasks
+
+| # | What | Status | Commit |
+|---|------|--------|--------|
+| 9.0 | Add `quality Int @default(50)` to Player schema, run migration, regenerate client | ✅ Done | `c00da52` |
+| 9.1 | Add Vitest test infrastructure to `apps/server` | 🔲 Pending | — |
+| 9.2 | Replace `botPersonalities.ts` with new algorithmic config | 🔲 Pending | — |
+| 9.3 | Create `botDecision.ts` (TDD — pure decision function) | 🔲 Pending | — |
+| 9.4 | Rewrite `botManager.ts` with per-bid re-evaluation and roster tracking | 🔲 Pending | — |
+| 9.5 | Update `auctionEngine.ts` to wire new bot system | 🔲 Pending | — |
+| 9.6 | Delete `claudeBot.ts`, update this ROADMAP | 🔲 Pending | — |
+
+### Resuming next session
+
+```bash
+# The worktree is already set up — just cd into it
+cd /Users/aryantandon/NPL/.worktrees/algorithmic-bots
+
+# Verify state
+git log --oneline -5
+cd apps/server && npm run typecheck
+```
+
+Then open `.claude/plans/scalable-jingling-key.md` for the full step-by-step implementation plan (all code included).
+
+### Key design: per-bid bot re-evaluation
+
+Old flow: each bot fires once at player reveal (fire-and-forget).
+
+New flow:
+- **On player revealed** → `revealPlayerToBots()` — each bot schedules a delayed bid via AbortController
+- **On bid placed** → `onBidPlaced()` — all non-winning bots cancel their timer, re-run `decideBid()`, reschedule if still bidding
+- **On sold/unsold** → `cancelAllBots()` — all timers cancelled; winner's roster updated via `updateRosterOnSold()`
+
+### decideBid ceiling formula
+
+```
+ceiling = basePrice × (0.7 + quality/100 × 0.6)   // quality-adjusted value
+        × aggressionMult                             // personality (0.75–1.35)
+        × humanRivalMult (if human is winning)       // (1.03–1.15)
+        × categoryUrgency × roleUrgency              // roster need (1.0–1.5)
+        × pacingMult                                 // budget pacing (0.80–1.0)
+        × overspendPenalty                           // past overspend (0.75–1.0)
+        × unsoldBoost (1.15 if unsold round)
+        × mistakeFactor (random 0.9–1.2)
+```
+
+Hard caps: `reserveBuffer = (remainingSlots - 1) × 200k`, `ceiling = min(ceiling, purse - buffer)`
