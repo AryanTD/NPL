@@ -34,3 +34,6 @@ Thumbs.db
 # Misc
 apps/web/.env.local
 settings.local.json
+
+# Git worktrees
+.worktrees/
