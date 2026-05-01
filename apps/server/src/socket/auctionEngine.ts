@@ -389,8 +389,6 @@ async function revealNextPlayer(io: IoServer, lobbyId: string): Promise<void> {
     },
   };
 
-  const category = player.category;
-
   state.currentPlayer = player;
   state.currentBid    = null;
   state.timerSeconds  = TIMER_SECONDS;
