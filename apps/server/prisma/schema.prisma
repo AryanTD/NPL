@@ -81,7 +81,7 @@ model Player {
   squadSlots    SquadSlot[]
   auctionQueues AuctionQueue[]
   bids          Bid[]
-  auctionResult AuctionResult?
+  auctionResults AuctionResult[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -155,6 +155,7 @@ model LobbySeat {
   lobby     Lobby     @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
   franchise Franchise @relation(fields: [franchiseId], references: [id])
   bids      Bid[]
+  squadSlots SquadSlot[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -212,7 +213,7 @@ model Bid {
 model AuctionResult {
   id           String  @id @default(cuid())
   lobbyId      String
-  playerId     String  @unique // sold once per overall auction
+  playerId     String
   franchiseId  String
   finalPrice   Int     // NPR
   wasLuckyDraw Boolean @default(false)
@@ -223,6 +224,7 @@ model AuctionResult {
 
   createdAt DateTime @default(now())
 
+  @@unique([lobbyId, playerId])
   @@index([lobbyId])
   @@index([franchiseId])
 }
@@ -234,16 +236,19 @@ model SquadSlot {
   id          String   @id @default(cuid())
   lobbyId     String
   franchiseId String
+  lobbySeatId String
   playerId    String
   slotType    SlotType
   pricePaid   Int      // NPR; 0 for pre-assigned (OVERSEAS / ICONIC)
 
   lobby     Lobby     @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
   franchise Franchise @relation(fields: [franchiseId], references: [id])
+  lobbySeat LobbySeat @relation(fields: [lobbySeatId], references: [id], onDelete: Cascade)
   player    Player    @relation(fields: [playerId], references: [id])
 
   createdAt DateTime @default(now())
 
   @@unique([lobbyId, playerId])
   @@index([lobbyId, franchiseId])
+  @@index([lobbySeatId])
 }
