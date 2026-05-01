@@ -20,7 +20,7 @@ Pick up from here at the start of any session. Work tasks in order — each buil
 | Prisma singleton | `apps/server/src/lib/prisma.ts` |
 | Lobby REST API | `apps/server/src/routes/lobby.ts` |
 | Bot personalities | `apps/server/src/bots/botPersonalities.ts` |
-| Bot mock + interface | `apps/server/src/bots/claudeBot.ts` |
+| Bot mock (deleted — replaced by botDecision.ts) | ~~`apps/server/src/bots/claudeBot.ts`~~ |
 | Bot manager | `apps/server/src/bots/botManager.ts` |
 
 ---
@@ -200,12 +200,12 @@ Task 5 (FE setup)  ──►  Task 6 (Landing)  ──►  Task 7 (Lobby)  ─�
 | # | What | Status | Commit |
 |---|------|--------|--------|
 | 9.0 | Add `quality Int @default(50)` to Player schema, run migration, regenerate client | ✅ Done | `c00da52` |
-| 9.1 | Add Vitest test infrastructure to `apps/server` | 🔲 Pending | — |
-| 9.2 | Replace `botPersonalities.ts` with new algorithmic config | 🔲 Pending | — |
-| 9.3 | Create `botDecision.ts` (TDD — pure decision function) | 🔲 Pending | — |
-| 9.4 | Rewrite `botManager.ts` with per-bid re-evaluation and roster tracking | 🔲 Pending | — |
-| 9.5 | Update `auctionEngine.ts` to wire new bot system | 🔲 Pending | — |
-| 9.6 | Delete `claudeBot.ts`, update this ROADMAP | 🔲 Pending | — |
+| 9.1 | Add Vitest test infrastructure to `apps/server` | ✅ Done | `9c6b02d` |
+| 9.2 | Replace `botPersonalities.ts` with new algorithmic config | ✅ Done | `f637693` |
+| 9.3 | Create `botDecision.ts` (TDD — pure decision function) | ✅ Done | `c8e1432` |
+| 9.4 | Rewrite `botManager.ts` with per-bid re-evaluation and roster tracking | ✅ Done | `0058683` |
+| 9.5 | Update `auctionEngine.ts` to wire new bot system | ✅ Done | `0a0300d` |
+| 9.6 | Delete `claudeBot.ts`, update this ROADMAP | ✅ Done | — |
 
 ### Resuming next session
 
