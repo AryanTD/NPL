@@ -1,88 +1,153 @@
-import { Server } from 'socket.io';
-import { BotPersonality, PlayerCategory } from '@prisma/client';
-import type {
-  ClientToServerEvents,
-  ServerToClientEvents,
-  InterServerEvents,
-  SocketData,
-} from '@npl-auction/types';
-import { decide, BotContext } from './claudeBot';
+import { Server } from 'socket.io'
+import { PlayerRole, PlayerCategory } from '@prisma/client'
+import type { ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData } from '@npl-auction/types'
+import { decideBid, RosterState } from './botDecision'
+import { BotPersonality, CATEGORY_BUDGET_SHARE, CATEGORY_SLOTS } from './botPersonalities'
 
-type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>
 
-const THINK_MIN_MS = 1_500;
-const THINK_MAX_MS = 3_500;
-
-function thinkDelay(signal: AbortSignal): Promise<void> {
-  const ms = THINK_MIN_MS + Math.random() * (THINK_MAX_MS - THINK_MIN_MS);
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(resolve, ms);
-    signal.addEventListener('abort', () => {
-      clearTimeout(timer);
-      reject(new DOMException('Bot decision aborted', 'AbortError'));
-    }, { once: true });
-  });
+export interface BotSession {
+  seatId: string
+  franchiseId: string
+  franchiseName: string
+  personality: BotPersonality
+  priorityRoles: PlayerRole[]
+  remainingPurse: number
+  batsmanCount: number
+  bowlerCount: number
+  marqueeCount: number
+  aCount: number
+  bCount: number
+  cCount: number
+  categoryOverspend: Record<string, number>
+  abortController: AbortController | null
 }
 
-export interface BotSeatInfo {
-  seatId:         string;
-  franchiseName:  string;
-  personality:    BotPersonality;
-  purseRemaining: number;
-  /** Minimum purse that must remain after bidding to cover unfilled slots */
-  minPurseBuffer: number;
+export interface PlayerInfo {
+  id: string
+  basePrice: number
+  quality: number
+  role: PlayerRole
+  category: PlayerCategory
 }
 
-/**
- * Trigger a bot decision for a single seat.
- *
- * Pass an AbortSignal so the auction engine can cancel in-flight decisions
- * when the player is sold, the timer expires, or the phase advances.
- * If the signal fires during the think delay, the function returns silently
- * without calling onBid.
- */
-export async function triggerBotDecision(
+const TOTAL_PURSE = 9_000_000
+const TOTAL_SLOTS = 11
+
+function buildRoster(s: BotSession): RosterState {
+  return {
+    marqueeCount: s.marqueeCount,
+    aCount: s.aCount, bCount: s.bCount, cCount: s.cCount,
+    batsmanCount: s.batsmanCount, bowlerCount: s.bowlerCount,
+    totalWon: s.marqueeCount + s.aCount + s.bCount + s.cCount,
+    purseSpent: TOTAL_PURSE - s.remainingPurse,
+    categoryOverspend: s.categoryOverspend,
+  }
+}
+
+function scheduleBot(
   io: IoServer,
   lobbyId: string,
-  seat: BotSeatInfo,
-  currentBid: number | null,
-  basePrice: number,
-  maxPrice: number,
-  category: PlayerCategory,
-  signal: AbortSignal,
-  /** Callback invoked only when bot decides to BID and signal is still live */
+  session: BotSession,
+  player: PlayerInfo,
+  currentBid: number,
+  currentWinnerId: string | null,
+  isHumanWinner: boolean,
+  isUnsoldRound: boolean,
   onBid: (seatId: string, amount: number) => void,
-): Promise<void> {
-  // Show thinking indicator to all clients in the room
-  io.to(lobbyId).emit('lobby:bot_thinking', {
-    seatId:        seat.seatId,
-    franchiseName: seat.franchiseName,
-  });
+): void {
+  session.abortController?.abort()
+  session.abortController = null
 
-  try {
-    await thinkDelay(signal);
-  } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') return;
-    throw err;
-  }
-
-  // Double-check: signal may have fired between delay resolution and here
-  if (signal.aborted) return;
-
-  const ctx: BotContext = {
-    personality:    seat.personality,
+  const decision = decideBid({
+    player,
     currentBid,
-    basePrice,
-    maxPrice,
-    category,
-    purseRemaining: seat.purseRemaining,
-    minPurseBuffer: seat.minPurseBuffer,
-  };
+    currentWinnerId,
+    isHumanWinner,
+    myFranchiseId: session.franchiseId,
+    personality: session.personality,
+    priorityRoles: session.priorityRoles,
+    roster: buildRoster(session),
+    remainingPurse: session.remainingPurse,
+    isUnsoldRound,
+  })
 
-  const decision = decide(ctx);
+  if (decision.action !== 'BID' || decision.amount == null) return
 
-  if (decision.action === 'BID' && decision.amount !== undefined) {
-    onBid(seat.seatId, decision.amount);
+  const amount = decision.amount
+  const controller = new AbortController()
+  session.abortController = controller
+
+  io.to(lobbyId).emit('lobby:bot_thinking', {
+    seatId: session.seatId,
+    franchiseName: session.franchiseName,
+  })
+
+  const timer = setTimeout(() => {
+    if (controller.signal.aborted) return
+    session.abortController = null
+    onBid(session.seatId, amount)
+  }, decision.delayMs)
+
+  controller.signal.addEventListener('abort', () => clearTimeout(timer), { once: true })
+}
+
+export function revealPlayerToBots(
+  io: IoServer,
+  lobbyId: string,
+  player: PlayerInfo,
+  humanSeatIds: Set<string>,
+  sessions: Map<string, BotSession>,
+  isUnsoldRound: boolean,
+  onBid: (seatId: string, amount: number) => void,
+): void {
+  for (const session of sessions.values()) {
+    scheduleBot(io, lobbyId, session, player, 0, null, false, isUnsoldRound, onBid)
   }
-  // PASS — do nothing; the auction timer continues
+}
+
+export function onBidPlaced(
+  io: IoServer,
+  lobbyId: string,
+  player: PlayerInfo,
+  currentBid: number,
+  currentWinnerId: string,
+  humanSeatIds: Set<string>,
+  sessions: Map<string, BotSession>,
+  isUnsoldRound: boolean,
+  onBid: (seatId: string, amount: number) => void,
+): void {
+  const isHumanWinner = humanSeatIds.has(currentWinnerId)
+  for (const session of sessions.values()) {
+    if (session.seatId === currentWinnerId) continue
+    scheduleBot(io, lobbyId, session, player, currentBid, currentWinnerId, isHumanWinner, isUnsoldRound, onBid)
+  }
+}
+
+export function cancelAllBots(sessions: Map<string, BotSession>): void {
+  for (const session of sessions.values()) {
+    session.abortController?.abort()
+    session.abortController = null
+  }
+}
+
+export function updateRosterOnSold(
+  sessions: Map<string, BotSession>,
+  winningSeatId: string,
+  player: { category: PlayerCategory; role: PlayerRole; finalPrice: number },
+): void {
+  const session = sessions.get(winningSeatId)
+  if (!session) return
+
+  session.remainingPurse -= player.finalPrice
+
+  if      (player.category === PlayerCategory.A) session.aCount++
+  else if (player.category === PlayerCategory.B) session.bCount++
+  else if (player.category === PlayerCategory.C) session.cCount++
+
+  if      (player.role === PlayerRole.BAT)  session.batsmanCount++
+  else if (player.role === PlayerRole.BOWL) session.bowlerCount++
+
+  const avgBudgetPerSlot = TOTAL_PURSE * CATEGORY_BUDGET_SHARE[player.category] / CATEGORY_SLOTS[player.category]
+  session.categoryOverspend[player.category] = (session.categoryOverspend[player.category] ?? 0) + (player.finalPrice - avgBudgetPerSlot)
 }
