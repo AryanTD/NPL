@@ -69,6 +69,7 @@ model Player {
   basePrice   Int            // NPR
   season      Int            // 2024 | 2025
   isMarquee   Boolean        @default(false)
+  quality     Int            @default(50)
 
   // Stats (flat columns for query efficiency)
   runs        Int            @default(0)

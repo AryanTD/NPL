@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Player" ADD COLUMN "quality" INTEGER NOT NULL DEFAULT 50;

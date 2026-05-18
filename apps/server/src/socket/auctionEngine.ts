@@ -12,7 +12,16 @@ import type {
   PlayerRole,
 } from '@npl-auction/types';
 import prisma from '../lib/prisma';
-import { triggerBotDecision } from '../bots/botManager';
+import {
+  BotSession,
+  PlayerInfo,
+  revealPlayerToBots,
+  onBidPlaced,
+  cancelAllBots,
+  updateRosterOnSold,
+} from '../bots/botManager';
+import { PERSONALITIES } from '../bots/botPersonalities';
+import { PlayerRole } from '@prisma/client';
 
 // ─── Type aliases ─────────────────────────────────────────────────────────────
 
@@ -44,9 +53,9 @@ const PHASE_ORDER: AuctionState['phase'][] = [
 
 interface LiveAuctionState extends AuctionState {
   timerId:         NodeJS.Timeout | null;
-  botController:   AbortController | null;
-  maxPriceBidders: Set<string>;       // Change 6: track max-price bidders in memory
-  seatsMap:        Map<string, LobbySeat>; // Change 7: O(1) seat lookup
+  botSessions:     Map<string, BotSession>;
+  humanSeatIds:    Set<string>;
+  currentPlayerDb: PlayerInfo | null;
 }
 
 const auctionStates = new Map<string, LiveAuctionState>();
@@ -55,6 +64,10 @@ const auctionStates = new Map<string, LiveAuctionState>();
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function shuffleArray<T>(arr: T[]): T[] {
+  return [...arr].sort(() => Math.random() - 0.5)
 }
 
 function fisherYates<T>(arr: T[]): T[] {
@@ -315,11 +328,32 @@ async function startAuction(
     luckyDrawActive:     false,
     luckyDrawContenders: [],
     timerId:             null,
-    botController:       null,
-    maxPriceBidders:     new Set(),
-    seatsMap,
+    botSessions:         new Map(),
+    humanSeatIds:        new Set(seats.filter((s: { seatType: string }) => s.seatType === 'HUMAN').map((s: { id: string }) => s.id)),
+    currentPlayerDb:     null,
   };
   auctionStates.set(lobbyId, state);
+
+  for (const seat of state.seats) {
+    if (seat.seatType !== 'BOT' || !seat.botPersonality) continue;
+    const personalityType = seat.botPersonality as keyof typeof PERSONALITIES;
+    const personality = PERSONALITIES[personalityType];
+    const priorityRoles: PlayerRole[] = personality.type === 'ROLE_HUNTER'
+      ? shuffleArray([PlayerRole.BAT, PlayerRole.BOWL, PlayerRole.AR, PlayerRole.WK]).slice(0, 2)
+      : [];
+    state.botSessions.set(seat.seatId, {
+      seatId: seat.seatId,
+      franchiseId: seat.franchiseId,
+      franchiseName: seat.franchiseName,
+      personality,
+      priorityRoles,
+      remainingPurse: 9_000_000,
+      batsmanCount: 0, bowlerCount: 0, marqueeCount: 0,
+      aCount: 0, bCount: 0, cCount: 0,
+      categoryOverspend: {},
+      abortController: null,
+    });
+  }
 
   console.log(`[auction] started lobbyId=${lobbyId} season=${season}`);
   await runMarqueeDraw(io, lobbyId, season);
@@ -388,6 +422,10 @@ async function runMarqueeDraw(io: IoServer, lobbyId: string, season: number): Pr
     await delay(MARQUEE_GAP_MS);
   }
 
+  for (const session of state.botSessions.values()) {
+    session.marqueeCount = 1;
+  }
+
   state.phase = 'CATEGORY_A';
   console.log(`[auction] marquee draw complete lobbyId=${lobbyId} — advancing to CATEGORY_A`);
   await revealNextPlayer(io, lobbyId);
@@ -432,15 +470,9 @@ async function revealNextPlayer(io: IoServer, lobbyId: string): Promise<void> {
     },
   };
 
-  const category = player.category;
-
   state.currentPlayer = player;
   state.currentBid    = null;
   state.timerSeconds  = TIMER_SECONDS;
-
-  // One AbortController per player — cancelled in resolveCurrentPlayer
-  const controller = new AbortController();
-  state.botController = controller;
 
   io.to(lobbyId).emit('lobby:player_revealed', player);
 
@@ -469,38 +501,24 @@ async function revealNextPlayer(io: IoServer, lobbyId: string): Promise<void> {
 
   startPlayerTimer(io, lobbyId);
 
-  // Trigger all bot seats (fire-and-forget)
-  for (const seat of state.seats) {
-    if (seat.seatType !== 'BOT' || !seat.botPersonality) continue;
+  state.currentPlayerDb = {
+    id:        next.player.id,
+    basePrice: next.player.basePrice,
+    quality:   (next.player as any).quality ?? 50,
+    role:      next.player.role as PlayerRole,
+    category:  next.player.category,
+  };
 
-    const currentBidAmount = null; // no bids yet at reveal time
-    const buffer = minPurseBuffer(seat, category);
+  const isUnsoldRound = state.phase === 'UNSOLD_ROUND';
+  const fakeBidSocket = { emit: () => {} } as unknown as IoSocket;
+  const onBotBid = (seatId: string, amount: number) =>
+    handleBid(io, fakeBidSocket, lobbyId, seatId, amount);
 
-    triggerBotDecision(
-      io,
-      lobbyId,
-      {
-        seatId:         seat.seatId,
-        franchiseName:  seat.franchiseName,
-        personality:    seat.botPersonality as import('@prisma/client').BotPersonality,
-        purseRemaining: seat.purseRemaining,
-        minPurseBuffer: buffer,
-      },
-      currentBidAmount,
-      BASE_PRICE[category],
-      MAX_PRICE[category],
-      category as import('@prisma/client').PlayerCategory,
-      controller.signal,
-      (bidSeatId, amount) => {
-        // Route bot bid through the same validation path as human bids
-        const fakeBidSocket = { emit: () => {} } as unknown as IoSocket;
-        handleBid(io, fakeBidSocket, lobbyId, bidSeatId, amount);
-      },
-    ).catch((err) => {
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      console.error('[auction] bot decision error', err);
-    });
-  }
+  revealPlayerToBots(
+    io, lobbyId, state.currentPlayerDb,
+    state.humanSeatIds, state.botSessions,
+    isUnsoldRound, onBotBid,
+  );
 }
 
 // ─── startPlayerTimer ─────────────────────────────────────────────────────────
@@ -628,6 +646,19 @@ function handleBid(
   };
   io.to(lobbyId).emit('lobby:bid_placed', bidEvent);
 
+  if (state.currentPlayerDb) {
+    const isUnsoldRound = state.phase === 'UNSOLD_ROUND';
+    const fakeBidSocket = { emit: () => {} } as unknown as IoSocket;
+    const onBotBid = (bidSeatId: string, amount: number) =>
+      handleBid(io, fakeBidSocket, lobbyId, bidSeatId, amount);
+    onBidPlaced(
+      io, lobbyId, state.currentPlayerDb,
+      state.currentBid!.amount, seatId,
+      state.humanSeatIds, state.botSessions,
+      isUnsoldRound, onBotBid,
+    );
+  }
+
   // Persist bid row (fire-and-forget)
   prisma.bid.create({
     data: {
@@ -646,8 +677,7 @@ async function resolveCurrentPlayer(io: IoServer, lobbyId: string): Promise<void
   const state = auctionStates.get(lobbyId);
   if (!state || !state.currentPlayer) return;
 
-  // Abort any in-flight bot decisions
-  state.botController?.abort();
+  cancelAllBots(state.botSessions);
 
   // Clear any residual timer
   if (state.timerId) {
@@ -667,6 +697,8 @@ async function resolveCurrentPlayer(io: IoServer, lobbyId: string): Promise<void
     });
     state.unsoldPool.push(player);
     io.to(lobbyId).emit('lobby:player_unsold', { playerId: player.id, playerName: player.name });
+    cancelAllBots(state.botSessions);
+    state.currentPlayerDb = null;
     state.currentPlayer = null;
     // Change 9: break recursive call chain with setImmediate
     setImmediate(() => revealNextPlayer(io, lobbyId).catch(console.error));
@@ -760,6 +792,14 @@ async function sellPlayer(
     franchiseName: seat.franchiseName,
     finalPrice,
   });
+
+  cancelAllBots(state.botSessions);
+  updateRosterOnSold(state.botSessions, winningSeatId, {
+    category: player.category as import('@prisma/client').PlayerCategory,
+    role:     player.role as PlayerRole,
+    finalPrice,
+  });
+  state.currentPlayerDb = null;
 
   state.currentPlayer = null;
   state.currentBid    = null;
@@ -885,7 +925,7 @@ async function completeAuction(io: IoServer, lobbyId: string): Promise<void> {
   const state = auctionStates.get(lobbyId);
   if (!state) return;
 
-  state.botController?.abort();
+  cancelAllBots(state.botSessions);
   if (state.timerId) {
     clearInterval(state.timerId);
     state.timerId = null;
