@@ -1,5 +1,5 @@
-import { Server, Socket } from 'socket.io';
-import { AuctionPhase, SlotType } from '@prisma/client';
+import { Server, Socket } from "socket.io";
+import { AuctionPhase, SlotType } from "@prisma/client";
 import type {
   ClientToServerEvents,
   ServerToClientEvents,
@@ -10,8 +10,8 @@ import type {
   Player,
   PlayerCategory,
   PlayerRole,
-} from '@npl-auction/types';
-import prisma from '../lib/prisma';
+} from "@npl-auction/types";
+import prisma from "../lib/prisma";
 import {
   BotSession,
   PlayerInfo,
@@ -19,43 +19,55 @@ import {
   onBidPlaced,
   cancelAllBots,
   updateRosterOnSold,
-} from '../bots/botManager';
-import { PERSONALITIES } from '../bots/botPersonalities';
-import { PlayerRole } from '@prisma/client';
+} from "../bots/botManager";
+import { PERSONALITIES } from "../bots/botPersonalities";
+import { PlayerRole } from "@prisma/client";
 
 // ─── Type aliases ─────────────────────────────────────────────────────────────
 
-type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
-type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+type IoServer = Server<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData
+>;
+type IoSocket = Socket<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData
+>;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const BASE_PRICE = { A: 1_000_000, B: 500_000, C: 200_000 } as const;
-export const MAX_PRICE  = { A: 1_500_000, B: 1_000_000, C: 500_000 } as const;
-export const QUOTA      = { A: 3, B: 4, C: 3 } as const;
+export const MAX_PRICE = { A: 1_500_000, B: 1_000_000, C: 500_000 } as const;
+export const QUOTA = { A: 3, B: 4, C: 3 } as const;
 
-const BID_INCREMENT  = 25_000;
-const TIMER_SECONDS  = 10;
-const LUCKY_DRAW_MS  = 3_000;
+const BID_INCREMENT = 25_000;
+const TIMER_SECONDS = 10;
+const LUCKY_DRAW_MS = 3_000;
 const MARQUEE_GAP_MS = 500;
 
 // Change 2: Hoist PHASE_ORDER to module-level constant
-const PHASE_ORDER: AuctionState['phase'][] = [
-  'MARQUEE_DRAW',
-  'CATEGORY_A',
-  'CATEGORY_B',
-  'CATEGORY_C',
-  'UNSOLD_ROUND',
-  'COMPLETE',
+const PHASE_ORDER: AuctionState["phase"][] = [
+  "MARQUEE_DRAW",
+  "CATEGORY_A",
+  "CATEGORY_B",
+  "CATEGORY_C",
+  "UNSOLD_ROUND",
+  "COMPLETE",
 ];
 
 // ─── In-memory state ──────────────────────────────────────────────────────────
 
+interface QueueEntry {
+  player: Player;
+}
+
 interface LiveAuctionState extends AuctionState {
-  timerId:         NodeJS.Timeout | null;
-  botSessions:     Map<string, BotSession>;
-  humanSeatIds:    Set<string>;
-  currentPlayerDb: PlayerInfo | null;
+  timerId: NodeJS.Timeout | null;
+  botController: AbortController | null;
 }
 
 const auctionStates = new Map<string, LiveAuctionState>();
@@ -64,10 +76,6 @@ const auctionStates = new Map<string, LiveAuctionState>();
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function shuffleArray<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5)
 }
 
 function fisherYates<T>(arr: T[]): T[] {
@@ -81,44 +89,50 @@ function fisherYates<T>(arr: T[]): T[] {
 
 // Change 1: parsePayload helper — eliminates repeated inline ternary
 function parsePayload<T>(data: T | string): T {
-  return typeof data === 'string' ? JSON.parse(data) : data;
+  return typeof data === "string" ? JSON.parse(data) : data;
 }
 
-function formatSeatFromDb(
-  seat: {
+function formatSeatFromDb(seat: {
+  id: string;
+  seatType: string;
+  userId: string | null;
+  displayName: string | null;
+  botPersonality: string | null;
+  purseRemaining: number;
+  countA: number;
+  countB: number;
+  countC: number;
+  franchise: {
     id: string;
-    seatType: string;
-    userId: string | null;
-    displayName: string | null;
-    botPersonality: string | null;
-    purseRemaining: number;
-    countA: number;
-    countB: number;
-    countC: number;
-    franchise: { id: string; name: string; shortName: string; city: string; colorPrimary: string; colorSecondary: string; createdAt: Date };
-    squadSlots?: Array<{
-      playerId: string;
-      player: {
-        id: string;
-        name: string;
-        category: string;
-        role: string;
-        basePrice: number;
-        season: number;
-        isMarquee: boolean;
-        runs: number;
-        wickets: number;
-        battingAvg: number | null;
-        strikeRate: number | null;
-        bowlingAvg: number | null;
-        economy: number | null;
-      };
-      slotType: string;
-      pricePaid: number;
-    }>;
-  },
-): LobbySeat {
-  const squad: LobbySeat['squad'] = (seat.squadSlots ?? []).map(slot => ({
+    name: string;
+    shortName: string;
+    city: string;
+    colorPrimary: string;
+    colorSecondary: string;
+    createdAt: Date;
+  };
+  squadSlots?: Array<{
+    playerId: string;
+    player: {
+      id: string;
+      name: string;
+      category: string;
+      role: string;
+      basePrice: number;
+      season: number;
+      isMarquee: boolean;
+      runs: number;
+      wickets: number;
+      battingAvg: number | null;
+      strikeRate: number | null;
+      bowlingAvg: number | null;
+      economy: number | null;
+    };
+    slotType: string;
+    pricePaid: number;
+  }>;
+}): LobbySeat {
+  const squad: LobbySeat["squad"] = (seat.squadSlots ?? []).map((slot) => ({
     franchiseId: seat.franchise.id,
     playerId: slot.playerId,
     player: {
@@ -143,16 +157,17 @@ function formatSeatFromDb(
   }));
 
   return {
-    seatId:         seat.id,
-    seatType:       seat.seatType as LobbySeat['seatType'],
-    franchiseId:    seat.franchise.id,
-    franchiseName:  seat.franchise.name,
-    userId:         seat.userId ?? undefined,
-    displayName:    seat.displayName ?? undefined,
-    botPersonality: seat.botPersonality as LobbySeat['botPersonality'] ?? undefined,
+    seatId: seat.id,
+    seatType: seat.seatType as LobbySeat["seatType"],
+    franchiseId: seat.franchise.id,
+    franchiseName: seat.franchise.name,
+    userId: seat.userId ?? undefined,
+    displayName: seat.displayName ?? undefined,
+    botPersonality:
+      (seat.botPersonality as LobbySeat["botPersonality"]) ?? undefined,
     purseRemaining: seat.purseRemaining,
     squad,
-    categoryCount:  { A: seat.countA, B: seat.countB, C: seat.countC },
+    categoryCount: { A: seat.countA, B: seat.countB, C: seat.countC },
   };
 }
 
@@ -160,16 +175,19 @@ function formatSeatFromDb(
 
 export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
   // ── lobby:join ──────────────────────────────────────────────────────────────
-  socket.on('lobby:join', async (data) => {
+  socket.on("lobby:join", async (data) => {
     const { lobbyId, userId, seatId } = parsePayload(data);
     if (!lobbyId || !userId || !seatId) {
-      socket.emit('lobby:error', { message: 'Missing lobbyId, userId, or seatId', code: 'BAD_PAYLOAD' });
+      socket.emit("lobby:error", {
+        message: "Missing lobbyId, userId, or seatId",
+        code: "BAD_PAYLOAD",
+      });
       return;
     }
 
-    socket.data.userId  = userId;
+    socket.data.userId = userId;
     socket.data.lobbyId = lobbyId;
-    socket.data.seatId  = seatId;
+    socket.data.seatId = seatId;
     await socket.join(lobbyId);
 
     try {
@@ -181,38 +199,44 @@ export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
               franchise: true,
               squadSlots: {
                 include: { player: true },
-                orderBy: { createdAt: 'asc' },
+                orderBy: { createdAt: "asc" },
               },
             },
-            orderBy: { franchise: { name: 'asc' } },
+            orderBy: { franchise: { name: "asc" } },
           },
         },
       });
 
       if (!lobby) {
-        socket.emit('lobby:error', { message: 'Lobby not found', code: 'NOT_FOUND' });
+        socket.emit("lobby:error", {
+          message: "Lobby not found",
+          code: "NOT_FOUND",
+        });
         return;
       }
 
-      socket.emit('lobby:state', {
-        id:        lobby.id,
-        code:      lobby.code,
-        status:    lobby.status as import('@npl-auction/types').LobbyStatus,
-        season:    lobby.season,
-        seats:     lobby.seats.map(formatSeatFromDb),
+      socket.emit("lobby:state", {
+        id: lobby.id,
+        code: lobby.code,
+        status: lobby.status as import("@npl-auction/types").LobbyStatus,
+        season: lobby.season,
+        seats: lobby.seats.map(formatSeatFromDb),
         createdAt: lobby.createdAt.toISOString(),
       });
     } catch (err) {
-      console.error('[auction] lobby:join error', err);
-      socket.emit('lobby:error', { message: 'Failed to join lobby' });
+      console.error("[auction] lobby:join error", err);
+      socket.emit("lobby:error", { message: "Failed to join lobby" });
     }
   });
 
   // ── lobby:start ─────────────────────────────────────────────────────────────
-  socket.on('lobby:start', async (data) => {
+  socket.on("lobby:start", async (data) => {
     const { lobbyId } = parsePayload(data);
     if (!lobbyId) {
-      socket.emit('lobby:error', { message: 'Missing lobbyId', code: 'BAD_PAYLOAD' });
+      socket.emit("lobby:error", {
+        message: "Missing lobbyId",
+        code: "BAD_PAYLOAD",
+      });
       return;
     }
     try {
@@ -222,52 +246,94 @@ export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
       });
 
       if (!lobby) {
-        socket.emit('lobby:error', { message: 'Lobby not found', code: 'NOT_FOUND' });
+        socket.emit("lobby:error", {
+          message: "Lobby not found",
+          code: "NOT_FOUND",
+        });
         return;
       }
-      if (lobby.status !== 'WAITING') {
-        socket.emit('lobby:error', { message: 'Auction already started', code: 'ALREADY_STARTED' });
+      if (lobby.status !== "WAITING") {
+        socket.emit("lobby:error", {
+          message: "Auction already started",
+          code: "ALREADY_STARTED",
+        });
         return;
       }
 
-      const requestingSeat = lobby.seats.find((s) => s.userId === socket.data.userId);
-      if (!requestingSeat || requestingSeat.seatType !== 'HUMAN') {
-        socket.emit('lobby:error', { message: 'Only a human seat can start the auction', code: 'UNAUTHORIZED' });
+      const requestingSeat = lobby.seats.find(
+        (s) => s.userId === socket.data.userId,
+      );
+      if (!requestingSeat || requestingSeat.seatType !== "HUMAN") {
+        socket.emit("lobby:error", {
+          message: "Only a human seat can start the auction",
+          code: "UNAUTHORIZED",
+        });
         return;
       }
 
       // Change 3: pass already-loaded seats to avoid a redundant DB fetch in startAuction
       await startAuction(io, lobbyId, lobby.season, lobby.seats);
     } catch (err) {
-      console.error('[auction] lobby:start error', err);
-      socket.emit('lobby:error', { message: 'Failed to start auction' });
+      console.error("[auction] lobby:start error", err);
+      socket.emit("lobby:error", { message: "Failed to start auction" });
     }
   });
 
   // ── lobby:place_bid ─────────────────────────────────────────────────────────
-  socket.on('lobby:place_bid', (data) => {
+  socket.on("lobby:place_bid", (data) => {
     const { lobbyId, amount } = parsePayload(data);
     if (!lobbyId || amount == null) {
-      socket.emit('lobby:error', { message: 'Missing lobbyId or amount', code: 'BAD_PAYLOAD' });
+      socket.emit("lobby:error", {
+        message: "Missing lobbyId or amount",
+        code: "BAD_PAYLOAD",
+      });
       return;
     }
     const seatId = socket.data.seatId;
     if (!seatId) {
-      socket.emit('lobby:error', { message: 'Not joined to a lobby', code: 'NOT_JOINED' });
+      socket.emit("lobby:error", {
+        message: "Not joined to a lobby",
+        code: "NOT_JOINED",
+      });
       return;
     }
     handleBid(io, socket, lobbyId, seatId, amount);
   });
 
   // ── lobby:pass ──────────────────────────────────────────────────────────────
-  socket.on('lobby:pass', (data) => {
+  socket.on("lobby:pass", (data) => {
     const { lobbyId } = parsePayload(data);
-    console.log(`[auction] lobby:pass — lobbyId ${lobbyId} seat ${socket.data.seatId}`);
+    console.log(
+      `[auction] lobby:pass — lobbyId ${lobbyId} seat ${socket.data.seatId}`,
+    );
   });
 
   // ── disconnect ──────────────────────────────────────────────────────────────
-  socket.on('disconnect', (reason) => {
+  socket.on("disconnect", (reason) => {
     console.log(`[auction] disconnect — socket ${socket.id} reason ${reason}`);
+
+    const { lobbyId } = socket.data;
+    if (!lobbyId) return;
+
+    // After a 30s grace period, clean up the auction state if the room is empty.
+    // This prevents a memory leak when all clients disconnect mid-auction.
+    setTimeout(() => {
+      const state = auctionStates.get(lobbyId);
+      if (!state) return;
+
+      const room = io.sockets.adapter.rooms.get(lobbyId);
+      const remaining = room ? room.size : 0;
+
+      if (remaining === 0) {
+        state.botController?.abort();
+        if (state.timerId) {
+          clearInterval(state.timerId);
+          state.timerId = null;
+        }
+        auctionStates.delete(lobbyId);
+        console.log(`[auction] cleaned up abandoned lobby=${lobbyId}`);
+      }
+    }, 30_000);
   });
 }
 
@@ -283,14 +349,13 @@ async function startAuction(
   preloadedSeats?: DbSeatWithFranchise[],
 ): Promise<void> {
   // Reuse seats already loaded by the lobby:start handler if available
-  const seats = preloadedSeats ?? await prisma.lobbySeat.findMany({
-    where: { lobbyId },
-    include: { franchise: true },
-    orderBy: { franchise: { name: 'asc' } },
-  });
-
-  // Flip lobby status to AUCTION
-  await prisma.lobby.update({ where: { id: lobbyId }, data: { status: 'AUCTION' } });
+  const seats =
+    preloadedSeats ??
+    (await prisma.lobbySeat.findMany({
+      where: { lobbyId },
+      include: { franchise: true },
+      orderBy: { franchise: { name: "asc" } },
+    }));
 
   // Fetch all non-marquee players for this season, split by category
   const players = await prisma.player.findMany({
@@ -298,19 +363,41 @@ async function startAuction(
   });
 
   const byCategory = {
-    A: fisherYates(players.filter((p) => p.category === 'A')),
-    B: fisherYates(players.filter((p) => p.category === 'B')),
-    C: fisherYates(players.filter((p) => p.category === 'C')),
+    A: fisherYates(players.filter((p) => p.category === "A")),
+    B: fisherYates(players.filter((p) => p.category === "B")),
+    C: fisherYates(players.filter((p) => p.category === "C")),
   };
 
-  // Bulk-insert AuctionQueue rows
-  await prisma.auctionQueue.createMany({
-    data: [
-      ...byCategory.A.map((p, i) => ({ lobbyId, playerId: p.id, phase: AuctionPhase.CATEGORY_A, position: i })),
-      ...byCategory.B.map((p, i) => ({ lobbyId, playerId: p.id, phase: AuctionPhase.CATEGORY_B, position: i })),
-      ...byCategory.C.map((p, i) => ({ lobbyId, playerId: p.id, phase: AuctionPhase.CATEGORY_C, position: i })),
-    ],
-  });
+  const queueData = [
+    ...byCategory.A.map((p, i) => ({
+      lobbyId,
+      playerId: p.id,
+      phase: AuctionPhase.CATEGORY_A,
+      position: i,
+    })),
+    ...byCategory.B.map((p, i) => ({
+      lobbyId,
+      playerId: p.id,
+      phase: AuctionPhase.CATEGORY_B,
+      position: i,
+    })),
+    ...byCategory.C.map((p, i) => ({
+      lobbyId,
+      playerId: p.id,
+      phase: AuctionPhase.CATEGORY_C,
+      position: i,
+    })),
+  ];
+
+  // Atomically flip lobby to AUCTION and create the auction queue.
+  // If the queue insert fails, the lobby won't be left stranded in AUCTION status.
+  await prisma.$transaction([
+    prisma.lobby.update({
+      where: { id: lobbyId },
+      data: { status: "AUCTION" },
+    }),
+    prisma.auctionQueue.createMany({ data: queueData }),
+  ]);
 
   // Initialise in-memory state
   const liveSeats: LobbySeat[] = seats.map(formatSeatFromDb);
@@ -319,28 +406,32 @@ async function startAuction(
 
   const state: LiveAuctionState = {
     lobbyId,
-    phase:               'MARQUEE_DRAW',
-    currentPlayer:       null,
-    currentBid:          null,
-    timerSeconds:        TIMER_SECONDS,
-    seats:               liveSeats,
-    unsoldPool:          [],
-    luckyDrawActive:     false,
+    phase: "MARQUEE_DRAW",
+    currentPlayer: null,
+    currentBid: null,
+    timerSeconds: TIMER_SECONDS,
+    seats: liveSeats,
+    unsoldPool: [],
+    luckyDrawActive: false,
     luckyDrawContenders: [],
-    timerId:             null,
-    botSessions:         new Map(),
-    humanSeatIds:        new Set(seats.filter((s: { seatType: string }) => s.seatType === 'HUMAN').map((s: { id: string }) => s.id)),
-    currentPlayerDb:     null,
+    timerId: null,
+    botController: null,
   };
   auctionStates.set(lobbyId, state);
 
   for (const seat of state.seats) {
-    if (seat.seatType !== 'BOT' || !seat.botPersonality) continue;
+    if (seat.seatType !== "BOT" || !seat.botPersonality) continue;
     const personalityType = seat.botPersonality as keyof typeof PERSONALITIES;
     const personality = PERSONALITIES[personalityType];
-    const priorityRoles: PlayerRole[] = personality.type === 'ROLE_HUNTER'
-      ? shuffleArray([PlayerRole.BAT, PlayerRole.BOWL, PlayerRole.AR, PlayerRole.WK]).slice(0, 2)
-      : [];
+    const priorityRoles: PlayerRole[] =
+      personality.type === "ROLE_HUNTER"
+        ? shuffleArray([
+            PlayerRole.BAT,
+            PlayerRole.BOWL,
+            PlayerRole.AR,
+            PlayerRole.WK,
+          ]).slice(0, 2)
+        : [];
     state.botSessions.set(seat.seatId, {
       seatId: seat.seatId,
       franchiseId: seat.franchiseId,
@@ -348,8 +439,12 @@ async function startAuction(
       personality,
       priorityRoles,
       remainingPurse: 9_000_000,
-      batsmanCount: 0, bowlerCount: 0, marqueeCount: 0,
-      aCount: 0, bCount: 0, cCount: 0,
+      batsmanCount: 0,
+      bowlerCount: 0,
+      marqueeCount: 0,
+      aCount: 0,
+      bCount: 0,
+      cCount: 0,
       categoryOverspend: {},
       abortController: null,
     });
@@ -361,7 +456,11 @@ async function startAuction(
 
 // ─── runMarqueeDraw ───────────────────────────────────────────────────────────
 
-async function runMarqueeDraw(io: IoServer, lobbyId: string, season: number): Promise<void> {
+async function runMarqueeDraw(
+  io: IoServer,
+  lobbyId: string,
+  season: number,
+): Promise<void> {
   const state = auctionStates.get(lobbyId);
   if (!state) return;
 
@@ -377,45 +476,45 @@ async function runMarqueeDraw(io: IoServer, lobbyId: string, season: number): Pr
       lobbyId,
       franchiseId: seat.franchiseId,
       lobbySeatId: seat.seatId,
-      playerId:    shuffled[i % shuffled.length].id,
-      slotType:    SlotType.MARQUEE,
-      pricePaid:   0,
+      playerId: shuffled[i % shuffled.length].id,
+      slotType: SlotType.MARQUEE,
+      pricePaid: 0,
     })),
   });
 
   // Update in-memory state + emit per seat (delay between reveals still needed)
   for (let i = 0; i < state.seats.length; i++) {
-    const seat   = state.seats[i];
+    const seat = state.seats[i];
     const player = shuffled[i % shuffled.length];
 
     seat.squad.push({
       franchiseId: seat.franchiseId,
-      playerId:    player.id,
+      playerId: player.id,
       player: {
-        id:         player.id,
-        name:       player.name,
-        category:   player.category as PlayerCategory,
-        role:       player.role as import('@npl-auction/types').PlayerRole,
+        id: player.id,
+        name: player.name,
+        category: player.category as PlayerCategory,
+        role: player.role as import("@npl-auction/types").PlayerRole,
         base_price: player.basePrice,
-        season:     player.season,
+        season: player.season,
         is_marquee: player.isMarquee,
         stats: {
-          runs:        player.runs,
-          wickets:     player.wickets,
+          runs: player.runs,
+          wickets: player.wickets,
           batting_avg: player.battingAvg,
           strike_rate: player.strikeRate,
           bowling_avg: player.bowlingAvg,
-          economy:     player.economy,
+          economy: player.economy,
         },
       },
-      slotType:  'MARQUEE',
+      slotType: "MARQUEE",
       pricePaid: 0,
     });
 
-    io.to(lobbyId).emit('lobby:marquee_assigned', {
-      playerId:      player.id,
-      playerName:    player.name,
-      franchiseId:   seat.franchiseId,
+    io.to(lobbyId).emit("lobby:marquee_assigned", {
+      playerId: player.id,
+      playerName: player.name,
+      franchiseId: seat.franchiseId,
       franchiseName: seat.franchiseName,
     });
 
@@ -426,8 +525,10 @@ async function runMarqueeDraw(io: IoServer, lobbyId: string, season: number): Pr
     session.marqueeCount = 1;
   }
 
-  state.phase = 'CATEGORY_A';
-  console.log(`[auction] marquee draw complete lobbyId=${lobbyId} — advancing to CATEGORY_A`);
+  state.phase = "CATEGORY_A";
+  console.log(
+    `[auction] marquee draw complete lobbyId=${lobbyId} — advancing to CATEGORY_A`,
+  );
   await revealNextPlayer(io, lobbyId);
 }
 
@@ -440,85 +541,89 @@ async function revealNextPlayer(io: IoServer, lobbyId: string): Promise<void> {
   // Change 6: reset max-price bidder set for each new player
   state.maxPriceBidders = new Set();
 
-  const next = await prisma.auctionQueue.findFirst({
-    where: { lobbyId, phase: state.phase as import('@prisma/client').AuctionPhase, isDone: false },
-    orderBy: { position: 'asc' },
-    include: { player: true },
-  });
+  state.maxPriceBidders = new Set();
 
-  if (!next) {
+  // Load the phase queue from DB once per phase — subsequent calls use the in-memory cache.
+  // This eliminates ~20+ redundant DB round-trips per auction round.
+  if (state.phaseQueueCache === null) {
+    const rows = await prisma.auctionQueue.findMany({
+      where: { lobbyId, phase: state.phase as AuctionPhase, isDone: false },
+      orderBy: { position: "asc" },
+      include: { player: true },
+    });
+    state.phaseQueueCache = rows.map((row) => ({
+      player: dbPlayerToPlayer(row.player),
+    }));
+  }
+
+  // Shift next player from the in-memory queue (O(1))
+  const entry = state.phaseQueueCache.shift();
+  if (!entry) {
     await advancePhase(io, lobbyId);
     return;
   }
 
   const p = next.player;
   const player: Player = {
-    id:         p.id,
-    name:       p.name,
-    category:   p.category as PlayerCategory,
-    role:       p.role as import('@npl-auction/types').PlayerRole,
+    id: p.id,
+    name: p.name,
+    category: p.category as PlayerCategory,
+    role: p.role as import("@npl-auction/types").PlayerRole,
     base_price: p.basePrice,
-    season:     p.season,
+    season: p.season,
     is_marquee: p.isMarquee,
     stats: {
-      runs:        p.runs,
-      wickets:     p.wickets,
+      runs: p.runs,
+      wickets: p.wickets,
       batting_avg: p.battingAvg,
       strike_rate: p.strikeRate,
       bowling_avg: p.bowlingAvg,
-      economy:     p.economy,
+      economy: p.economy,
     },
   };
+
+  const category = player.category;
 
   state.currentPlayer = player;
-  state.currentBid    = null;
-  state.timerSeconds  = TIMER_SECONDS;
+  state.currentBid = null;
+  state.timerSeconds = TIMER_SECONDS;
 
-  io.to(lobbyId).emit('lobby:player_revealed', player);
-
-  // Send upcoming queue (next 5 players)
-  const upcoming = await prisma.auctionQueue.findMany({
-    where: {
-      lobbyId,
-      phase: state.phase as import('@prisma/client').AuctionPhase,
-      isDone: false,
-      playerId: { not: player.id }, // exclude current player
-    },
-    orderBy: { position: 'asc' },
-    take: 5,
-    include: { player: true },
-  });
-
-  io.to(lobbyId).emit('lobby:queue_update', {
-    upcoming: upcoming.map(q => ({
-      playerId: q.playerId,
-      playerName: q.player.name,
-      category: q.player.category,
-      role: q.player.role,
-      basePrice: q.player.basePrice,
-    })),
-  });
-
+  io.to(lobbyId).emit("lobby:player_revealed", player);
   startPlayerTimer(io, lobbyId);
 
-  state.currentPlayerDb = {
-    id:        next.player.id,
-    basePrice: next.player.basePrice,
-    quality:   (next.player as any).quality ?? 50,
-    role:      next.player.role as PlayerRole,
-    category:  next.player.category,
-  };
+  // Trigger all bot seats (fire-and-forget)
+  for (const seat of state.seats) {
+    if (seat.seatType !== "BOT" || !seat.botPersonality) continue;
 
-  const isUnsoldRound = state.phase === 'UNSOLD_ROUND';
-  const fakeBidSocket = { emit: () => {} } as unknown as IoSocket;
-  const onBotBid = (seatId: string, amount: number) =>
-    handleBid(io, fakeBidSocket, lobbyId, seatId, amount);
+    const currentBidAmount = null; // no bids yet at reveal time
+    const buffer = minPurseBuffer(seat, category);
 
-  revealPlayerToBots(
-    io, lobbyId, state.currentPlayerDb,
-    state.humanSeatIds, state.botSessions,
-    isUnsoldRound, onBotBid,
-  );
+    triggerBotDecision(
+      io,
+      lobbyId,
+      {
+        seatId: seat.seatId,
+        franchiseName: seat.franchiseName,
+        personality:
+          seat.botPersonality as import("@prisma/client").BotPersonality,
+        purseRemaining: seat.purseRemaining,
+        minPurseBuffer: buffer,
+      },
+      currentBidAmount,
+      BASE_PRICE[category],
+      MAX_PRICE[category],
+      category as import("@prisma/client").PlayerCategory,
+      controller.signal,
+      (bidSeatId, amount) => {
+        // Route bot bid through the same validation path as human bids
+        const fakeBidSocket = { emit: () => {} } as unknown as IoSocket;
+        handleBid(io, fakeBidSocket, lobbyId, bidSeatId, amount);
+      },
+    ).catch((err) => {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      console.error("[auction] bot decision error", err);
+    });
+  }
 }
 
 // ─── startPlayerTimer ─────────────────────────────────────────────────────────
@@ -532,13 +637,15 @@ function startPlayerTimer(io: IoServer, lobbyId: string): void {
   // Change 8: capture `state` in closure — no Map.get on every tick
   state.timerId = setInterval(() => {
     state.timerSeconds--;
-    io.to(lobbyId).emit('lobby:timer_tick', { secondsLeft: state.timerSeconds });
+    io.to(lobbyId).emit("lobby:timer_tick", {
+      secondsLeft: state.timerSeconds,
+    });
 
     if (state.timerSeconds <= 0) {
       clearInterval(state.timerId!);
       state.timerId = null;
       resolveCurrentPlayer(io, lobbyId).catch((err) => {
-        console.error('[auction] resolveCurrentPlayer error', err);
+        console.error("[auction] resolveCurrentPlayer error", err);
       });
     }
   }, 1_000);
@@ -547,9 +654,9 @@ function startPlayerTimer(io: IoServer, lobbyId: string): void {
 // ─── minPurseBuffer ───────────────────────────────────────────────────────────
 
 function minPurseBuffer(seat: LobbySeat, category: PlayerCategory): number {
-  const aAfter = seat.categoryCount.A + (category === 'A' ? 1 : 0);
-  const bAfter = seat.categoryCount.B + (category === 'B' ? 1 : 0);
-  const cAfter = seat.categoryCount.C + (category === 'C' ? 1 : 0);
+  const aAfter = seat.categoryCount.A + (category === "A" ? 1 : 0);
+  const bAfter = seat.categoryCount.B + (category === "B" ? 1 : 0);
+  const cAfter = seat.categoryCount.C + (category === "C" ? 1 : 0);
   return (
     Math.max(0, QUOTA.A - aAfter) * BASE_PRICE.A +
     Math.max(0, QUOTA.B - bAfter) * BASE_PRICE.B +
@@ -570,25 +677,31 @@ function handleBid(
 
   // 1. State exists + player on block
   if (!state || !state.currentPlayer) {
-    socket.emit('lobby:error', { message: 'No player currently on the block', code: 'NO_PLAYER' });
+    socket.emit("lobby:error", {
+      message: "No player currently on the block",
+      code: "NO_PLAYER",
+    });
     return;
   }
 
   // 2. Valid seat in this lobby — Change 7: O(1) seatsMap lookup
   const seat = state.seatsMap.get(seatId);
   if (!seat) {
-    socket.emit('lobby:error', { message: 'Seat not found in this lobby', code: 'INVALID_SEAT' });
+    socket.emit("lobby:error", {
+      message: "Seat not found in this lobby",
+      code: "INVALID_SEAT",
+    });
     return;
   }
 
   const category = state.currentPlayer.category;
-  const minBid   = (state.currentBid?.amount ?? 0) + BID_INCREMENT;
+  const minBid = (state.currentBid?.amount ?? 0) + BID_INCREMENT;
 
   // 3. Minimum increment
   if (amount < minBid) {
-    socket.emit('lobby:error', {
+    socket.emit("lobby:error", {
       message: `Bid must be at least ${minBid} (current + ${BID_INCREMENT})`,
-      code: 'BID_TOO_LOW',
+      code: "BID_TOO_LOW",
     });
     return;
   }
@@ -596,25 +709,29 @@ function handleBid(
   // 4. Does not exceed max price
   const maxAllowed = MAX_PRICE[category];
   if (amount > maxAllowed) {
-    socket.emit('lobby:error', {
+    socket.emit("lobby:error", {
       message: `Bid exceeds max price of ${maxAllowed} for category ${category}`,
-      code: 'BID_TOO_HIGH',
+      code: "BID_TOO_HIGH",
     });
     return;
   }
 
   // 5. Seat can afford this bid
   if (seat.purseRemaining < amount) {
-    socket.emit('lobby:error', { message: 'Insufficient purse', code: 'INSUFFICIENT_PURSE' });
+    socket.emit("lobby:error", {
+      message: "Insufficient purse",
+      code: "INSUFFICIENT_PURSE",
+    });
     return;
   }
 
   // 6. Afford check: enough left to fill remaining required slots
   const buffer = minPurseBuffer(seat, category);
   if (seat.purseRemaining - amount < buffer) {
-    socket.emit('lobby:error', {
-      message: 'Bid would leave insufficient funds to fill remaining required slots',
-      code: 'PURSE_BUFFER_BREACH',
+    socket.emit("lobby:error", {
+      message:
+        "Bid would leave insufficient funds to fill remaining required slots",
+      code: "PURSE_BUFFER_BREACH",
     });
     return;
   }
@@ -622,15 +739,15 @@ function handleBid(
   // 7. Category quota not yet filled
   const count = seat.categoryCount[category];
   if (count >= QUOTA[category]) {
-    socket.emit('lobby:error', {
+    socket.emit("lobby:error", {
       message: `Category ${category} quota already filled`,
-      code: 'QUOTA_FILLED',
+      code: "QUOTA_FILLED",
     });
     return;
   }
 
   // ── Valid bid ────────────────────────────────────────────────────────────────
-  state.currentBid   = { seatId, franchiseName: seat.franchiseName, amount };
+  state.currentBid = { seatId, franchiseName: seat.franchiseName, amount };
   state.timerSeconds = TIMER_SECONDS; // timer setInterval reads this on next tick
 
   // Change 6: track max-price bidders in memory to avoid DB query at resolve time
@@ -644,40 +761,51 @@ function handleBid(
     amount,
     timestamp: new Date().toISOString(),
   };
-  io.to(lobbyId).emit('lobby:bid_placed', bidEvent);
+  io.to(lobbyId).emit("lobby:bid_placed", bidEvent);
 
   if (state.currentPlayerDb) {
-    const isUnsoldRound = state.phase === 'UNSOLD_ROUND';
+    const isUnsoldRound = state.phase === "UNSOLD_ROUND";
     const fakeBidSocket = { emit: () => {} } as unknown as IoSocket;
     const onBotBid = (bidSeatId: string, amount: number) =>
       handleBid(io, fakeBidSocket, lobbyId, bidSeatId, amount);
     onBidPlaced(
-      io, lobbyId, state.currentPlayerDb,
-      state.currentBid!.amount, seatId,
-      state.humanSeatIds, state.botSessions,
-      isUnsoldRound, onBotBid,
+      io,
+      lobbyId,
+      state.currentPlayerDb,
+      state.currentBid!.amount,
+      seatId,
+      state.humanSeatIds,
+      state.botSessions,
+      isUnsoldRound,
+      onBotBid,
     );
   }
 
   // Persist bid row (fire-and-forget)
-  prisma.bid.create({
-    data: {
-      lobbyId,
-      seatId,
-      playerId:    state.currentPlayer.id,
-      franchiseId: seat.franchiseId,
-      amount,
-    },
-  }).catch((err) => console.error('[auction] bid persist error', err));
+  prisma.bid
+    .create({
+      data: {
+        lobbyId,
+        seatId,
+        playerId: state.currentPlayer.id,
+        franchiseId: seat.franchiseId,
+        amount,
+      },
+    })
+    .catch((err) => console.error("[auction] bid persist error", err));
 }
 
 // ─── resolveCurrentPlayer ─────────────────────────────────────────────────────
 
-async function resolveCurrentPlayer(io: IoServer, lobbyId: string): Promise<void> {
+async function resolveCurrentPlayer(
+  io: IoServer,
+  lobbyId: string,
+): Promise<void> {
   const state = auctionStates.get(lobbyId);
   if (!state || !state.currentPlayer) return;
 
-  cancelAllBots(state.botSessions);
+  // Abort any in-flight bot decisions (wired in commit 4)
+  state.botController?.abort();
 
   // Clear any residual timer
   if (state.timerId) {
@@ -685,7 +813,7 @@ async function resolveCurrentPlayer(io: IoServer, lobbyId: string): Promise<void
     state.timerId = null;
   }
 
-  const player   = state.currentPlayer;
+  const player = state.currentPlayer;
   const category = player.category;
 
   if (!state.currentBid) {
@@ -693,10 +821,13 @@ async function resolveCurrentPlayer(io: IoServer, lobbyId: string): Promise<void
     // Change 5: merge two sequential updateMany calls into one
     await prisma.auctionQueue.updateMany({
       where: { lobbyId, playerId: player.id, isDone: false },
-      data:  { isDone: true, isUnsold: true },
+      data: { isDone: true, isUnsold: true },
     });
     state.unsoldPool.push(player);
-    io.to(lobbyId).emit('lobby:player_unsold', { playerId: player.id, playerName: player.name });
+    io.to(lobbyId).emit("lobby:player_unsold", {
+      playerId: player.id,
+      playerName: player.name,
+    });
     cancelAllBots(state.botSessions);
     state.currentPlayerDb = null;
     state.currentPlayer = null;
@@ -708,7 +839,7 @@ async function resolveCurrentPlayer(io: IoServer, lobbyId: string): Promise<void
   // ── Sold path ────────────────────────────────────────────────────────────────
   await prisma.auctionQueue.updateMany({
     where: { lobbyId, playerId: player.id, isDone: false },
-    data:  { isDone: true },
+    data: { isDone: true },
   });
 
   const winningAmount = state.currentBid.amount;
@@ -738,20 +869,20 @@ async function sellPlayer(
   const state = auctionStates.get(lobbyId);
   if (!state || !state.currentPlayer) return;
 
-  const player   = state.currentPlayer;
+  const player = state.currentPlayer;
   const category = player.category;
   // Change 7: O(1) seatsMap lookup
-  const seat     = state.seatsMap.get(winningSeatId);
+  const seat = state.seatsMap.get(winningSeatId);
   if (!seat) return;
 
   // DB transaction: deduct purse, increment count, create SquadSlot + AuctionResult
-  const countField = `count${category}` as 'countA' | 'countB' | 'countC';
+  const countField = `count${category}` as "countA" | "countB" | "countC";
   await prisma.$transaction([
     prisma.lobbySeat.update({
       where: { id: winningSeatId },
       data: {
         purseRemaining: { decrement: finalPrice },
-        [countField]:   { increment: 1 },
+        [countField]: { increment: 1 },
       },
     }),
     prisma.squadSlot.create({
@@ -759,15 +890,15 @@ async function sellPlayer(
         lobbyId,
         franchiseId: seat.franchiseId,
         lobbySeatId: seat.seatId,
-        playerId:    player.id,
-        slotType:    SlotType.AUCTION,
-        pricePaid:   finalPrice,
+        playerId: player.id,
+        slotType: SlotType.AUCTION,
+        pricePaid: finalPrice,
       },
     }),
     prisma.auctionResult.create({
       data: {
         lobbyId,
-        playerId:    player.id,
+        playerId: player.id,
         franchiseId: seat.franchiseId,
         finalPrice,
         wasLuckyDraw,
@@ -776,33 +907,33 @@ async function sellPlayer(
   ]);
 
   // Update in-memory seat
-  seat.purseRemaining          -= finalPrice;
+  seat.purseRemaining -= finalPrice;
   seat.categoryCount[category] += 1;
   seat.squad.push({
     franchiseId: seat.franchiseId,
-    playerId:    player.id,
+    playerId: player.id,
     player,
-    slotType:    'AUCTION',
-    pricePaid:   finalPrice,
+    slotType: "AUCTION",
+    pricePaid: finalPrice,
   });
 
-  io.to(lobbyId).emit('lobby:player_sold', {
-    playerId:      player.id,
-    seatId:        winningSeatId,
+  io.to(lobbyId).emit("lobby:player_sold", {
+    playerId: player.id,
+    seatId: winningSeatId,
     franchiseName: seat.franchiseName,
     finalPrice,
   });
 
   cancelAllBots(state.botSessions);
   updateRosterOnSold(state.botSessions, winningSeatId, {
-    category: player.category as import('@prisma/client').PlayerCategory,
-    role:     player.role as PlayerRole,
+    category: player.category as import("@prisma/client").PlayerCategory,
+    role: player.role as PlayerRole,
     finalPrice,
   });
   state.currentPlayerDb = null;
 
   state.currentPlayer = null;
-  state.currentBid    = null;
+  state.currentBid = null;
   // Change 9: break recursive call chain with setImmediate
   setImmediate(() => revealNextPlayer(io, lobbyId).catch(console.error));
 }
@@ -817,20 +948,21 @@ async function runLuckyDraw(
   const state = auctionStates.get(lobbyId);
   if (!state || !state.currentPlayer) return;
 
-  state.luckyDrawActive     = true;
+  state.luckyDrawActive = true;
   state.luckyDrawContenders = contenderSeatIds;
 
-  io.to(lobbyId).emit('lobby:lucky_draw', {
-    playerId:         state.currentPlayer.id,
+  io.to(lobbyId).emit("lobby:lucky_draw", {
+    playerId: state.currentPlayer.id,
     contenderSeatIds,
   });
 
   await delay(LUCKY_DRAW_MS);
 
-  state.luckyDrawActive     = false;
+  state.luckyDrawActive = false;
   state.luckyDrawContenders = [];
 
-  const winner = contenderSeatIds[Math.floor(Math.random() * contenderSeatIds.length)];
+  const winner =
+    contenderSeatIds[Math.floor(Math.random() * contenderSeatIds.length)];
   const category = state.currentPlayer.category;
   await sellPlayer(io, lobbyId, winner, MAX_PRICE[category], true);
 }
@@ -841,19 +973,28 @@ async function advancePhase(io: IoServer, lobbyId: string): Promise<void> {
   const state = auctionStates.get(lobbyId);
   if (!state) return;
 
-  // Change 2: use module-level PHASE_ORDER constant
-  const idx  = PHASE_ORDER.indexOf(state.phase);
-  const next = PHASE_ORDER[idx + 1] ?? 'COMPLETE';
+  const order: AuctionState["phase"][] = [
+    "MARQUEE_DRAW",
+    "CATEGORY_A",
+    "CATEGORY_B",
+    "CATEGORY_C",
+    "UNSOLD_ROUND",
+    "COMPLETE",
+  ];
+  const idx = order.indexOf(state.phase);
+  const next = order[idx + 1] ?? "COMPLETE";
 
-  console.log(`[auction] advancePhase ${state.phase} → ${next} lobbyId=${lobbyId}`);
+  console.log(
+    `[auction] advancePhase ${state.phase} → ${next} lobbyId=${lobbyId}`,
+  );
   state.phase = next;
 
-  if (next === 'UNSOLD_ROUND') {
+  if (next === "UNSOLD_ROUND") {
     await setupUnsoldRound(io, lobbyId);
     return;
   }
 
-  if (next === 'COMPLETE') {
+  if (next === "COMPLETE") {
     await completeAuction(io, lobbyId);
     return;
   }
@@ -872,9 +1013,13 @@ async function setupUnsoldRound(io: IoServer, lobbyId: string): Promise<void> {
   const seatsNeedingB = state.seats.filter((s) => s.categoryCount.B < QUOTA.B);
   const seatsNeedingC = state.seats.filter((s) => s.categoryCount.C < QUOTA.C);
 
-  if (seatsNeedingA.length === 0 && seatsNeedingB.length === 0 && seatsNeedingC.length === 0) {
+  if (
+    seatsNeedingA.length === 0 &&
+    seatsNeedingB.length === 0 &&
+    seatsNeedingC.length === 0
+  ) {
     // All teams are full — skip straight to complete
-    state.phase = 'COMPLETE';
+    state.phase = "COMPLETE";
     await completeAuction(io, lobbyId);
     return;
   }
@@ -883,20 +1028,20 @@ async function setupUnsoldRound(io: IoServer, lobbyId: string): Promise<void> {
   const unsoldRows = await prisma.auctionQueue.findMany({
     where: { lobbyId, isUnsold: true },
     include: { player: true },
-    orderBy: { position: 'asc' },
+    orderBy: { position: "asc" },
   });
 
   // Filter to only players that are still actually needed by at least one team
   const needed = unsoldRows.filter((row) => {
     const cat = row.player.category;
-    if (cat === 'A') return seatsNeedingA.length > 0;
-    if (cat === 'B') return seatsNeedingB.length > 0;
-    if (cat === 'C') return seatsNeedingC.length > 0;
+    if (cat === "A") return seatsNeedingA.length > 0;
+    if (cat === "B") return seatsNeedingB.length > 0;
+    if (cat === "C") return seatsNeedingC.length > 0;
     return false;
   });
 
   if (needed.length === 0) {
-    state.phase = 'COMPLETE';
+    state.phase = "COMPLETE";
     await completeAuction(io, lobbyId);
     return;
   }
@@ -906,7 +1051,7 @@ async function setupUnsoldRound(io: IoServer, lobbyId: string): Promise<void> {
     data: needed.map((row, i) => ({
       lobbyId,
       playerId: row.playerId,
-      phase:    AuctionPhase.UNSOLD_ROUND,
+      phase: AuctionPhase.UNSOLD_ROUND,
       position: i,
     })),
     skipDuplicates: true,
@@ -915,7 +1060,9 @@ async function setupUnsoldRound(io: IoServer, lobbyId: string): Promise<void> {
   // Clear in-memory unsold pool now that we've re-queued
   state.unsoldPool = [];
 
-  console.log(`[auction] unsold round queued ${needed.length} players lobbyId=${lobbyId}`);
+  console.log(
+    `[auction] unsold round queued ${needed.length} players lobbyId=${lobbyId}`,
+  );
   await revealNextPlayer(io, lobbyId);
 }
 
@@ -931,9 +1078,12 @@ async function completeAuction(io: IoServer, lobbyId: string): Promise<void> {
     state.timerId = null;
   }
 
-  await prisma.lobby.update({ where: { id: lobbyId }, data: { status: 'COMPLETE' } });
+  await prisma.lobby.update({
+    where: { id: lobbyId },
+    data: { status: "COMPLETE" },
+  });
 
-  io.to(lobbyId).emit('lobby:auction_complete', { seats: state.seats });
+  io.to(lobbyId).emit("lobby:auction_complete", { seats: state.seats });
 
   auctionStates.delete(lobbyId);
   console.log(`[auction] complete lobbyId=${lobbyId}`);

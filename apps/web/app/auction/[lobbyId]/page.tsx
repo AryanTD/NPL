@@ -1,86 +1,177 @@
-'use client';
+"use client";
 
-import { Suspense, useEffect, useRef, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
-import { useUser } from '@clerk/nextjs';
-import type { BidEvent, Lobby, LobbySeat, Player, PlayerCategory, PlayerRole } from '@npl-auction/types';
-import socket from '../../../lib/socket';
+import { memo, Suspense, useEffect, useRef, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
+import type {
+  BidEvent,
+  Lobby,
+  LobbySeat,
+  Player,
+  PlayerCategory,
+  PlayerRole,
+} from "@npl-auction/types";
+import socket from "../../../lib/socket";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const FRANCHISE_META: Record<string, { shortName: string; primary: string; secondary: string; city: string }> = {
-  'Kathmandu Gorkhas':   { shortName: 'KTM', primary: '#1B3A6B', secondary: '#C9A84C', city: 'Kathmandu'    },
-  'Pokhara Avengers':    { shortName: 'PKR', primary: '#C0392B', secondary: '#FFFFFF', city: 'Pokhara'      },
-  'Chitwan Rhinos':      { shortName: 'CHT', primary: '#196F3D', secondary: '#F4D03F', city: 'Chitwan'      },
-  'Biratnagar Kings':    { shortName: 'BRT', primary: '#6C3483', secondary: '#F9E79F', city: 'Biratnagar'   },
-  'Janakpur Bolts':      { shortName: 'JNK', primary: '#1A5276', secondary: '#F39C12', city: 'Janakpur'     },
-  'Lumbini Lions':       { shortName: 'LMB', primary: '#922B21', secondary: '#FAD7A0', city: 'Lumbini'      },
-  'Sudurpaschim Royals': { shortName: 'SDR', primary: '#0E6655', secondary: '#A9DFBF', city: 'Sudurpaschim' },
-  'Karnali Yaks':        { shortName: 'KRN', primary: '#4A235A', secondary: '#D7BDE2', city: 'Karnali'      },
+const FRANCHISE_META: Record<
+  string,
+  { shortName: string; primary: string; secondary: string; city: string }
+> = {
+  "Kathmandu Gorkhas": {
+    shortName: "KTM",
+    primary: "#1B3A6B",
+    secondary: "#C9A84C",
+    city: "Kathmandu",
+  },
+  "Pokhara Avengers": {
+    shortName: "PKR",
+    primary: "#C0392B",
+    secondary: "#FFFFFF",
+    city: "Pokhara",
+  },
+  "Chitwan Rhinos": {
+    shortName: "CHT",
+    primary: "#196F3D",
+    secondary: "#F4D03F",
+    city: "Chitwan",
+  },
+  "Biratnagar Kings": {
+    shortName: "BRT",
+    primary: "#6C3483",
+    secondary: "#F9E79F",
+    city: "Biratnagar",
+  },
+  "Janakpur Bolts": {
+    shortName: "JNK",
+    primary: "#1A5276",
+    secondary: "#F39C12",
+    city: "Janakpur",
+  },
+  "Lumbini Lions": {
+    shortName: "LMB",
+    primary: "#922B21",
+    secondary: "#FAD7A0",
+    city: "Lumbini",
+  },
+  "Sudurpaschim Royals": {
+    shortName: "SDR",
+    primary: "#0E6655",
+    secondary: "#A9DFBF",
+    city: "Sudurpaschim",
+  },
+  "Karnali Yaks": {
+    shortName: "KRN",
+    primary: "#4A235A",
+    secondary: "#D7BDE2",
+    city: "Karnali",
+  },
 };
+import { meta } from "../../../lib/franchiseMeta";
 
 const CAT_COLOR: Record<string, string> = {
-  A: '#F59E0B', B: '#60A5FA', C: '#34D399', MARQUEE: '#F472B6',
+  A: "#F59E0B",
+  B: "#60A5FA",
+  C: "#34D399",
+  MARQUEE: "#F472B6",
 };
-const CAT_BASE: Record<string, number> = { A: 1_000_000, B: 500_000, C: 200_000 };
-const CAT_MAX:  Record<string, number> = { A: 1_500_000, B: 1_000_000, C: 500_000 };
+const CAT_BASE: Record<string, number> = {
+  A: 1_000_000,
+  B: 500_000,
+  C: 200_000,
+};
+const CAT_MAX: Record<string, number> = {
+  A: 1_500_000,
+  B: 1_000_000,
+  C: 500_000,
+};
 const CAT_LABEL: Record<string, string> = {
-  A: 'Category A', B: 'Category B', C: 'Category C',
-  CATEGORY_A: 'Category A', CATEGORY_B: 'Category B', CATEGORY_C: 'Category C',
-  MARQUEE_DRAW: 'Marquee Draw', UNSOLD_ROUND: 'Unsold Round',
+  A: "Category A",
+  B: "Category B",
+  C: "Category C",
+  CATEGORY_A: "Category A",
+  CATEGORY_B: "Category B",
+  CATEGORY_C: "Category C",
+  MARQUEE_DRAW: "Marquee Draw",
+  UNSOLD_ROUND: "Unsold Round",
 };
 const CAT_QUOTAS = { A: 3, B: 4, C: 3 } as const;
-const BUDGET    = 9_000_000;
-const BID_INC   = 25_000;
+const BUDGET = 9_000_000;
+const BID_INC = 25_000;
 const TIMER_MAX = 10;
 
 const ROLE_LABEL: Record<string, string> = {
-  BAT: 'Batsman', BOWL: 'Bowler', AR: 'All-Rounder', WK: 'WK-Batsman',
+  BAT: "Batsman",
+  BOWL: "Bowler",
+  AR: "All-Rounder",
+  WK: "WK-Batsman",
 };
 const ROLE_BADGE: Record<string, string> = {
-  BAT: 'BAT', BOWL: 'BWL', AR: 'AR', WK: 'WK',
+  BAT: "BAT",
+  BOWL: "BWL",
+  AR: "AR",
+  WK: "WK",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function meta(name: string) {
-  return FRANCHISE_META[name] ?? { shortName: '???', primary: '#5b6f9a', secondary: '#e4e9f4', city: '' };
+  return (
+    FRANCHISE_META[name] ?? {
+      shortName: "???",
+      primary: "#5b6f9a",
+      secondary: "#e4e9f4",
+      city: "",
+    }
+  );
 }
 
 function fmtNPR(n: number): string {
-  if (n >= 1_000_000) return `रू${(n / 100_000).toFixed(1).replace('.0', '')}L`;
+  if (n >= 1_000_000) return `रू${(n / 100_000).toFixed(1).replace(".0", "")}L`;
   return `रू${Math.round(n / 1_000)}K`;
 }
 
 function fmtL(n: number): string {
-  return `रू${(n / 100_000).toFixed(1).replace('.0', '')}L`;
+  return `रू${(n / 100_000).toFixed(1).replace(".0", "")}L`;
 }
 
-function canAffordBid(seat: LobbySeat, newBid: number, player: Player): boolean {
+function canAffordBid(
+  seat: LobbySeat,
+  newBid: number,
+  player: Player,
+): boolean {
   if (seat.purseRemaining < newBid) return false;
   const cat = player.category;
-  const aLeft = Math.max(0, 3 - seat.categoryCount.A - (cat === 'A' ? 1 : 0));
-  const bLeft = Math.max(0, 4 - seat.categoryCount.B - (cat === 'B' ? 1 : 0));
-  const cLeft = Math.max(0, 3 - seat.categoryCount.C - (cat === 'C' ? 1 : 0));
-  const minNeeded = aLeft * CAT_BASE.A + bLeft * CAT_BASE.B + cLeft * CAT_BASE.C;
-  return (seat.purseRemaining - newBid) >= minNeeded;
+  const aLeft = Math.max(0, 3 - seat.categoryCount.A - (cat === "A" ? 1 : 0));
+  const bLeft = Math.max(0, 4 - seat.categoryCount.B - (cat === "B" ? 1 : 0));
+  const cLeft = Math.max(0, 3 - seat.categoryCount.C - (cat === "C" ? 1 : 0));
+  const minNeeded =
+    aLeft * CAT_BASE.A + bLeft * CAT_BASE.B + cLeft * CAT_BASE.C;
+  return seat.purseRemaining - newBid >= minNeeded;
 }
 
 function hasQuota(seat: LobbySeat, cat: string): boolean {
-  if (cat === 'A' && seat.categoryCount.A >= CAT_QUOTAS.A) return false;
-  if (cat === 'B' && seat.categoryCount.B >= CAT_QUOTAS.B) return false;
-  if (cat === 'C' && seat.categoryCount.C >= CAT_QUOTAS.C) return false;
+  if (cat === "A" && seat.categoryCount.A >= CAT_QUOTAS.A) return false;
+  if (cat === "B" && seat.categoryCount.B >= CAT_QUOTAS.B) return false;
+  if (cat === "C" && seat.categoryCount.C >= CAT_QUOTAS.C) return false;
   return true;
 }
 
 function statRows(player: Player): { label: string; value: string | number }[] {
   const rows: { label: string; value: string | number }[] = [];
-  if (player.stats.runs > 0) rows.push({ label: 'RUNS', value: player.stats.runs });
-  if (player.stats.wickets > 0) rows.push({ label: 'WKTS', value: player.stats.wickets });
-  if (player.stats.batting_avg !== null) rows.push({ label: 'AVG', value: player.stats.batting_avg.toFixed(1) });
-  if (player.stats.strike_rate !== null) rows.push({ label: 'SR', value: player.stats.strike_rate.toFixed(1) });
-  if (player.stats.bowling_avg !== null) rows.push({ label: 'BWL AVG', value: player.stats.bowling_avg.toFixed(1) });
-  if (player.stats.economy !== null) rows.push({ label: 'ECON', value: player.stats.economy.toFixed(2) });
+  if (player.stats.runs > 0)
+    rows.push({ label: "RUNS", value: player.stats.runs });
+  if (player.stats.wickets > 0)
+    rows.push({ label: "WKTS", value: player.stats.wickets });
+  if (player.stats.batting_avg !== null)
+    rows.push({ label: "AVG", value: player.stats.batting_avg.toFixed(1) });
+  if (player.stats.strike_rate !== null)
+    rows.push({ label: "SR", value: player.stats.strike_rate.toFixed(1) });
+  if (player.stats.bowling_avg !== null)
+    rows.push({ label: "BWL AVG", value: player.stats.bowling_avg.toFixed(1) });
+  if (player.stats.economy !== null)
+    rows.push({ label: "ECON", value: player.stats.economy.toFixed(2) });
   return rows.slice(0, 3);
 }
 
@@ -96,15 +187,32 @@ export default function AuctionPageWrapper() {
 
 function FullPageLoader() {
   return (
-    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-      <div className="animate-spin-slow" style={{ width: 28, height: 28, border: '2px solid var(--border2)', borderTopColor: 'var(--gold)', borderRadius: '50%' }} />
+    <div
+      style={{
+        height: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "var(--bg)",
+      }}
+    >
+      <div
+        className="animate-spin-slow"
+        style={{
+          width: 28,
+          height: 28,
+          border: "2px solid var(--border2)",
+          borderTopColor: "var(--gold)",
+          borderRadius: "50%",
+        }}
+      />
     </div>
   );
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type BidPanelState = 'bidding' | 'sold' | 'unsold';
+type BidPanelState = "bidding" | "sold" | "unsold";
 
 interface CurrentBidInfo {
   seatId: string;
@@ -115,53 +223,61 @@ interface CurrentBidInfo {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 function AuctionPage() {
-  const params   = useParams();
-  const sp       = useSearchParams();
+  const params = useParams();
+  const sp = useSearchParams();
   const { user } = useUser();
 
   const lobbyId = params.lobbyId as string;
-  const seatId  = sp.get('seatId') ?? '';
+  const seatId = sp.get("seatId") ?? "";
 
   // Core state
-  const [seats,            setSeats]            = useState<LobbySeat[]>([]);
-  const [lobbyCode,        setLobbyCode]        = useState('');
-  const [auctionPhase,     setAuctionPhase]     = useState('MARQUEE_DRAW');
-  const [currentPlayer,    setCurrentPlayer]    = useState<Player | null>(null);
-  const [currentBid,       setCurrentBid]       = useState<CurrentBidInfo | null>(null);
-  const [timerSeconds,     setTimerSeconds]     = useState(TIMER_MAX);
-  const [bidPanelState,    setBidPanelState]    = useState<BidPanelState>('bidding');
-  const [soldInfo,         setSoldInfo]         = useState<{ franchiseName: string; primary: string; price: number } | null>(null);
-  const [feedLog,          setFeedLog]          = useState<string[]>([]);
-  const [playerKey,        setPlayerKey]        = useState(0); // for pop-in re-trigger
-  const [bidPending,       setBidPending]       = useState(false);
+  const [seats, setSeats] = useState<LobbySeat[]>([]);
+  const [lobbyCode, setLobbyCode] = useState("");
+  const [auctionPhase, setAuctionPhase] = useState("MARQUEE_DRAW");
+  const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
+  const [currentBid, setCurrentBid] = useState<CurrentBidInfo | null>(null);
+  const [timerSeconds, setTimerSeconds] = useState(TIMER_MAX);
+  const [bidPanelState, setBidPanelState] = useState<BidPanelState>("bidding");
+  const [soldInfo, setSoldInfo] = useState<{
+    franchiseName: string;
+    primary: string;
+    price: number;
+  } | null>(null);
+  const [feedLog, setFeedLog] = useState<string[]>([]);
+  const [playerKey, setPlayerKey] = useState(0); // for pop-in re-trigger
+  const [bidPending, setBidPending] = useState(false);
 
   // Lucky draw state
-  const [luckyActive,      setLuckyActive]      = useState(false);
-  const [luckyContenders,  setLuckyContenders]  = useState<string[]>([]);
-  const [luckyWinner,      setLuckyWinner]      = useState<string | null>(null);
+  const [luckyActive, setLuckyActive] = useState(false);
+  const [luckyContenders, setLuckyContenders] = useState<string[]>([]);
+  const [luckyWinner, setLuckyWinner] = useState<string | null>(null);
 
   // Complete state
-  const [auctionComplete,  setAuctionComplete]  = useState(false);
-  const [finalSeats,       setFinalSeats]       = useState<LobbySeat[] | null>(null);
+  const [auctionComplete, setAuctionComplete] = useState(false);
+  const [finalSeats, setFinalSeats] = useState<LobbySeat[] | null>(null);
 
   // Sold/unsold counts
-  const [soldCount,        setSoldCount]        = useState(0);
+  const [soldCount, setSoldCount] = useState(0);
 
   // Upcoming queue
-  const [upcomingQueue,    setUpcomingQueue]    = useState<Array<{
-    playerId: string;
-    playerName: string;
-    category: PlayerCategory;
-    role: PlayerRole;
-    basePrice: number;
-  }>>([]);
+  const [upcomingQueue, setUpcomingQueue] = useState<
+    Array<{
+      playerId: string;
+      playerName: string;
+      category: PlayerCategory;
+      role: PlayerRole;
+      basePrice: number;
+    }>
+  >([]);
 
   // Ref so socket closures always see the latest currentPlayer
   const currentPlayerRef = useRef<Player | null>(null);
-  useEffect(() => { currentPlayerRef.current = currentPlayer; }, [currentPlayer]);
+  useEffect(() => {
+    currentPlayerRef.current = currentPlayer;
+  }, [currentPlayer]);
 
   function pushFeed(msg: string) {
-    setFeedLog(prev => [msg, ...prev].slice(0, 30));
+    setFeedLog((prev) => [msg, ...prev].slice(0, 30));
   }
 
   // ── Socket lifecycle ──────────────────────────────────────────────────────
@@ -171,178 +287,251 @@ function AuctionPage() {
 
     socket.connect();
 
-    socket.on('connect', () => {
-      socket.emit('lobby:join', { lobbyId, userId: user.id, seatId });
+    socket.on("connect", () => {
+      socket.emit("lobby:join", { lobbyId, userId: user.id, seatId });
     });
 
-    socket.on('lobby:state', (lobby: Lobby) => {
+    socket.on("lobby:state", (lobby: Lobby) => {
       setSeats(lobby.seats);
       setLobbyCode(lobby.code);
     });
 
-    socket.on('lobby:player_revealed', (player: Player) => {
+    socket.on("lobby:player_revealed", (player: Player) => {
       setCurrentPlayer(player);
       setCurrentBid(null);
       setTimerSeconds(TIMER_MAX);
-      setBidPanelState('bidding');
+      setBidPanelState("bidding");
       setSoldInfo(null);
       setBidPending(false);
       setLuckyActive(false);
       setLuckyContenders([]);
       setLuckyWinner(null);
       setAuctionPhase(`CATEGORY_${player.category}`);
-      setPlayerKey(k => k + 1);
-      pushFeed(`${CAT_LABEL[player.category] ?? player.category} · ${player.name} · Base ${fmtNPR(player.base_price)}`);
+      setPlayerKey((k) => k + 1);
+      pushFeed(
+        `${CAT_LABEL[player.category] ?? player.category} · ${player.name} · Base ${fmtNPR(player.base_price)}`,
+      );
     });
 
-    socket.on('lobby:bid_placed', (event: BidEvent) => {
+    socket.on("lobby:bid_placed", (event: BidEvent) => {
       const m = meta(event.franchiseName);
-      setCurrentBid({ seatId: event.seatId, franchiseName: event.franchiseName, amount: event.amount });
+      setCurrentBid({
+        seatId: event.seatId,
+        franchiseName: event.franchiseName,
+        amount: event.amount,
+      });
       setBidPending(false);
       pushFeed(`${m.shortName} bids ${fmtNPR(event.amount)}`);
     });
 
-    socket.on('lobby:timer_tick', ({ secondsLeft }: { secondsLeft: number }) => {
-      setTimerSeconds(secondsLeft);
-    });
+    socket.on(
+      "lobby:timer_tick",
+      ({ secondsLeft }: { secondsLeft: number }) => {
+        setTimerSeconds(secondsLeft);
+      },
+    );
 
-    socket.on('lobby:player_sold', ({ playerId, seatId: winnerId, franchiseName, finalPrice }: {
-      playerId: string; seatId: string; franchiseName: string; finalPrice: number;
-    }) => {
-      const player = currentPlayerRef.current;
-      const cat = player?.category;
-      const m = meta(franchiseName);
-      if (cat && player) {
-        setSeats(prev => prev.map(s => {
-          if (s.seatId !== winnerId) return s;
-          return {
-            ...s,
-            purseRemaining: s.purseRemaining - finalPrice,
-            categoryCount: { ...s.categoryCount, [cat]: s.categoryCount[cat] + 1 },
-            squad: [
-              ...s.squad,
-              {
-                franchiseId: s.franchiseId,
-                playerId,
-                player,
-                slotType: 'AUCTION' as const,
-                pricePaid: finalPrice,
-              },
-            ],
-          };
-        }));
-      }
-      setSoldCount(c => c + 1);
-      pushFeed(`SOLD — ${player?.name ?? ''} → ${meta(franchiseName).shortName} for ${fmtNPR(finalPrice)}`);
+    socket.on(
+      "lobby:player_sold",
+      ({
+        playerId,
+        seatId: winnerId,
+        franchiseName,
+        finalPrice,
+      }: {
+        playerId: string;
+        seatId: string;
+        franchiseName: string;
+        finalPrice: number;
+      }) => {
+        const player = currentPlayerRef.current;
+        const cat = player?.category;
+        const m = meta(franchiseName);
+        if (cat && player) {
+          setSeats((prev) =>
+            prev.map((s) => {
+              if (s.seatId !== winnerId) return s;
+              return {
+                ...s,
+                purseRemaining: s.purseRemaining - finalPrice,
+                categoryCount: {
+                  ...s.categoryCount,
+                  [cat]: s.categoryCount[cat] + 1,
+                },
+                squad: [
+                  ...s.squad,
+                  {
+                    franchiseId: s.franchiseId,
+                    playerId,
+                    player,
+                    slotType: "AUCTION" as const,
+                    pricePaid: finalPrice,
+                  },
+                ],
+              };
+            }),
+          );
+        }
+        setSoldCount((c) => c + 1);
+        pushFeed(
+          `SOLD — ${player?.name ?? ""} → ${meta(franchiseName).shortName} for ${fmtNPR(finalPrice)}`,
+        );
 
-      if (luckyActive) {
-        // Lucky draw: set winner so overlay can reveal it
-        setLuckyWinner(winnerId);
-      } else {
-        // Normal sold flow
-        setSoldInfo({ franchiseName, primary: m.primary, price: finalPrice });
-        setBidPanelState('sold');
+        if (luckyActive) {
+          // Lucky draw: set winner so overlay can reveal it
+          setLuckyWinner(winnerId);
+        } else {
+          // Normal sold flow
+          setSoldInfo({ franchiseName, primary: m.primary, price: finalPrice });
+          setBidPanelState("sold");
+          setCurrentPlayer(null);
+          setCurrentBid(null);
+        }
+      },
+    );
+
+    socket.on(
+      "lobby:player_unsold",
+      ({ playerName }: { playerId: string; playerName: string }) => {
+        setBidPanelState("unsold");
         setCurrentPlayer(null);
         setCurrentBid(null);
-      }
-    });
+        pushFeed(`UNSOLD — ${playerName} returned to pool`);
+      },
+    );
 
-    socket.on('lobby:player_unsold', ({ playerName }: { playerId: string; playerName: string }) => {
-      setBidPanelState('unsold');
-      setCurrentPlayer(null);
-      setCurrentBid(null);
-      pushFeed(`UNSOLD — ${playerName} returned to pool`);
-    });
+    socket.on(
+      "lobby:lucky_draw",
+      ({
+        contenderSeatIds,
+      }: {
+        playerId: string;
+        contenderSeatIds: string[];
+      }) => {
+        setLuckyActive(true);
+        setLuckyContenders(contenderSeatIds);
+        setLuckyWinner(null);
+        pushFeed(
+          `MAX PRICE HIT — Lucky draw for ${currentPlayerRef.current?.name ?? ""}!`,
+        );
+      },
+    );
 
-    socket.on('lobby:lucky_draw', ({ contenderSeatIds }: { playerId: string; contenderSeatIds: string[] }) => {
-      setLuckyActive(true);
-      setLuckyContenders(contenderSeatIds);
-      setLuckyWinner(null);
-      pushFeed(`MAX PRICE HIT — Lucky draw for ${currentPlayerRef.current?.name ?? ''}!`);
-    });
+    socket.on(
+      "lobby:marquee_assigned",
+      ({
+        playerName,
+        franchiseName,
+      }: {
+        playerId: string;
+        playerName: string;
+        franchiseId: string;
+        franchiseName: string;
+      }) => {
+        setAuctionPhase("MARQUEE_DRAW");
+        pushFeed(`MARQUEE — ${playerName} → ${meta(franchiseName).shortName}`);
+      },
+    );
 
-    socket.on('lobby:marquee_assigned', ({ playerName, franchiseName }: {
-      playerId: string; playerName: string; franchiseId: string; franchiseName: string;
-    }) => {
-      setAuctionPhase('MARQUEE_DRAW');
-      pushFeed(`MARQUEE — ${playerName} → ${meta(franchiseName).shortName}`);
-    });
+    socket.on(
+      "lobby:queue_update",
+      ({
+        upcoming,
+      }: {
+        upcoming: Array<{
+          playerId: string;
+          playerName: string;
+          category: PlayerCategory;
+          role: PlayerRole;
+          basePrice: number;
+        }>;
+      }) => {
+        setUpcomingQueue(upcoming);
+      },
+    );
 
-    socket.on('lobby:queue_update', ({ upcoming }: { upcoming: Array<{
-      playerId: string;
-      playerName: string;
-      category: PlayerCategory;
-      role: PlayerRole;
-      basePrice: number;
-    }> }) => {
-      setUpcomingQueue(upcoming);
-    });
-
-    socket.on('lobby:bot_thinking', () => {
+    socket.on("lobby:bot_thinking", () => {
       // Subtle — no visible indicator needed beyond bid placement
     });
 
-    socket.on('lobby:auction_complete', ({ seats: done }: { seats: LobbySeat[] }) => {
-      setAuctionComplete(true);
-      setFinalSeats(done);
-      setCurrentPlayer(null);
-      setCurrentBid(null);
-    });
+    socket.on(
+      "lobby:auction_complete",
+      ({ seats: done }: { seats: LobbySeat[] }) => {
+        setAuctionComplete(true);
+        setFinalSeats(done);
+        setCurrentPlayer(null);
+        setCurrentBid(null);
+      },
+    );
 
-    socket.on('lobby:error', ({ message }: { message: string }) => {
+    socket.on("lobby:error", ({ message }: { message: string }) => {
       setBidPending(false);
       pushFeed(`Error: ${message}`);
     });
 
     return () => {
-      socket.off('connect');
-      socket.off('lobby:state');
-      socket.off('lobby:player_revealed');
-      socket.off('lobby:bid_placed');
-      socket.off('lobby:timer_tick');
-      socket.off('lobby:player_sold');
-      socket.off('lobby:player_unsold');
-      socket.off('lobby:lucky_draw');
-      socket.off('lobby:marquee_assigned');
-      socket.off('lobby:queue_update');
-      socket.off('lobby:bot_thinking');
-      socket.off('lobby:auction_complete');
-      socket.off('lobby:error');
+      socket.off("connect");
+      socket.off("lobby:state");
+      socket.off("lobby:player_revealed");
+      socket.off("lobby:bid_placed");
+      socket.off("lobby:timer_tick");
+      socket.off("lobby:player_sold");
+      socket.off("lobby:player_unsold");
+      socket.off("lobby:lucky_draw");
+      socket.off("lobby:marquee_assigned");
+      socket.off("lobby:queue_update");
+      socket.off("lobby:bot_thinking");
+      socket.off("lobby:auction_complete");
+      socket.off("lobby:error");
       socket.disconnect();
     };
   }, [lobbyId, seatId, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Derived ──────────────────────────────────────────────────────────────
 
-  const mySeat         = seats.find(s => s.seatId === seatId) ?? null;
-  const isUserLeading  = currentBid?.seatId === seatId;
-  const bidderMeta     = currentBid ? meta(currentBid.franchiseName) : null;
-  const timerPct       = (timerSeconds / TIMER_MAX) * 100;
-  const timerColor     = timerSeconds <= 3 ? '#ef4444' : timerSeconds <= 6 ? '#f59e0b' : 'var(--green)';
-  const catCfg         = currentPlayer ? {
-    color: CAT_COLOR[currentPlayer.category] ?? '#888',
-    label: CAT_LABEL[currentPlayer.category] ?? currentPlayer.category,
-    base:  currentPlayer.base_price,
-    max:   CAT_MAX[currentPlayer.category] ?? currentPlayer.base_price,
-  } : null;
+  const mySeat = seats.find((s) => s.seatId === seatId) ?? null;
+  const isUserLeading = currentBid?.seatId === seatId;
+  const bidderMeta = currentBid ? meta(currentBid.franchiseName) : null;
+  const timerPct = (timerSeconds / TIMER_MAX) * 100;
+  const timerColor =
+    timerSeconds <= 3
+      ? "#ef4444"
+      : timerSeconds <= 6
+        ? "#f59e0b"
+        : "var(--green)";
+  const catCfg = currentPlayer
+    ? {
+        color: CAT_COLOR[currentPlayer.category] ?? "#888",
+        label: CAT_LABEL[currentPlayer.category] ?? currentPlayer.category,
+        base: currentPlayer.base_price,
+        max: CAT_MAX[currentPlayer.category] ?? currentPlayer.base_price,
+      }
+    : null;
 
   // Increment buttons based on category
-  const incrementOptions: { label: string; amount: number }[] = currentPlayer && mySeat
-    ? (currentPlayer.category === 'C'
-        ? [BID_INC, BID_INC * 2]
-        : [BID_INC, BID_INC * 2, BID_INC * 4]
-      ).map(inc => ({ label: `+${fmtNPR(inc)}`, amount: (currentBid?.amount ?? currentPlayer.base_price - BID_INC) + inc }))
-    : [];
+  const incrementOptions: { label: string; amount: number }[] =
+    currentPlayer && mySeat
+      ? (currentPlayer.category === "C"
+          ? [BID_INC, BID_INC * 2]
+          : [BID_INC, BID_INC * 2, BID_INC * 4]
+        ).map((inc) => ({
+          label: `+${fmtNPR(inc)}`,
+          amount:
+            (currentBid?.amount ?? currentPlayer.base_price - BID_INC) + inc,
+        }))
+      : [];
 
-  const nextBid = currentBid ? currentBid.amount + BID_INC : (currentPlayer?.base_price ?? 0);
+  const nextBid = currentBid
+    ? currentBid.amount + BID_INC
+    : (currentPlayer?.base_price ?? 0);
 
   const canBidNow = !!(
     mySeat &&
     currentPlayer &&
     !luckyActive &&
     !bidPending &&
-    bidPanelState === 'bidding' &&
-    mySeat.seatType === 'HUMAN' &&
+    bidPanelState === "bidding" &&
+    mySeat.seatType === "HUMAN" &&
     hasQuota(mySeat, currentPlayer.category) &&
     canAffordBid(mySeat, nextBid, currentPlayer)
   );
@@ -352,7 +541,7 @@ function AuctionPage() {
     if (!hasQuota(mySeat, currentPlayer.category)) return;
     if (!canAffordBid(mySeat, amount, currentPlayer)) return;
     setBidPending(true);
-    socket.emit('lobby:place_bid', { lobbyId, amount });
+    socket.emit("lobby:place_bid", { lobbyId, amount });
   }
 
   function handleLuckyDrawClose() {
@@ -362,7 +551,7 @@ function AuctionPage() {
     // sold info was already applied to seats via player_sold handler
     setCurrentPlayer(null);
     setCurrentBid(null);
-    setBidPanelState('bidding');
+    setBidPanelState("bidding");
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -372,37 +561,111 @@ function AuctionPage() {
   }
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', overflow: 'hidden' }}>
-
+    <div
+      style={{
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--bg)",
+        overflow: "hidden",
+      }}
+    >
       {/* Top bar (52px) */}
-      <div style={{
-        height: 52, flexShrink: 0,
-        borderBottom: '1px solid var(--border)',
-        display: 'flex', alignItems: 'center', padding: '0 16px', gap: 12,
-      }}>
-        <div style={{ fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 18, letterSpacing: 2, color: 'var(--red)' }}>NPL</div>
-        <div style={{ width: 1, height: 18, background: 'var(--border)', flexShrink: 0 }} />
+      <div
+        style={{
+          height: 52,
+          flexShrink: 0,
+          borderBottom: "1px solid var(--border)",
+          display: "flex",
+          alignItems: "center",
+          padding: "0 16px",
+          gap: 12,
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "Rajdhani",
+            fontWeight: 700,
+            fontSize: 18,
+            letterSpacing: 2,
+            color: "var(--red)",
+          }}
+        >
+          NPL
+        </div>
+        <div
+          style={{
+            width: 1,
+            height: 18,
+            background: "var(--border)",
+            flexShrink: 0,
+          }}
+        />
 
         {currentPlayer && catCfg && (
-          <div style={{
-            background: `${catCfg.color}20`, border: `1px solid ${catCfg.color}50`,
-            borderRadius: 5, padding: '3px 9px',
-            fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 12, letterSpacing: 1, color: catCfg.color,
-          }}>
+          <div
+            style={{
+              background: `${catCfg.color}20`,
+              border: `1px solid ${catCfg.color}50`,
+              borderRadius: 5,
+              padding: "3px 9px",
+              fontFamily: "Rajdhani",
+              fontWeight: 700,
+              fontSize: 12,
+              letterSpacing: 1,
+              color: catCfg.color,
+            }}
+          >
             {catCfg.label.toUpperCase()}
           </div>
         )}
 
-        <div style={{ fontSize: 13, color: 'var(--muted)' }}>
-          <span style={{ color: 'var(--text)', fontFamily: 'Rajdhani', fontWeight: 700 }}>{soldCount}</span> sold
+        <div style={{ fontSize: 13, color: "var(--muted)" }}>
+          <span
+            style={{
+              color: "var(--text)",
+              fontFamily: "Rajdhani",
+              fontWeight: 700,
+            }}
+          >
+            {soldCount}
+          </span>{" "}
+          sold
         </div>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <FranchiseCrest franchiseName={mySeat?.franchiseName ?? ''} size={28} />
+        <div
+          style={{
+            marginLeft: "auto",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <FranchiseCrest
+            franchiseName={mySeat?.franchiseName ?? ""}
+            size={28}
+          />
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{mySeat?.franchiseName ?? '—'}</div>
-            <div style={{ fontSize: 11, color: 'var(--muted)', display: 'flex', gap: 6 }}>
-              <span style={{ color: 'var(--green)', fontFamily: 'Rajdhani', fontWeight: 600 }}>
+            <div
+              style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}
+            >
+              {mySeat?.franchiseName ?? "—"}
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                color: "var(--muted)",
+                display: "flex",
+                gap: 6,
+              }}
+            >
+              <span
+                style={{
+                  color: "var(--green)",
+                  fontFamily: "Rajdhani",
+                  fontWeight: 600,
+                }}
+              >
                 {fmtL(mySeat?.purseRemaining ?? BUDGET)}
               </span>
               <span>remaining</span>
@@ -412,35 +675,87 @@ function AuctionPage() {
       </div>
 
       {/* Body: 3 columns */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
-
+      <div
+        style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}
+      >
         {/* LEFT: Queue (210px) */}
-        <div style={{ width: 210, flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', fontSize: 11, color: 'var(--muted)', letterSpacing: 1 }}>
+        <div
+          style={{
+            width: 210,
+            flexShrink: 0,
+            borderRight: "1px solid var(--border)",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <div
+            style={{
+              padding: "12px 14px",
+              borderBottom: "1px solid var(--border)",
+              fontSize: 11,
+              color: "var(--muted)",
+              letterSpacing: 1,
+            }}
+          >
             COMING UP
           </div>
-          <div style={{ flex: 1, overflow: 'auto', padding: 6 }}>
+          <div style={{ flex: 1, overflow: "auto", padding: 6 }}>
             {upcomingQueue.length === 0 ? (
-              <div style={{ padding: '20px 8px', fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>
+              <div
+                style={{
+                  padding: "20px 8px",
+                  fontSize: 12,
+                  color: "var(--muted)",
+                  textAlign: "center",
+                }}
+              >
                 Auction starting…
               </div>
             ) : (
               upcomingQueue.map((player, i) => (
-                <div key={player.playerId} style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 6,
-                  padding: '6px 8px', borderBottom: '1px solid #0c0f1c',
-                }}>
-                  <div style={{
-                    width: 6, height: 6, borderRadius: '50%',
-                    background: CAT_COLOR[player.category] ?? CAT_COLOR.MARQUEE,
-                    flexShrink: 0, marginTop: 4,
-                  }} />
+                <div
+                  key={player.playerId}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 6,
+                    padding: "6px 8px",
+                    borderBottom: "1px solid #0c0f1c",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background:
+                        CAT_COLOR[player.category] ?? CAT_COLOR.MARQUEE,
+                      flexShrink: 0,
+                      marginTop: 4,
+                    }}
+                  />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: "var(--text)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
                       {player.playerName}
                     </div>
-                    <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 1 }}>
-                      {ROLE_BADGE[player.role] ?? player.role} · {fmtNPR(player.basePrice)}
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: "var(--muted)",
+                        marginTop: 1,
+                      }}
+                    >
+                      {ROLE_BADGE[player.role] ?? player.role} ·{" "}
+                      {fmtNPR(player.basePrice)}
                     </div>
                   </div>
                 </div>
@@ -450,45 +765,100 @@ function AuctionPage() {
         </div>
 
         {/* CENTER: Auction floor */}
-        <div style={{
-          flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-          padding: 20, gap: 14, overflow: 'auto',
-        }}>
-          {(currentPlayer && bidPanelState === 'bidding') ? (
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            padding: 20,
+            gap: 14,
+            overflow: "auto",
+          }}
+        >
+          {currentPlayer && bidPanelState === "bidding" ? (
             <div
               key={playerKey}
               className="animate-pop-in"
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, width: '100%', maxWidth: 340 }}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 14,
+                width: "100%",
+                maxWidth: 340,
+              }}
             >
               {/* Player card */}
-              <div style={{
-                background: 'var(--s1)', border: `1px solid ${catCfg?.color}40`,
-                borderRadius: 12, overflow: 'hidden', width: '100%',
-              }}>
+              <div
+                style={{
+                  background: "var(--s1)",
+                  border: `1px solid ${catCfg?.color}40`,
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  width: "100%",
+                }}
+              >
                 {/* Colored header strip */}
-                <div style={{
-                  background: catCfg?.color, padding: '7px 14px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                }}>
-                  <span style={{ fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 13, color: '#07080f', letterSpacing: 0.5 }}>
-                    {catCfg?.label} · {ROLE_BADGE[currentPlayer.role] ?? currentPlayer.role}
+                <div
+                  style={{
+                    background: catCfg?.color,
+                    padding: "7px 14px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: "Rajdhani",
+                      fontWeight: 700,
+                      fontSize: 13,
+                      color: "#07080f",
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    {catCfg?.label} ·{" "}
+                    {ROLE_BADGE[currentPlayer.role] ?? currentPlayer.role}
                   </span>
-                  <span style={{ fontSize: 11, color: '#07080f', opacity: 0.6 }}>
-                    Base {fmtNPR(catCfg?.base ?? 0)} · Max {fmtNPR(catCfg?.max ?? 0)}
+                  <span
+                    style={{ fontSize: 11, color: "#07080f", opacity: 0.6 }}
+                  >
+                    Base {fmtNPR(catCfg?.base ?? 0)} · Max{" "}
+                    {fmtNPR(catCfg?.max ?? 0)}
                   </span>
                 </div>
 
                 {/* Avatar */}
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 20px 12px' }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    padding: "20px 20px 12px",
+                  }}
+                >
                   <PlayerAvatar player={currentPlayer} />
                 </div>
 
                 {/* Name + role */}
-                <div style={{ padding: '0 16px 14px', textAlign: 'center' }}>
-                  <div style={{ fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 24, color: 'var(--text)' }}>
+                <div style={{ padding: "0 16px 14px", textAlign: "center" }}>
+                  <div
+                    style={{
+                      fontFamily: "Rajdhani",
+                      fontWeight: 700,
+                      fontSize: 24,
+                      color: "var(--text)",
+                    }}
+                  >
                     {currentPlayer.name}
                   </div>
-                  <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: "var(--muted)",
+                      marginTop: 2,
+                    }}
+                  >
                     {ROLE_LABEL[currentPlayer.role] ?? currentPlayer.role}
                   </div>
                 </div>
@@ -498,17 +868,35 @@ function AuctionPage() {
                   const rows = statRows(currentPlayer);
                   if (rows.length === 0) return null;
                   return (
-                    <div style={{
-                      borderTop: '1px solid var(--border)',
-                      display: 'grid', gridTemplateColumns: `repeat(${rows.length}, 1fr)`,
-                      padding: '10px 14px', gap: 4,
-                    }}>
-                      {rows.map(s => (
-                        <div key={s.label} style={{ textAlign: 'center' }}>
-                          <div style={{ fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 18, color: catCfg?.color }}>
+                    <div
+                      style={{
+                        borderTop: "1px solid var(--border)",
+                        display: "grid",
+                        gridTemplateColumns: `repeat(${rows.length}, 1fr)`,
+                        padding: "10px 14px",
+                        gap: 4,
+                      }}
+                    >
+                      {rows.map((s) => (
+                        <div key={s.label} style={{ textAlign: "center" }}>
+                          <div
+                            style={{
+                              fontFamily: "Rajdhani",
+                              fontWeight: 700,
+                              fontSize: 18,
+                              color: catCfg?.color,
+                            }}
+                          >
                             {s.value}
                           </div>
-                          <div style={{ fontSize: 9, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          <div
+                            style={{
+                              fontSize: 9,
+                              color: "var(--muted)",
+                              textTransform: "uppercase",
+                              letterSpacing: 0.5,
+                            }}
+                          >
                             {s.label}
                           </div>
                         </div>
@@ -519,79 +907,194 @@ function AuctionPage() {
               </div>
 
               {/* Bid panel */}
-              <div style={{ width: '100%', background: 'var(--s1)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' }}>
-
+              <div
+                style={{
+                  width: "100%",
+                  background: "var(--s1)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  padding: "14px 16px",
+                }}
+              >
                 {/* Current bid header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                  <span style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: 1 }}>CURRENT BID</span>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "baseline",
+                    marginBottom: 6,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "var(--muted)",
+                      letterSpacing: 1,
+                    }}
+                  >
+                    CURRENT BID
+                  </span>
                   {bidderMeta && currentBid && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: bidderMeta.primary }} />
-                      <span style={{ fontSize: 11, color: bidderMeta.primary, fontWeight: 500 }}>
-                        {bidderMeta.shortName}{isUserLeading ? ' · YOU' : ''}
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 5 }}
+                    >
+                      <div
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: "50%",
+                          background: bidderMeta.primary,
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: bidderMeta.primary,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {bidderMeta.shortName}
+                        {isUserLeading ? " · YOU" : ""}
                       </span>
                     </div>
                   )}
                 </div>
 
                 {/* Bid amount */}
-                <div style={{ fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 38, color: 'var(--text)', lineHeight: 1 }}>
+                <div
+                  style={{
+                    fontFamily: "Rajdhani",
+                    fontWeight: 700,
+                    fontSize: 38,
+                    color: "var(--text)",
+                    lineHeight: 1,
+                  }}
+                >
                   {fmtNPR(currentBid?.amount ?? currentPlayer.base_price)}
                 </div>
                 {!currentBid && (
-                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Base price — no bids yet</div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--muted)",
+                      marginTop: 4,
+                    }}
+                  >
+                    Base price — no bids yet
+                  </div>
                 )}
 
                 {/* Timer */}
                 <div style={{ marginTop: 14, marginBottom: 14 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                    <span style={{ fontSize: 11, color: 'var(--muted)' }}>Timer</span>
-                    <span style={{
-                      fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 15, color: timerColor,
-                      animation: timerSeconds <= 5 ? 'pulse-fade .5s ease-in-out infinite' : 'none',
-                    }}>
-                      {String(timerSeconds).padStart(2, '0')}s
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: 5,
+                    }}
+                  >
+                    <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                      Timer
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: "Rajdhani",
+                        fontWeight: 700,
+                        fontSize: 15,
+                        color: timerColor,
+                        animation:
+                          timerSeconds <= 5
+                            ? "pulse-fade .5s ease-in-out infinite"
+                            : "none",
+                      }}
+                    >
+                      {String(timerSeconds).padStart(2, "0")}s
                     </span>
                   </div>
-                  <div style={{ height: 3, background: 'var(--border2)', borderRadius: 2, overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%', width: `${timerPct}%`, background: timerColor, borderRadius: 2,
-                      transition: 'width 1s linear, background .3s',
-                    }} />
+                  <div
+                    style={{
+                      height: 3,
+                      background: "var(--border2)",
+                      borderRadius: 2,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${timerPct}%`,
+                        background: timerColor,
+                        borderRadius: 2,
+                        transition: "width 1s linear, background .3s",
+                      }}
+                    />
                   </div>
                 </div>
 
                 {/* Bid buttons */}
                 {isUserLeading ? (
-                  <div style={{
-                    background: '#10b98115', border: '1px solid #10b98140',
-                    borderRadius: 8, padding: 10, textAlign: 'center',
-                  }}>
-                    <span style={{ color: 'var(--green)', fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 14, letterSpacing: 1 }}>
+                  <div
+                    style={{
+                      background: "#10b98115",
+                      border: "1px solid #10b98140",
+                      borderRadius: 8,
+                      padding: 10,
+                      textAlign: "center",
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: "var(--green)",
+                        fontFamily: "Rajdhani",
+                        fontWeight: 700,
+                        fontSize: 14,
+                        letterSpacing: 1,
+                      }}
+                    >
                       YOU ARE LEADING
                     </span>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div
+                    style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                  >
                     {/* Increment buttons */}
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: "flex", gap: 6 }}>
                       {incrementOptions.map(({ label, amount }) => {
-                        const can = !!(mySeat && currentPlayer && hasQuota(mySeat, currentPlayer.category) && canAffordBid(mySeat, amount, currentPlayer));
+                        const can = !!(
+                          mySeat &&
+                          currentPlayer &&
+                          hasQuota(mySeat, currentPlayer.category) &&
+                          canAffordBid(mySeat, amount, currentPlayer)
+                        );
                         return (
                           <button
                             key={label}
                             onClick={() => can && handleBid(amount)}
                             style={{
-                              flex: 1, padding: '8px 0',
-                              background: can ? 'var(--s2)' : 'var(--s1)',
-                              border: `1px solid ${can ? 'var(--border2)' : 'var(--border)'}`,
+                              flex: 1,
+                              padding: "8px 0",
+                              background: can ? "var(--s2)" : "var(--s1)",
+                              border: `1px solid ${can ? "var(--border2)" : "var(--border)"}`,
                               borderRadius: 7,
-                              color: can ? 'var(--text)' : 'var(--muted)',
-                              fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 13,
-                              cursor: can ? 'pointer' : 'not-allowed',
+                              color: can ? "var(--text)" : "var(--muted)",
+                              fontFamily: "Rajdhani",
+                              fontWeight: 700,
+                              fontSize: 13,
+                              cursor: can ? "pointer" : "not-allowed",
                             }}
-                            onMouseEnter={e => { if (can) (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--gold)'; }}
-                            onMouseLeave={e => { if (can) (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border2)'; }}
+                            onMouseEnter={(e) => {
+                              if (can)
+                                (
+                                  e.currentTarget as HTMLButtonElement
+                                ).style.borderColor = "var(--gold)";
+                            }}
+                            onMouseLeave={(e) => {
+                              if (can)
+                                (
+                                  e.currentTarget as HTMLButtonElement
+                                ).style.borderColor = "var(--border2)";
+                            }}
                           >
                             {label}
                           </button>
@@ -604,138 +1107,373 @@ function AuctionPage() {
                       onClick={() => canBidNow && handleBid(nextBid)}
                       disabled={!canBidNow}
                       style={{
-                        background: canBidNow ? 'var(--red)' : 'var(--s3)',
-                        color: canBidNow ? '#fff' : 'var(--muted)',
-                        border: 'none', borderRadius: 8, padding: 11,
-                        fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 16, letterSpacing: 1.5,
-                        cursor: canBidNow ? 'pointer' : 'not-allowed',
-                        transition: 'background .15s',
+                        background: canBidNow ? "var(--red)" : "var(--s3)",
+                        color: canBidNow ? "#fff" : "var(--muted)",
+                        border: "none",
+                        borderRadius: 8,
+                        padding: 11,
+                        fontFamily: "Rajdhani",
+                        fontWeight: 700,
+                        fontSize: 16,
+                        letterSpacing: 1.5,
+                        cursor: canBidNow ? "pointer" : "not-allowed",
+                        transition: "background .15s",
                       }}
-                      onMouseEnter={e => { if (canBidNow) (e.currentTarget as HTMLButtonElement).style.background = 'var(--red2)'; }}
-                      onMouseLeave={e => { if (canBidNow) (e.currentTarget as HTMLButtonElement).style.background = 'var(--red)'; }}
+                      onMouseEnter={(e) => {
+                        if (canBidNow)
+                          (
+                            e.currentTarget as HTMLButtonElement
+                          ).style.background = "var(--red2)";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (canBidNow)
+                          (
+                            e.currentTarget as HTMLButtonElement
+                          ).style.background = "var(--red)";
+                      }}
                     >
-                      {bidPending ? 'BIDDING…' : `BID ${fmtNPR(nextBid)}`}
+                      {bidPending ? "BIDDING…" : `BID ${fmtNPR(nextBid)}`}
                     </button>
                   </div>
                 )}
               </div>
             </div>
-          ) : (bidPanelState === 'sold' || bidPanelState === 'unsold') ? (
-            <div key="result" className="animate-pop-in" style={{ width: '100%', maxWidth: 340 }}>
-              <div style={{ background: 'var(--s1)', border: '1px solid var(--border)', borderRadius: 12, padding: '32px 16px', textAlign: 'center' }}>
-                {bidPanelState === 'sold' && soldInfo ? (
+          ) : bidPanelState === "sold" || bidPanelState === "unsold" ? (
+            <div
+              key="result"
+              className="animate-pop-in"
+              style={{ width: "100%", maxWidth: 340 }}
+            >
+              <div
+                style={{
+                  background: "var(--s1)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  padding: "32px 16px",
+                  textAlign: "center",
+                }}
+              >
+                {bidPanelState === "sold" && soldInfo ? (
                   <>
-                    <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: 1, marginBottom: 6 }}>SOLD TO</div>
-                    <div style={{ fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 22, color: soldInfo.primary }}>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "var(--muted)",
+                        letterSpacing: 1,
+                        marginBottom: 6,
+                      }}
+                    >
+                      SOLD TO
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: "Rajdhani",
+                        fontWeight: 700,
+                        fontSize: 22,
+                        color: soldInfo.primary,
+                      }}
+                    >
                       {soldInfo.franchiseName}
                     </div>
-                    <div style={{ fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 28, color: 'var(--gold)', marginTop: 4 }}>
+                    <div
+                      style={{
+                        fontFamily: "Rajdhani",
+                        fontWeight: 700,
+                        fontSize: 28,
+                        color: "var(--gold)",
+                        marginTop: 4,
+                      }}
+                    >
                       {fmtNPR(soldInfo.price)}
                     </div>
                   </>
                 ) : (
-                  <div style={{ fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 26, color: 'var(--muted)' }}>UNSOLD</div>
+                  <div
+                    style={{
+                      fontFamily: "Rajdhani",
+                      fontWeight: 700,
+                      fontSize: 26,
+                      color: "var(--muted)",
+                    }}
+                  >
+                    UNSOLD
+                  </div>
                 )}
               </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 12 }}>
-              <div style={{ fontSize: 13, color: 'var(--muted)' }}>Waiting for next player…</div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                flex: 1,
+                gap: 12,
+              }}
+            >
+              <div style={{ fontSize: 13, color: "var(--muted)" }}>
+                Waiting for next player…
+              </div>
             </div>
           )}
         </div>
 
         {/* RIGHT: My Squad (240px) */}
-        <div style={{ width: 240, flexShrink: 0, borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
-
+        <div
+          style={{
+            width: 240,
+            flexShrink: 0,
+            borderLeft: "1px solid var(--border)",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
           {/* Header */}
-          <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: 1, marginBottom: 2 }}>MY SQUAD</div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: mySeat ? meta(mySeat.franchiseName).primary : 'var(--text)' }}>
-              {mySeat?.franchiseName ?? '—'}
+          <div
+            style={{
+              padding: "12px 14px",
+              borderBottom: "1px solid var(--border)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                color: "var(--muted)",
+                letterSpacing: 1,
+                marginBottom: 2,
+              }}
+            >
+              MY SQUAD
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 500,
+                color: mySeat
+                  ? meta(mySeat.franchiseName).primary
+                  : "var(--text)",
+              }}
+            >
+              {mySeat?.franchiseName ?? "—"}
             </div>
           </div>
 
           {/* Purse bar */}
-          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontSize: 10, color: 'var(--muted)' }}>PURSE REMAINING</span>
-              <span style={{ fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 14, color: 'var(--green)' }}>
+          <div
+            style={{
+              padding: "10px 14px",
+              borderBottom: "1px solid var(--border)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 4,
+              }}
+            >
+              <span style={{ fontSize: 10, color: "var(--muted)" }}>
+                PURSE REMAINING
+              </span>
+              <span
+                style={{
+                  fontFamily: "Rajdhani",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  color: "var(--green)",
+                }}
+              >
                 {fmtL(mySeat?.purseRemaining ?? BUDGET)}
               </span>
             </div>
-            <div style={{ height: 3, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
-              <div style={{
-                height: '100%',
-                width: `${((mySeat?.purseRemaining ?? BUDGET) / BUDGET) * 100}%`,
-                background: 'var(--green)', borderRadius: 2, transition: 'width .5s',
-              }} />
+            <div
+              style={{
+                height: 3,
+                background: "var(--border)",
+                borderRadius: 2,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  width: `${((mySeat?.purseRemaining ?? BUDGET) / BUDGET) * 100}%`,
+                  background: "var(--green)",
+                  borderRadius: 2,
+                  transition: "width .5s",
+                }}
+              />
             </div>
           </div>
 
           {/* Quota slots */}
-          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
-            {(['A', 'B', 'C'] as const).map(cat => {
-              const max    = CAT_QUOTAS[cat];
+          <div
+            style={{
+              padding: "10px 14px",
+              borderBottom: "1px solid var(--border)",
+            }}
+          >
+            {(["A", "B", "C"] as const).map((cat) => {
+              const max = CAT_QUOTAS[cat];
               const filled = mySeat?.categoryCount[cat] ?? 0;
-              const cc     = CAT_COLOR[cat];
+              const cc = CAT_COLOR[cat];
               return (
-                <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <div style={{
-                    width: 20, height: 20, borderRadius: 4, flexShrink: 0,
-                    background: `${cc}20`, border: `1px solid ${cc}60`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 11, color: cc,
-                  }}>{cat}</div>
-                  <div style={{ flex: 1, display: 'flex', gap: 3 }}>
+                <div
+                  key={cat}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 4,
+                      flexShrink: 0,
+                      background: `${cc}20`,
+                      border: `1px solid ${cc}60`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontFamily: "Rajdhani",
+                      fontWeight: 700,
+                      fontSize: 11,
+                      color: cc,
+                    }}
+                  >
+                    {cat}
+                  </div>
+                  <div style={{ flex: 1, display: "flex", gap: 3 }}>
                     {Array.from({ length: max }).map((_, i) => (
-                      <div key={i} style={{
-                        flex: 1, height: 4, borderRadius: 2,
-                        background: i < filled ? cc : 'var(--border)',
-                        transition: 'background .3s',
-                      }} />
+                      <div
+                        key={i}
+                        style={{
+                          flex: 1,
+                          height: 4,
+                          borderRadius: 2,
+                          background: i < filled ? cc : "var(--border)",
+                          transition: "background .3s",
+                        }}
+                      />
                     ))}
                   </div>
-                  <span style={{ fontSize: 10, color: 'var(--muted)', width: 24, textAlign: 'right' }}>{filled}/{max}</span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: "var(--muted)",
+                      width: 24,
+                      textAlign: "right",
+                    }}
+                  >
+                    {filled}/{max}
+                  </span>
                 </div>
               );
             })}
           </div>
 
           {/* Squad list */}
-          <div style={{ flex: 1, overflow: 'auto', padding: 6 }}>
+          <div style={{ flex: 1, overflow: "auto", padding: 6 }}>
             {!mySeat || mySeat.squad.length === 0 ? (
-              <div style={{ padding: '20px 8px', fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>No players yet</div>
-            ) : mySeat.squad.map(slot => (
-              <div key={slot.playerId} style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                padding: '6px 8px', borderRadius: 6, borderBottom: '1px solid #0c0f1c',
-              }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: CAT_COLOR[slot.player.category] ?? CAT_COLOR.MARQUEE, flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {slot.player.name}
-                  </div>
-                  <div style={{ fontSize: 10, color: 'var(--muted)' }}>
-                    {ROLE_BADGE[slot.player.role] ?? slot.player.role}
-                  </div>
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--gold)', fontFamily: 'Rajdhani', fontWeight: 600, flexShrink: 0 }}>
-                  {slot.pricePaid > 0 ? fmtNPR(slot.pricePaid) : '—'}
-                </div>
+              <div
+                style={{
+                  padding: "20px 8px",
+                  fontSize: 12,
+                  color: "var(--muted)",
+                  textAlign: "center",
+                }}
+              >
+                No players yet
               </div>
-            ))}
+            ) : (
+              mySeat.squad.map((slot) => (
+                <div
+                  key={slot.playerId}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 7,
+                    padding: "6px 8px",
+                    borderRadius: 6,
+                    borderBottom: "1px solid #0c0f1c",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background:
+                        CAT_COLOR[slot.player.category] ?? CAT_COLOR.MARQUEE,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 500,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {slot.player.name}
+                    </div>
+                    <div style={{ fontSize: 10, color: "var(--muted)" }}>
+                      {ROLE_BADGE[slot.player.role] ?? slot.player.role}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "var(--gold)",
+                      fontFamily: "Rajdhani",
+                      fontWeight: 600,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {slot.pricePaid > 0 ? fmtNPR(slot.pricePaid) : "—"}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           {/* Live feed */}
-          <div style={{ borderTop: '1px solid var(--border)', maxHeight: 130, overflow: 'hidden' }}>
-            <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, padding: '8px 12px 4px' }}>LIVE FEED</div>
-            <div style={{ overflow: 'auto', maxHeight: 100 }}>
+          <div
+            style={{
+              borderTop: "1px solid var(--border)",
+              maxHeight: 130,
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 10,
+                color: "var(--muted)",
+                letterSpacing: 1,
+                padding: "8px 12px 4px",
+              }}
+            >
+              LIVE FEED
+            </div>
+            <div style={{ overflow: "auto", maxHeight: 100 }}>
               {feedLog.slice(0, 8).map((msg, i) => (
-                <div key={i} style={{
-                  fontSize: 11, color: i === 0 ? 'var(--text)' : 'var(--muted)',
-                  padding: '3px 12px', lineHeight: 1.4, borderBottom: '1px solid #0c0f1c',
-                }}>
+                <div
+                  key={i}
+                  style={{
+                    fontSize: 11,
+                    color: i === 0 ? "var(--text)" : "var(--muted)",
+                    padding: "3px 12px",
+                    lineHeight: 1.4,
+                    borderBottom: "1px solid #0c0f1c",
+                  }}
+                >
                   {msg}
                 </div>
               ))}
@@ -745,41 +1483,93 @@ function AuctionPage() {
       </div>
 
       {/* Bottom: 8 team cards (58px) */}
-      <div style={{
-        height: 58, flexShrink: 0,
-        borderTop: '1px solid var(--border)',
-        display: 'flex', alignItems: 'center',
-        padding: '0 12px', gap: 6,
-        overflowX: 'auto',
-      }}>
-        {seats.map(seat => {
-          const m         = meta(seat.franchiseName);
+      <div
+        style={{
+          height: 58,
+          flexShrink: 0,
+          borderTop: "1px solid var(--border)",
+          display: "flex",
+          alignItems: "center",
+          padding: "0 12px",
+          gap: 6,
+          overflowX: "auto",
+        }}
+      >
+        {seats.map((seat) => {
+          const m = meta(seat.franchiseName);
           const isLeading = seat.seatId === currentBid?.seatId;
-          const isMe      = seat.seatId === seatId;
+          const isMe = seat.seatId === seatId;
           const playerCnt = seat.squad.length;
           return (
-            <div key={seat.seatId} style={{
-              display: 'flex', alignItems: 'center', gap: 7,
-              padding: '6px 10px', borderRadius: 7,
-              background: isLeading ? `${m.primary}18` : isMe ? `${m.primary}0d` : 'var(--s1)',
-              border: `1px solid ${isLeading ? m.primary : isMe ? `${m.primary}60` : 'var(--border)'}`,
-              flex: 1, minWidth: 120, maxWidth: 168,
-              transition: 'all .25s', flexShrink: 0,
-            }}>
+            <div
+              key={seat.seatId}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                padding: "6px 10px",
+                borderRadius: 7,
+                background: isLeading
+                  ? `${m.primary}18`
+                  : isMe
+                    ? `${m.primary}0d`
+                    : "var(--s1)",
+                border: `1px solid ${isLeading ? m.primary : isMe ? `${m.primary}60` : "var(--border)"}`,
+                flex: 1,
+                minWidth: 120,
+                maxWidth: 168,
+                transition: "all .25s",
+                flexShrink: 0,
+              }}
+            >
               <FranchiseCrest franchiseName={seat.franchiseName} size={26} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: isMe ? 600 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text)' }}>
-                  {m.shortName}{isMe ? ' ★' : ''}
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: isMe ? 600 : 400,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    color: "var(--text)",
+                  }}
+                >
+                  {m.shortName}
+                  {isMe ? " ★" : ""}
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--muted2)', fontFamily: 'Rajdhani', display: 'flex', gap: 6 }}>
-                  <span style={{ color: seat.purseRemaining < 1_000_000 ? '#ef4444' : 'var(--muted2)' }}>
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: "var(--muted2)",
+                    fontFamily: "Rajdhani",
+                    display: "flex",
+                    gap: 6,
+                  }}
+                >
+                  <span
+                    style={{
+                      color:
+                        seat.purseRemaining < 1_000_000
+                          ? "#ef4444"
+                          : "var(--muted2)",
+                    }}
+                  >
                     {fmtL(seat.purseRemaining)}
                   </span>
                   <span>{playerCnt}P</span>
                 </div>
               </div>
               {isLeading && (
-                <div className="animate-pulse-fade" style={{ width: 6, height: 6, borderRadius: '50%', background: m.primary, flexShrink: 0 }} />
+                <div
+                  className="animate-pulse-fade"
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: m.primary,
+                    flexShrink: 0,
+                  }}
+                />
               )}
             </div>
           );
@@ -802,16 +1592,33 @@ function AuctionPage() {
 
 // ─── FranchiseCrest ───────────────────────────────────────────────────────────
 
-function FranchiseCrest({ franchiseName, size = 36 }: { franchiseName: string; size?: number }) {
+function FranchiseCrest({
+  franchiseName,
+  size = 36,
+}: {
+  franchiseName: string;
+  size?: number;
+}) {
   const m = meta(franchiseName);
   return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      background: `${m.primary}28`, border: `1.5px solid ${m.primary}80`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'Rajdhani', fontWeight: 700,
-      fontSize: Math.round(size * 0.3), color: m.primary, letterSpacing: 0.5,
-    }}>
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        flexShrink: 0,
+        background: `${m.primary}28`,
+        border: `1.5px solid ${m.primary}80`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "Rajdhani",
+        fontWeight: 700,
+        fontSize: Math.round(size * 0.3),
+        color: m.primary,
+        letterSpacing: 0.5,
+      }}
+    >
       {m.shortName}
     </div>
   );
@@ -819,24 +1626,63 @@ function FranchiseCrest({ franchiseName, size = 36 }: { franchiseName: string; s
 
 // ─── PlayerAvatar ─────────────────────────────────────────────────────────────
 
-function PlayerAvatar({ player, size = 108 }: { player: Player; size?: number }) {
-  const cc   = CAT_COLOR[player.category] ?? '#888';
-  const init = player.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  const pid  = player.id.replace(/[^a-z0-9]/gi, '');
+function PlayerAvatar({
+  player,
+  size = 108,
+}: {
+  player: Player;
+  size?: number;
+}) {
+  const cc = CAT_COLOR[player.category] ?? "#888";
+  const init = player.name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  const pid = player.id.replace(/[^a-z0-9]/gi, "");
   return (
-    <svg width={size} height={size} viewBox="0 0 112 112" style={{ display: 'block', borderRadius: 8, overflow: 'hidden' }}>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 112 112"
+      style={{ display: "block", borderRadius: 8, overflow: "hidden" }}
+    >
       <defs>
-        <pattern id={`stripe-${pid}`} patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(135)">
+        <pattern
+          id={`stripe-${pid}`}
+          patternUnits="userSpaceOnUse"
+          width="10"
+          height="10"
+          patternTransform="rotate(135)"
+        >
           <rect width="10" height="10" fill="#0c0f1c" />
           <rect width="5" height="10" fill="#111626" opacity="0.9" />
         </pattern>
       </defs>
       <rect width="112" height="112" fill={`url(#stripe-${pid})`} />
       <rect width="112" height="112" fill={cc} fillOpacity="0.07" />
-      <text x="56" y="50" textAnchor="middle" dominantBaseline="middle"
-        fill={cc} fillOpacity="0.55" fontSize="30" fontFamily="Rajdhani" fontWeight="700">{init}
+      <text
+        x="56"
+        y="50"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill={cc}
+        fillOpacity="0.55"
+        fontSize="30"
+        fontFamily="Rajdhani"
+        fontWeight="700"
+      >
+        {init}
       </text>
-      <text x="56" y="80" textAnchor="middle" fill="#3a4f70" fontSize="9" fontFamily="Plus Jakarta Sans">
+      <text
+        x="56"
+        y="80"
+        textAnchor="middle"
+        fill="#3a4f70"
+        fontSize="9"
+        fontFamily="Plus Jakarta Sans"
+      >
         player photo
       </text>
     </svg>
@@ -845,7 +1691,13 @@ function PlayerAvatar({ player, size = 108 }: { player: Player; size?: number })
 
 // ─── LuckyDrawOverlay ─────────────────────────────────────────────────────────
 
-function LuckyDrawOverlay({ player, contenders, seats, winner, onClose }: {
+function LuckyDrawOverlay({
+  player,
+  contenders,
+  seats,
+  winner,
+  onClose,
+}: {
   player: Player;
   contenders: string[];
   seats: LobbySeat[];
@@ -853,19 +1705,21 @@ function LuckyDrawOverlay({ player, contenders, seats, winner, onClose }: {
   onClose: () => void;
 }) {
   const [highlighted, setHighlighted] = useState(0);
-  const [revealed,    setRevealed]    = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const winnerRef = useRef(winner);
-  useEffect(() => { winnerRef.current = winner; }, [winner]);
+  useEffect(() => {
+    winnerRef.current = winner;
+  }, [winner]);
 
   useEffect(() => {
     let stopped = false;
-    let speed   = 80;
-    let count   = 0;
+    let speed = 80;
+    let count = 0;
 
     const spin = () => {
       if (stopped) return;
       count++;
-      setHighlighted(prev => (prev + 1) % contenders.length);
+      setHighlighted((prev) => (prev + 1) % contenders.length);
 
       const hasWinner = winnerRef.current !== null;
       const minCycles = contenders.length * 3;
@@ -875,69 +1729,143 @@ function LuckyDrawOverlay({ player, contenders, seats, winner, onClose }: {
         const wIdx = contenders.indexOf(winnerRef.current!);
         setHighlighted(wIdx >= 0 ? wIdx : 0);
         setRevealed(true);
-        setTimeout(() => { if (!stopped) onClose(); }, 2_400);
+        setTimeout(() => {
+          if (!stopped) onClose();
+        }, 2_400);
         return;
       }
 
-      if (count > minCycles - contenders.length) speed = Math.min(speed + 50, 480);
+      if (count > minCycles - contenders.length)
+        speed = Math.min(speed + 50, 480);
       setTimeout(spin, speed);
     };
 
     setTimeout(spin, speed);
-    return () => { stopped = true; };
+    return () => {
+      stopped = true;
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const cc         = CAT_COLOR[player.category] ?? '#888';
-  const winnerSeat = winner ? seats.find(s => s.seatId === winner) : null;
+  const cc = CAT_COLOR[player.category] ?? "#888";
+  const winnerSeat = winner ? seats.find((s) => s.seatId === winner) : null;
   const winnerMeta = winnerSeat ? meta(winnerSeat.franchiseName) : null;
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(7,8,15,.85)', backdropFilter: 'blur(6px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
-    }}>
-      <div style={{
-        background: 'var(--s2)', border: `1px solid ${cc}60`,
-        borderRadius: 16, padding: '40px 52px', maxWidth: 620, width: '92%', textAlign: 'center',
-      }}>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(7,8,15,.85)",
+        backdropFilter: "blur(6px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 100,
+      }}
+    >
+      <div
+        style={{
+          background: "var(--s2)",
+          border: `1px solid ${cc}60`,
+          borderRadius: 16,
+          padding: "40px 52px",
+          maxWidth: 620,
+          width: "92%",
+          textAlign: "center",
+        }}
+      >
         {/* Badge */}
-        <div style={{
-          display: 'inline-block', background: `${cc}20`, border: `1px solid ${cc}60`,
-          borderRadius: 6, padding: '3px 12px', marginBottom: 14,
-          fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 12, color: cc, letterSpacing: 1,
-        }}>
+        <div
+          style={{
+            display: "inline-block",
+            background: `${cc}20`,
+            border: `1px solid ${cc}60`,
+            borderRadius: 6,
+            padding: "3px 12px",
+            marginBottom: 14,
+            fontFamily: "Rajdhani",
+            fontWeight: 700,
+            fontSize: 12,
+            color: cc,
+            letterSpacing: 1,
+          }}
+        >
           MAX PRICE HIT — LUCKY DRAW
         </div>
 
-        <div style={{ fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 26, marginBottom: 2, color: 'var(--text)' }}>
+        <div
+          style={{
+            fontFamily: "Rajdhani",
+            fontWeight: 700,
+            fontSize: 26,
+            marginBottom: 2,
+            color: "var(--text)",
+          }}
+        >
           {player.name}
         </div>
-        <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>
+        <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 4 }}>
           {ROLE_LABEL[player.role] ?? player.role}
         </div>
-        <div style={{ fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 22, color: 'var(--gold)', marginBottom: 22 }}>
+        <div
+          style={{
+            fontFamily: "Rajdhani",
+            fontWeight: 700,
+            fontSize: 22,
+            color: "var(--gold)",
+            marginBottom: 22,
+          }}
+        >
           {fmtNPR(CAT_MAX[player.category] ?? 0)}
         </div>
 
         {/* Contender chips */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 22 }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 8,
+            justifyContent: "center",
+            marginBottom: 22,
+          }}
+        >
           {contenders.map((cSeatId, i) => {
-            const seat  = seats.find(s => s.seatId === cSeatId);
+            const seat = seats.find((s) => s.seatId === cSeatId);
             if (!seat) return null;
-            const m     = meta(seat.franchiseName);
+            const m = meta(seat.franchiseName);
             const isHit = highlighted === i;
             const isWon = revealed && winner === cSeatId;
             return (
-              <div key={cSeatId} style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '8px 14px', borderRadius: 8,
-                background: isWon ? `${m.primary}30` : isHit ? `${m.primary}22` : 'var(--s1)',
-                border: `1px solid ${isWon ? m.primary : isHit ? `${m.primary}aa` : 'var(--border)'}`,
-                transform: isHit && !revealed ? 'scale(1.07)' : 'scale(1)',
-                transition: !revealed ? 'all .07s' : 'all .4s',
-              }}>
+              <div
+                key={cSeatId}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  background: isWon
+                    ? `${m.primary}30`
+                    : isHit
+                      ? `${m.primary}22`
+                      : "var(--s1)",
+                  border: `1px solid ${isWon ? m.primary : isHit ? `${m.primary}aa` : "var(--border)"}`,
+                  transform: isHit && !revealed ? "scale(1.07)" : "scale(1)",
+                  transition: !revealed ? "all .07s" : "all .4s",
+                }}
+              >
                 <FranchiseCrest franchiseName={seat.franchiseName} size={22} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: isWon ? m.secondary : isHit ? m.primary : 'var(--muted2)' }}>
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: isWon
+                      ? m.secondary
+                      : isHit
+                        ? m.primary
+                        : "var(--muted2)",
+                  }}
+                >
                   {m.shortName}
                 </span>
               </div>
@@ -947,20 +1875,58 @@ function LuckyDrawOverlay({ player, contenders, seats, winner, onClose }: {
 
         {/* Spinner / winner reveal */}
         {!revealed ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--muted)' }}>
-            <div className="animate-spin-slow" style={{ width: 14, height: 14, border: '2px solid var(--border)', borderTopColor: 'var(--gold)', borderRadius: '50%' }} />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              color: "var(--muted)",
+            }}
+          >
+            <div
+              className="animate-spin-slow"
+              style={{
+                width: 14,
+                height: 14,
+                border: "2px solid var(--border)",
+                borderTopColor: "var(--gold)",
+                borderRadius: "50%",
+              }}
+            />
             <span style={{ fontSize: 13 }}>Drawing…</span>
           </div>
-        ) : winnerSeat && winnerMeta && (
-          <div className="animate-pop-in">
-            <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: 1, marginBottom: 6 }}>WINNER</div>
-            <div style={{ fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 26, color: winnerMeta.primary }}>
-              {winnerSeat.franchiseName}
+        ) : (
+          winnerSeat &&
+          winnerMeta && (
+            <div className="animate-pop-in">
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "var(--muted)",
+                  letterSpacing: 1,
+                  marginBottom: 6,
+                }}
+              >
+                WINNER
+              </div>
+              <div
+                style={{
+                  fontFamily: "Rajdhani",
+                  fontWeight: 700,
+                  fontSize: 26,
+                  color: winnerMeta.primary,
+                }}
+              >
+                {winnerSeat.franchiseName}
+              </div>
+              <div
+                style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}
+              >
+                {player.name} signed at {fmtNPR(CAT_MAX[player.category] ?? 0)}
+              </div>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
-              {player.name} signed at {fmtNPR(CAT_MAX[player.category] ?? 0)}
-            </div>
-          </div>
+          )
         )}
       </div>
     </div>
@@ -969,38 +1935,88 @@ function LuckyDrawOverlay({ player, contenders, seats, winner, onClose }: {
 
 // ─── Auction Complete Screen ──────────────────────────────────────────────────
 
-function AuctionCompleteScreen({ seats, mySeatId }: { seats: LobbySeat[]; mySeatId: string }) {
-  const mySeat = seats.find(s => s.seatId === mySeatId);
-  const m      = mySeat ? meta(mySeat.franchiseName) : null;
-  const spent  = BUDGET - (mySeat?.purseRemaining ?? BUDGET);
+function AuctionCompleteScreen({
+  seats,
+  mySeatId,
+}: {
+  seats: LobbySeat[];
+  mySeatId: string;
+}) {
+  const mySeat = seats.find((s) => s.seatId === mySeatId);
+  const m = mySeat ? meta(mySeat.franchiseName) : null;
+  const spent = BUDGET - (mySeat?.purseRemaining ?? BUDGET);
 
   return (
-    <div style={{ height: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+    <div
+      style={{
+        height: "100vh",
+        background: "var(--bg)",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "auto",
+      }}
+    >
       {/* Header */}
-      <div style={{
-        borderBottom: '1px solid var(--border)', padding: '20px 28px',
-        display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
-      }}>
-        <div style={{ fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 20, letterSpacing: 2, color: 'var(--red)' }}>NPL</div>
-        <div style={{ width: 1, height: 18, background: 'var(--border)' }} />
-        <div style={{ fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 18, letterSpacing: 1, color: 'var(--text)' }}>
+      <div
+        style={{
+          borderBottom: "1px solid var(--border)",
+          padding: "20px 28px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "Rajdhani",
+            fontWeight: 700,
+            fontSize: 20,
+            letterSpacing: 2,
+            color: "var(--red)",
+          }}
+        >
+          NPL
+        </div>
+        <div style={{ width: 1, height: 18, background: "var(--border)" }} />
+        <div
+          style={{
+            fontFamily: "Rajdhani",
+            fontWeight: 700,
+            fontSize: 18,
+            letterSpacing: 1,
+            color: "var(--text)",
+          }}
+        >
           AUCTION COMPLETE
         </div>
         {mySeat && m && (
-          <div style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--muted)' }}>
-            {mySeat.franchiseName} · spent {fmtNPR(spent)} · {fmtL(mySeat.purseRemaining)} left
+          <div
+            style={{ marginLeft: "auto", fontSize: 13, color: "var(--muted)" }}
+          >
+            {mySeat.franchiseName} · spent {fmtNPR(spent)} ·{" "}
+            {fmtL(mySeat.purseRemaining)} left
           </div>
         )}
       </div>
 
       {/* Squad cards grid */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: 16, maxWidth: 1200, margin: '0 auto',
-        }}>
-          {seats.map(seat => (
-            <SquadCard key={seat.seatId} seat={seat} isMe={seat.seatId === mySeatId} />
+      <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+            gap: 16,
+            maxWidth: 1200,
+            margin: "0 auto",
+          }}
+        >
+          {seats.map((seat) => (
+            <SquadCard
+              key={seat.seatId}
+              seat={seat}
+              isMe={seat.seatId === mySeatId}
+            />
           ))}
         </div>
       </div>
@@ -1009,51 +2025,129 @@ function AuctionCompleteScreen({ seats, mySeatId }: { seats: LobbySeat[]; mySeat
 }
 
 function SquadCard({ seat, isMe }: { seat: LobbySeat; isMe: boolean }) {
-  const m        = meta(seat.franchiseName);
-  const marquee  = seat.squad.find(s => s.slotType === 'MARQUEE');
-  const auction  = seat.squad.filter(s => s.slotType === 'AUCTION');
+  const m = meta(seat.franchiseName);
+  const marquee = seat.squad.find((s) => s.slotType === "MARQUEE");
+  const auction = seat.squad.filter((s) => s.slotType === "AUCTION");
 
   return (
-    <div style={{
-      background: isMe ? `${m.primary}10` : 'var(--s1)',
-      border: `1px solid ${isMe ? m.primary : 'var(--border)'}`,
-      borderRadius: 12, overflow: 'hidden',
-    }}>
+    <div
+      style={{
+        background: isMe ? `${m.primary}10` : "var(--s1)",
+        border: `1px solid ${isMe ? m.primary : "var(--border)"}`,
+        borderRadius: 12,
+        overflow: "hidden",
+      }}
+    >
       <div style={{ height: 3, background: m.primary }} />
-      <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div
+        style={{
+          padding: "12px 14px",
+          borderBottom: "1px solid var(--border)",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
         <FranchiseCrest franchiseName={seat.franchiseName} size={32} />
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{seat.franchiseName}</div>
-          <div style={{ fontSize: 11, color: 'var(--muted)' }}>{fmtL(seat.purseRemaining)} left</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
+            {seat.franchiseName}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--muted)" }}>
+            {fmtL(seat.purseRemaining)} left
+          </div>
         </div>
-        {isMe && <span style={{ fontSize: 10, color: 'var(--green)', fontWeight: 700 }}>YOU</span>}
+        {isMe && (
+          <span
+            style={{ fontSize: 10, color: "var(--green)", fontWeight: 700 }}
+          >
+            YOU
+          </span>
+        )}
       </div>
       {marquee && (
-        <div style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)', background: `${CAT_COLOR.MARQUEE}0a` }}>
-          <div style={{ fontSize: 10, color: CAT_COLOR.MARQUEE, letterSpacing: 0.5, marginBottom: 3 }}>MARQUEE</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{marquee.player.name}</div>
+        <div
+          style={{
+            padding: "8px 14px",
+            borderBottom: "1px solid var(--border)",
+            background: `${CAT_COLOR.MARQUEE}0a`,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 10,
+              color: CAT_COLOR.MARQUEE,
+              letterSpacing: 0.5,
+              marginBottom: 3,
+            }}
+          >
+            MARQUEE
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+            {marquee.player.name}
+          </div>
         </div>
       )}
-      <div style={{ padding: '6px 14px 10px' }}>
+      <div style={{ padding: "6px 14px 10px" }}>
         {auction.length === 0 ? (
-          <div style={{ fontSize: 12, color: 'var(--muted)', padding: '6px 0' }}>No auction players</div>
-        ) : auction.map(slot => (
-          <div key={slot.playerId} style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '5px 0', borderBottom: '1px solid var(--border)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 5, height: 5, borderRadius: '50%', background: CAT_COLOR[slot.player.category] ?? '#888', flexShrink: 0 }} />
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{slot.player.name}</div>
-                <div style={{ fontSize: 10, color: 'var(--muted)' }}>{ROLE_BADGE[slot.player.role] ?? slot.player.role} · {slot.player.category}</div>
+          <div
+            style={{ fontSize: 12, color: "var(--muted)", padding: "6px 0" }}
+          >
+            No auction players
+          </div>
+        ) : (
+          auction.map((slot) => (
+            <div
+              key={slot.playerId}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "5px 0",
+                borderBottom: "1px solid var(--border)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div
+                  style={{
+                    width: 5,
+                    height: 5,
+                    borderRadius: "50%",
+                    background: CAT_COLOR[slot.player.category] ?? "#888",
+                    flexShrink: 0,
+                  }}
+                />
+                <div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color: "var(--text)",
+                    }}
+                  >
+                    {slot.player.name}
+                  </div>
+                  <div style={{ fontSize: 10, color: "var(--muted)" }}>
+                    {ROLE_BADGE[slot.player.role] ?? slot.player.role} ·{" "}
+                    {slot.player.category}
+                  </div>
+                </div>
+              </div>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "var(--gold)",
+                  fontFamily: "Rajdhani",
+                  fontWeight: 600,
+                  flexShrink: 0,
+                  marginLeft: 8,
+                }}
+              >
+                {slot.pricePaid > 0 ? fmtNPR(slot.pricePaid) : "—"}
               </div>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--gold)', fontFamily: 'Rajdhani', fontWeight: 600, flexShrink: 0, marginLeft: 8 }}>
-              {slot.pricePaid > 0 ? fmtNPR(slot.pricePaid) : '—'}
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

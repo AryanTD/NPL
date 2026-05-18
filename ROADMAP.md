@@ -6,26 +6,26 @@ Pick up from here at the start of any session. Work tasks in order — each buil
 
 ## ✅ Done
 
-| What | Files |
-|---|---|
-| npm workspaces root | `package.json`, `package-lock.json`, `.gitignore` |
-| Shared TypeScript types | `packages/types/index.ts` |
-| Server bootstrap | `apps/server/src/index.ts` |
-| Prisma schema (8 models) | `apps/server/prisma/schema.prisma` |
-| DB migration applied | `apps/server/prisma/migrations/20260426165922_init/` |
-| DB seeded | 8 franchises + 168 players on Railway |
-| DB seed script | `apps/server/prisma/seed.ts` |
-| Player data (2024 + 2025) | `data/players/npl-2024.json`, `data/players/npl-2025.json` |
-| Server config | `apps/server/tsconfig.json`, `nodemon.json`, `.env.example`, `package.json` |
-| Prisma singleton | `apps/server/src/lib/prisma.ts` |
-| Lobby REST API | `apps/server/src/routes/lobby.ts` |
-| Bot personalities | `apps/server/src/bots/botPersonalities.ts` |
-| Bot mock (deleted — replaced by botDecision.ts) | ~~`apps/server/src/bots/claudeBot.ts`~~ |
-| Bot manager | `apps/server/src/bots/botManager.ts` |
+| What                      | Files                                                                       |
+| ------------------------- | --------------------------------------------------------------------------- |
+| npm workspaces root       | `package.json`, `package-lock.json`, `.gitignore`                           |
+| Shared TypeScript types   | `packages/types/index.ts`                                                   |
+| Server bootstrap          | `apps/server/src/index.ts`                                                  |
+| Prisma schema (8 models)  | `apps/server/prisma/schema.prisma`                                          |
+| DB migration applied      | `apps/server/prisma/migrations/20260426165922_init/`                        |
+| DB seeded                 | 8 franchises + 168 players on Railway                                       |
+| DB seed script            | `apps/server/prisma/seed.ts`                                                |
+| Player data (2024 + 2025) | `data/players/npl-2024.json`, `data/players/npl-2025.json`                  |
+| Server config             | `apps/server/tsconfig.json`, `nodemon.json`, `.env.example`, `package.json` |
+| Prisma singleton          | `apps/server/src/lib/prisma.ts`                                             |
+| Lobby REST API            | `apps/server/src/routes/lobby.ts`                                           |
+| Bot personalities         | `apps/server/src/bots/botPersonalities.ts`                                  |
+| Bot mock + interface      | `apps/server/src/bots/claudeBot.ts`                                         |
+| Bot manager               | `apps/server/src/bots/botManager.ts`                                        |
 
 ---
 
-## ✅ Task 4 — Auction Engine
+## 🔲 Task 4 — Auction Engine _(large — split into two sessions)_
 
 **File:** `apps/server/src/socket/auctionEngine.ts`
 
@@ -154,6 +154,24 @@ All 9 optimizations applied to `apps/server/src/socket/auctionEngine.ts`:
 
 ## ✅ Task 6 — Landing Page
 
+## ✅ Task 5b — Auction Engine Optimizations
+
+All 9 optimizations applied to `apps/server/src/socket/auctionEngine.ts`:
+
+- `setImmediate` breaks `sellPlayer → revealNextPlayer` recursive chain
+- `state` captured in `setInterval` closure (no per-tick Map lookup)
+- `maxPriceBidders: Set<string>` replaces DB query in `resolveCurrentPlayer`
+- Unsold `updateMany` merged into one call (isDone + isUnsold)
+- `seatsMap: Map<string, LobbySeat>` for O(1) seat lookup in `handleBid` / `sellPlayer`
+- `PHASE_ORDER` hoisted to module-level constant
+- Marquee draw uses `squadSlot.createMany` (8 → 1 DB call)
+- `parsePayload<T>` helper deduplicates 4 inline JSON.parse ternaries
+- `preloadedSeats` passed from `lobby:start` into `startAuction` (avoids duplicate DB fetch)
+
+---
+
+## ✅ Task 6 — Landing Page
+
 **File:** `apps/web/app/page.tsx`
 
 - `apps/web/app/globals.css` — 13 CSS design tokens, Plus Jakarta Sans + Rajdhani fonts, 5 keyframes + animation utilities, grid texture class
@@ -166,7 +184,7 @@ All 9 optimizations applied to `apps/server/src/socket/auctionEngine.ts`:
 
 ---
 
-## ✅ Task 7 — Lobby Waiting Room
+## 🔲 Task 7 — Lobby Waiting Room _(medium)_
 
 **File:** `apps/web/app/lobby/page.tsx`
 
@@ -180,19 +198,19 @@ All 9 optimizations applied to `apps/server/src/socket/auctionEngine.ts`:
 
 ---
 
-## ✅ Task 8 — Auction Room
+## 🔲 Task 8 — Auction Room _(large)_
 
 **File:** `apps/web/app/auction/[lobbyId]/page.tsx`
 
-Layout: `52px TopBar → flex row (210px QueuePanel + flex:1 CenterPanel + 240px SquadPanel) → 58px BottomTeamsBar`
+Subscribe to all server events, compose:
 
-- **MarqueeDrawScreen** (in `lobby/page.tsx`): intercepts all 8 `lobby:marquee_assigned` events before navigating; 4-col grid with flip-reveal animations, auto-navigates 3.5s after all 8 revealed
-- **CenterPanel**: animated PlayerCard (solid color header strip, stat grid, `animate-pop-in` keyed on reveal counter); linear progress timer (green→amber→red, pulses ≤5s); `+रू25K / +रू50K / +रू1L` increment buttons; main BID button with client-side validation mirroring server
-- **QueuePanel**: upcoming players list with category badges
-- **SquadPanel**: my squad only — purse bar, segmented A/B/C quota slots, squad list, live bid feed
-- **BottomTeamsBar**: 8 franchise chips, leading team gets pulsing dot
-- **LuckyDrawOverlay**: full-screen blur modal, chips spin then stop at winner
-- **Bug fixes applied**: franchise selection (page.tsx + lobby.ts), Quick Play `MouseEvent` crash, `AuctionResult` global unique constraint → `@@unique([lobbyId, playerId])` (migration `20260429000000_fix_auction_result_unique_per_lobby`)
+| Component    | File                          | Notes                                                                     |
+| ------------ | ----------------------------- | ------------------------------------------------------------------------- |
+| PlayerCard   | `components/PlayerCard.tsx`   | framer-motion flip animation on reveal                                    |
+| BidTimer     | `components/BidTimer.tsx`     | SVG circle countdown, red < 5s, resets on bid                             |
+| PurseBar     | `components/PurseBar.tsx`     | green → yellow → red as budget drains                                     |
+| FranchiseRow | `components/FranchiseRow.tsx` | 8 rows, squad count, purse, bot-thinking dots                             |
+| BidButton    | `components/BidButton.tsx`    | shows `current + 25k`, disabled when invalid, optimistic disable on click |
 
 ---
 
@@ -214,12 +232,14 @@ Task 5 (FE setup)  ──►  Task 6 (Landing)  ──►  Task 7 (Lobby)  ─�
 **Goal:** Replace mock heuristic bot (`claudeBot.ts`) with a fully algorithmic, personality-driven system that re-evaluates every bid in real time. No AI/LLM calls — pure deterministic logic with controlled randomness.
 
 **Architecture:**
+
 - `botPersonalities.ts` — static config (new BotPersonality interface, PERSONALITIES, CATEGORY_BUDGET_SHARE, CATEGORY_SLOTS)
 - `botDecision.ts` — pure `decideBid()` function, zero side effects, fully unit-testable
 - `botManager.ts` — per-bot AbortController timers, roster tracking, re-evaluates on every bid placed
 - `auctionEngine.ts` — wires the above into auction lifecycle (reveal / bid / sold / unsold)
 
 **Spec discrepancies resolved:**
+
 - `baseValue` → `basePrice` (matches Prisma schema)
 - String roles `'Batsman'` → Prisma enum `PlayerRole.BAT`
 - Files stay in `src/bots/` (not `src/socket/` as the spec says)
@@ -227,15 +247,15 @@ Task 5 (FE setup)  ──►  Task 6 (Landing)  ──►  Task 7 (Lobby)  ─�
 
 ### Subtasks
 
-| # | What | Status | Commit |
-|---|------|--------|--------|
+| #   | What                                                                              | Status  | Commit    |
+| --- | --------------------------------------------------------------------------------- | ------- | --------- |
 | 9.0 | Add `quality Int @default(50)` to Player schema, run migration, regenerate client | ✅ Done | `c00da52` |
-| 9.1 | Add Vitest test infrastructure to `apps/server` | ✅ Done | `9c6b02d` |
-| 9.2 | Replace `botPersonalities.ts` with new algorithmic config | ✅ Done | `f637693` |
-| 9.3 | Create `botDecision.ts` (TDD — pure decision function) | ✅ Done | `c8e1432` |
-| 9.4 | Rewrite `botManager.ts` with per-bid re-evaluation and roster tracking | ✅ Done | `0058683` |
-| 9.5 | Update `auctionEngine.ts` to wire new bot system | ✅ Done | `0a0300d` |
-| 9.6 | Delete `claudeBot.ts`, update this ROADMAP | ✅ Done | — |
+| 9.1 | Add Vitest test infrastructure to `apps/server`                                   | ✅ Done | `9c6b02d` |
+| 9.2 | Replace `botPersonalities.ts` with new algorithmic config                         | ✅ Done | `f637693` |
+| 9.3 | Create `botDecision.ts` (TDD — pure decision function)                            | ✅ Done | `c8e1432` |
+| 9.4 | Rewrite `botManager.ts` with per-bid re-evaluation and roster tracking            | ✅ Done | `0058683` |
+| 9.5 | Update `auctionEngine.ts` to wire new bot system                                  | ✅ Done | `0a0300d` |
+| 9.6 | Delete `claudeBot.ts`, update this ROADMAP                                        | ✅ Done | —         |
 
 ### Resuming next session
 
@@ -255,6 +275,7 @@ Then open `.claude/plans/scalable-jingling-key.md` for the full step-by-step imp
 Old flow: each bot fires once at player reveal (fire-and-forget).
 
 New flow:
+
 - **On player revealed** → `revealPlayerToBots()` — each bot schedules a delayed bid via AbortController
 - **On bid placed** → `onBidPlaced()` — all non-winning bots cancel their timer, re-run `decideBid()`, reschedule if still bidding
 - **On sold/unsold** → `cancelAllBots()` — all timers cancelled; winner's roster updated via `updateRosterOnSold()`
