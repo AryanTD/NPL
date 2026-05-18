@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NPL Auction 2025</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #07080f;
+      --s1: #0c0f1c;
+      --s2: #111626;
+      --s3: #162035;
+      --border: #1c2540;
+      --border2: #243055;
+      --text: #e4e9f4;
+      --muted: #5b6f9a;
+      --muted2: #8899bb;
+      --red: #dc2626;
+      --red2: #b91c1c;
+      --gold: #c9a84c;
+      --green: #10b981;
+      --font-display: 'Rajdhani', sans-serif;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+    }
+    html, body { height: 100%; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-body); overflow: hidden; }
+    #root { height: 100vh; display: flex; flex-direction: column; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+    @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:.45} }
+    @keyframes pop-in  { 0%{transform:scale(.85);opacity:0} 60%{transform:scale(1.03)} 100%{transform:scale(1);opacity:1} }
+    @keyframes slide-up{ from{transform:translateY(14px);opacity:0} to{transform:translateY(0);opacity:1} }
+    @keyframes flash-g { 0%,100%{background:var(--s2)} 50%{background:#10b98122} }
+    @keyframes spin    { to{transform:rotate(360deg)} }
+    @keyframes marquee-reveal { 0%{transform:rotateY(90deg);opacity:0} 60%{transform:rotateY(-8deg)} 100%{transform:rotateY(0);opacity:1} }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+/* ── GAME DATA ───────────────────────────────────────────────── */
+window.FRANCHISES = [
+  { id:'KTM', name:'Kathmandu Gorkhas',    short:'KTM', city:'Kathmandu',     p:'#1B3A6B', s:'#C9A84C' },
+  { id:'PKR', name:'Pokhara Avengers',     short:'PKR', city:'Pokhara',        p:'#C0392B', s:'#FFFFFF' },
+  { id:'CHT', name:'Chitwan Rhinos',       short:'CHT', city:'Chitwan',        p:'#196F3D', s:'#F4D03F' },
+  { id:'BRT', name:'Biratnagar Kings',     short:'BRT', city:'Biratnagar',     p:'#6C3483', s:'#F9E79F' },
+  { id:'JNK', name:'Janakpur Bolts',       short:'JNK', city:'Janakpur',       p:'#1A5276', s:'#F39C12' },
+  { id:'LMB', name:'Lumbini Lions',        short:'LMB', city:'Lumbini',        p:'#922B21', s:'#FAD7A0' },
+  { id:'SDR', name:'Sudurpaschim Royals',  short:'SDR', city:'Sudurpaschim',   p:'#0E6655', s:'#A9DFBF' },
+  { id:'KRN', name:'Karnali Yaks',         short:'KRN', city:'Karnali',        p:'#4A235A', s:'#D7BDE2' },
+];
+
+window.MARQUEE_PLAYERS = [
+  { id:'m1', name:'Sandeep Lamichhane',   role:'Leg Spinner',   cat:'MARQUEE' },
+  { id:'m2', name:'Dipendra Singh Airee', role:'All-Rounder',   cat:'MARQUEE' },
+  { id:'m3', name:'Rohit Paudel',         role:'Batsman',       cat:'MARQUEE' },
+  { id:'m4', name:'Kushal Bhurtel',       role:'Batsman',       cat:'MARQUEE' },
+  { id:'m5', name:'Paras Khadka',         role:'All-Rounder',   cat:'MARQUEE' },
+  { id:'m6', name:'Aasif Sheikh',         role:'Batsman',       cat:'MARQUEE' },
+  { id:'m7', name:'Binod Bhandari',       role:'WK-Batsman',    cat:'MARQUEE' },
+  { id:'m8', name:'Sompal Kami',          role:'Fast Bowler',   cat:'MARQUEE' },
+];
+
+window.AUCTION_PLAYERS = [
+  // Category A (3 per team = 24 slots shared across 8 teams; pool shown is 12)
+  { id:'a1',  name:'Kushal Malla',          role:'Batsman',       cat:'A', stats:{mat:58,runs:1654,sr:131} },
+  { id:'a2',  name:'Karan KC',              role:'Fast Bowler',   cat:'A', stats:{mat:62,wkts:71,avg:19.2} },
+  { id:'a3',  name:'Sagar Pun',             role:'All-Rounder',   cat:'A', stats:{mat:55,runs:920,wkts:38} },
+  { id:'a4',  name:'Lalit Rajbanshi',       role:'WK-Batsman',    cat:'A', stats:{mat:48,runs:1102,dis:44} },
+  { id:'a5',  name:'Aarif Sheikh',          role:'Batsman',       cat:'A', stats:{mat:51,runs:1340,avg:34.1} },
+  { id:'a6',  name:'Gulshan Jha',           role:'Fast Bowler',   cat:'A', stats:{mat:44,wkts:52,avg:22.8} },
+  // Category B
+  { id:'b1',  name:'Bikram Sob',            role:'All-Rounder',   cat:'B', stats:{mat:36,runs:680,wkts:22} },
+  { id:'b2',  name:'Pawan Sarraf',          role:'All-Rounder',   cat:'B', stats:{mat:31,runs:540,wkts:18} },
+  { id:'b3',  name:'Nabin Dani',            role:'Batsman',       cat:'B', stats:{mat:39,runs:820,avg:26.4} },
+  { id:'b4',  name:'Sushan Bhari',          role:'Fast Bowler',   cat:'B', stats:{mat:34,wkts:38,avg:24.6} },
+  { id:'b5',  name:'Pratish Khadka',        role:'Batsman',       cat:'B', stats:{mat:28,runs:612,sr:118} },
+  { id:'b6',  name:'Sushil Kandel',         role:'Spinner',       cat:'B', stats:{mat:30,wkts:29,avg:28.1} },
+  { id:'b7',  name:'Ishan Pandey',          role:'All-Rounder',   cat:'B', stats:{mat:25,runs:380,wkts:14} },
+  { id:'b8',  name:'Rahul Vishwakarma',     role:'Spinner',       cat:'B', stats:{mat:32,wkts:33,avg:26.4} },
+  // Category C
+  { id:'c1',  name:'Nandan Yadav',          role:'Batsman',       cat:'C', stats:{mat:22,runs:340,avg:21.2} },
+  { id:'c2',  name:'Rajesh Pulami Magar',   role:'Fast Bowler',   cat:'C', stats:{mat:24,wkts:18,avg:32.1} },
+  { id:'c3',  name:'Sagar Dhakal',          role:'Fast Bowler',   cat:'C', stats:{mat:19,wkts:14,avg:34.8} },
+  { id:'c4',  name:'Dipesh Shrestha',       role:'All-Rounder',   cat:'C', stats:{mat:21,runs:290,wkts:10} },
+  { id:'c5',  name:'Aditya Kumar Chaudhary',role:'Batsman',       cat:'C', stats:{mat:18,runs:310,avg:19.8} },
+  { id:'c6',  name:'Kamal Singh Airee',     role:'All-Rounder',   cat:'C', stats:{mat:20,runs:260,wkts:8} },
+  { id:'c7',  name:'Ram Fewri Tharu',       role:'Fast Bowler',   cat:'C', stats:{mat:16,wkts:12,avg:36.2} },
+  { id:'c8',  name:'Arjun Saud',            role:'Spinner',       cat:'C', stats:{mat:17,wkts:11,avg:38.4} },
+];
+
+window.CAT_CFG = {
+  A: { base:1000000, max:1500000, label:'Category A', color:'#F59E0B' },
+  B: { base:500000,  max:1000000, label:'Category B', color:'#60A5FA' },
+  C: { base:200000,  max:500000,  label:'Category C', color:'#34D399' },
+  MARQUEE: { base:0, max:0, label:'Marquee', color:'#F472B6' },
+};
+window.BUDGET   = 9000000; // 90L
+window.BID_INC  = 25000;
+
+window.BOT_PERSONALITIES = ['AGGRESSIVE','CONSERVATIVE','ROLE_HUNTER','BUDGET_SNIPER','BALANCED'];
+window.BOT_NAMES = ['RameshMgr','SitaCoach','HariDraft','GitaGM','KrishnaXI','MayaFC','BirenBids'];
+</script>
+
+
+<script>
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "Midnight Navy"
+}/*EDITMODE-END*/;
+
+window.THEMES = {
+  'Midnight Navy': {
+    '--bg':'#07080f','--s1':'#0c0f1c','--s2':'#111626','--s3':'#162035',
+    '--border':'#1c2540','--border2':'#243055',
+    '--text':'#e4e9f4','--muted':'#5b6f9a','--muted2':'#8899bb',
+    '--red':'#dc2626','--red2':'#b91c1c','--gold':'#c9a84c','--green':'#10b981',
+  },
+  'Pitch Black': {
+    '--bg':'#000000','--s1':'#0a0a0a','--s2':'#111111','--s3':'#1c1c1c',
+    '--border':'#242424','--border2':'#333333',
+    '--text':'#f0f0f0','--muted':'#666666','--muted2':'#999999',
+    '--red':'#ffd60a','--red2':'#e6c000','--gold':'#ffffff','--green':'#4ade80',
+  },
+  'Forest Green': {
+    '--bg':'#040a05','--s1':'#071009','--s2':'#0a1a0c','--s3':'#0f2414',
+    '--border':'#143318','--border2':'#1a4220',
+    '--text':'#e0f2e5','--muted':'#4a7a55','--muted2':'#6aaa7a',
+    '--red':'#16a34a','--red2':'#15803d','--gold':'#86efac','--green':'#4ade80',
+  },
+  'Royal Blue': {
+    '--bg':'#04060f','--s1':'#080d1e','--s2':'#0d1530','--s3':'#121e42',
+    '--border':'#1a2855','--border2':'#243570',
+    '--text':'#e0e8ff','--muted':'#4a5f9a','--muted2':'#6a80cc',
+    '--red':'#3b82f6','--red2':'#2563eb','--gold':'#93c5fd','--green':'#34d399',
+  },
+  'Nepal Crimson': {
+    '--bg':'#0f0205','--s1':'#1a0408','--s2':'#240610','--s3':'#300818',
+    '--border':'#3d0a18','--border2':'#521025',
+    '--text':'#fce8ec','--muted':'#9a4555','--muted2':'#cc6678',
+    '--red':'#DC143C','--red2':'#b01030','--gold':'#f9e79f','--green':'#4ade80',
+  },
+};
+</script>
+
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+const { FRANCHISES, MARQUEE_PLAYERS, AUCTION_PLAYERS, CAT_CFG, BUDGET, BID_INC, BOT_PERSONALITIES, BOT_NAMES, THEMES } = window;
+
+/* ── UTILS ──────────────────────────────────────────────────── */
+const L = n => 'रू' + (n/100000).toFixed(1).replace('.0','') + 'L';
+const fmtNPR = n => {
+  if (n >= 1000000) return `रू${(n/100000).toFixed(1).replace('.0','')}L`;
+  return `रू${Math.round(n/1000)}K`;
+};
+const fmtFull = n => `NPR ${n.toLocaleString()}`;
+
+const franchise = id => FRANCHISES.find(f => f.id === id);
+
+const catColor = cat => CAT_CFG[cat]?.color || '#888';
+
+const ROLE_BADGE = {
+  'Batsman':'BAT', 'All-Rounder':'AR', 'Fast Bowler':'PACE',
+  'Leg Spinner':'SPIN', 'Spinner':'SPIN', 'WK-Batsman':'WK', 'Bowler':'BWL',
+};
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+/* Can a team afford to bid? Server-side rule mirrored */
+function canAffordBid(seat, newBid, player) {
+  const budget = seat.purse;
+  if (budget < newBid) return false;
+  // Must be able to fill remaining slots at base price after purchase
+  const aLeft = 3 - seat.countA - (player.cat==='A'?1:0);
+  const bLeft = 4 - seat.countB - (player.cat==='B'?1:0);
+  const cLeft = 3 - seat.countC - (player.cat==='C'?1:0);
+  const minNeeded = Math.max(0,aLeft)*CAT_CFG.A.base + Math.max(0,bLeft)*CAT_CFG.B.base + Math.max(0,cLeft)*CAT_CFG.C.base;
+  return (budget - newBid) >= minNeeded;
+}
+
+function hasQuota(seat, cat) {
+  if (cat==='A' && seat.countA >= 3) return false;
+  if (cat==='B' && seat.countB >= 4) return false;
+  if (cat==='C' && seat.countC >= 3) return false;
+  return true;
+}
+
+/* ── PLAYER AVATAR PLACEHOLDER ─────────────────────────────── */
+function Avatar({ player, size=112 }) {
+  const cc = catColor(player.cat);
+  const init = player.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const pid = player.id || 'p';
+  return (
+    <svg width={size} height={size} viewBox="0 0 112 112" style={{display:'block',borderRadius:8,overflow:'hidden'}}>
+      <defs>
+        <pattern id={`s${pid}`} patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(135)">
+          <rect width="10" height="10" fill="#0c0f1c"/>
+          <rect width="5" height="10" fill="#111626" opacity=".9"/>
+        </pattern>
+      </defs>
+      <rect width="112" height="112" fill={`url(#s${pid})`}/>
+      <rect width="112" height="112" fill={cc} fillOpacity=".07"/>
+      <text x="56" y="50" textAnchor="middle" dominantBaseline="middle"
+        fill={cc} fillOpacity=".55" fontSize="30"
+        fontFamily="Rajdhani" fontWeight="700">{init}</text>
+      <text x="56" y="80" textAnchor="middle"
+        fill="#3a4f70" fontSize="9" fontFamily="Plus Jakarta Sans">player photo</text>
+    </svg>
+  );
+}
+
+/* ── FRANCHISE CREST PLACEHOLDER ────────────────────────────── */
+function Crest({ fid, size=36 }) {
+  const f = franchise(fid);
+  if (!f) return null;
+  return (
+    <div style={{
+      width:size, height:size, borderRadius:'50%',
+      background:`${f.p}28`, border:`1.5px solid ${f.p}80`,
+      display:'flex', alignItems:'center', justifyContent:'center',
+      fontFamily:'Rajdhani', fontWeight:700, fontSize:Math.round(size*.3),
+      color:f.p, flexShrink:0, letterSpacing:.5,
+    }}>{f.short}</div>
+  );
+}
+
+/* ── SCREEN: LANDING ─────────────────────────────────────────── */
+function LandingScreen({ onEnter }) {
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+  const [mode, setMode] = useState(null); // null | 'create' | 'join'
+
+  return (
+    <div style={{
+      height:'100vh', display:'flex', flexDirection:'column',
+      alignItems:'center', justifyContent:'center',
+      background:'var(--bg)', position:'relative', overflow:'hidden',
+    }}>
+      {/* Background texture */}
+      <div style={{
+        position:'absolute', inset:0, opacity:.035,
+        backgroundImage:'repeating-linear-gradient(0deg,#fff 0px,#fff 1px,transparent 1px,transparent 60px),repeating-linear-gradient(90deg,#fff 0px,#fff 1px,transparent 1px,transparent 60px)',
+      }}/>
+
+      {/* Logo lockup */}
+      <div style={{textAlign:'center', marginBottom:48, animation:'slide-up .5s ease'}}>
+        <div style={{
+          display:'inline-flex', alignItems:'center', gap:14, marginBottom:16,
+        }}>
+          {/* Nepal flag colors accent bar */}
+          <div style={{display:'flex', flexDirection:'column', gap:3}}>
+            <div style={{width:4,height:24,background:'#dc2626',borderRadius:2}}/>
+            <div style={{width:4,height:16,background:'#1B3A6B',borderRadius:2}}/>
+          </div>
+          <div>
+            <div style={{
+              fontFamily:'Rajdhani', fontWeight:700, fontSize:52,
+              letterSpacing:3, color:'var(--text)', lineHeight:1,
+            }}>NPL AUCTION</div>
+            <div style={{
+              fontFamily:'Rajdhani', fontWeight:500, fontSize:18,
+              letterSpacing:6, color:'var(--gold)', marginTop:2,
+            }}>2025 · SEASON 4</div>
+          </div>
+        </div>
+        <p style={{fontSize:14, color:'var(--muted)', maxWidth:360, lineHeight:1.6}}>
+          Join a live auction room and bid on real Nepali cricketers to build your franchise squad.
+        </p>
+      </div>
+
+      {/* Auth card */}
+      <div style={{
+        background:'var(--s1)', border:'1px solid var(--border)',
+        borderRadius:14, padding:'32px 36px', width:520,
+        animation:'slide-up .5s ease .1s both',
+      }}>
+        {!mode && (
+          <div style={{display:'flex', flexDirection:'column', gap:12}}>
+            <div style={{marginBottom:8}}>
+              <label style={{fontSize:12, color:'var(--muted)', letterSpacing:.5, display:'block', marginBottom:8}}>
+                YOUR NAME
+              </label>
+              <input
+                value={name} onChange={e=>setName(e.target.value)}
+                placeholder="Enter your name"
+                style={{
+                  width:'100%', background:'var(--s2)', border:'1px solid var(--border)',
+                  borderRadius:8, padding:'10px 14px', color:'var(--text)',
+                  fontFamily:'var(--font-body)', fontSize:14, outline:'none',
+                }}
+              />
+            </div>
+            <button onClick={()=>setMode('create')} disabled={!name.trim()}
+              style={{
+                background: name.trim() ? 'var(--red)' : 'var(--s3)',
+                color: name.trim() ? '#fff' : 'var(--muted)',
+                border:'none', borderRadius:8, padding:'12px',
+                fontFamily:'Rajdhani', fontWeight:700, fontSize:16, letterSpacing:1.5,
+                cursor: name.trim() ? 'pointer' : 'not-allowed', transition:'background .15s',
+              }}>
+              CREATE ROOM
+            </button>
+            <button onClick={()=>setMode('join')} disabled={!name.trim()}
+              style={{
+                background:'transparent', color: name.trim() ? 'var(--text)' : 'var(--muted)',
+                border:'1px solid var(--border2)', borderRadius:8, padding:'12px',
+                fontFamily:'Rajdhani', fontWeight:700, fontSize:16, letterSpacing:1.5,
+                cursor: name.trim() ? 'pointer' : 'not-allowed', transition:'all .15s',
+              }}>
+              JOIN WITH CODE
+            </button>
+            <div style={{display:'flex', alignItems:'center', gap:10, margin:'4px 0'}}>
+              <div style={{flex:1,height:1,background:'var(--border)'}}/>
+              <span style={{fontSize:12,color:'var(--muted)'}}>or</span>
+              <div style={{flex:1,height:1,background:'var(--border)'}}/>
+            </div>
+            <button
+              onClick={()=>{ if(name.trim()) onEnter(name.trim(),'KTM'); }}
+              disabled={!name.trim()}
+              style={{
+                background:'transparent', color:'var(--muted2)',
+                border:'1px solid var(--border)', borderRadius:8, padding:'10px',
+                fontFamily:'var(--font-body)', fontSize:13,
+                cursor: name.trim() ? 'pointer' : 'not-allowed',
+              }}>
+              Quick Play (vs bots only)
+            </button>
+          </div>
+        )}
+
+        {mode === 'create' && (
+          <div style={{display:'flex', flexDirection:'column', gap:12}}>
+            <button onClick={()=>setMode(null)} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',textAlign:'left',fontSize:12,marginBottom:4}}>
+              ← Back
+            </button>
+            <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:22,marginBottom:4}}>CHOOSE YOUR FRANCHISE</div>
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, maxHeight:420, overflowY:'auto'}}>
+              {FRANCHISES.map(f=>(
+                <button key={f.id} onClick={()=>onEnter(name.trim(),f.id)}
+                  style={{
+                    background:'var(--s2)', border:`1px solid ${f.p}60`,
+                    borderRadius:8, padding:'12px 10px', cursor:'pointer',
+                    display:'flex', flexDirection:'column', alignItems:'flex-start', gap:4,
+                    transition:'all .15s', textAlign:'left',
+                  }}
+                  onMouseOver={e=>{e.currentTarget.style.background=`${f.p}18`; e.currentTarget.style.borderColor=f.p;}}
+                  onMouseOut={e=>{e.currentTarget.style.background='var(--s2)'; e.currentTarget.style.borderColor=`${f.p}60`;}}
+                >
+                  <div style={{
+                    width:8,height:8,borderRadius:'50%',background:f.p,
+                  }}/>
+                  <div style={{fontWeight:600,fontSize:13,color:'var(--text)',lineHeight:1.3}}>{f.name}</div>
+                  <div style={{fontSize:11,color:'var(--muted)'}}>{f.city}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {mode === 'join' && (
+          <div style={{display:'flex',flexDirection:'column',gap:12}}>
+            <button onClick={()=>setMode(null)} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',textAlign:'left',fontSize:12}}>
+              ← Back
+            </button>
+            <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:22}}>JOIN ROOM</div>
+            <input
+              value={code} onChange={e=>setCode(e.target.value.toUpperCase().slice(0,6))}
+              placeholder="6-digit room code"
+              style={{
+                background:'var(--s2)', border:'1px solid var(--border)',
+                borderRadius:8, padding:'12px 14px', color:'var(--text)',
+                fontFamily:'Rajdhani', fontWeight:700, fontSize:22, letterSpacing:4,
+                textAlign:'center', outline:'none', width:'100%',
+              }}
+            />
+            <button onClick={()=>code.length===6&&onEnter(name.trim(),'KTM')}
+              style={{
+                background: code.length===6 ? 'var(--red)' : 'var(--s3)',
+                color: code.length===6 ? '#fff' : 'var(--muted)',
+                border:'none', borderRadius:8, padding:'12px',
+                fontFamily:'Rajdhani', fontWeight:700, fontSize:16, letterSpacing:1.5,
+                cursor: code.length===6 ? 'pointer' : 'not-allowed',
+              }}>
+              JOIN
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div style={{position:'absolute',bottom:20,fontSize:12,color:'var(--muted)'}}>
+        Nepal Premier League · Auction Simulation · Season 4
+      </div>
+    </div>
+  );
+}
+
+/* ── SCREEN: LOBBY ───────────────────────────────────────────── */
+function LobbyScreen({ userName, userFranchiseId, onStart }) {
+  const [seats] = useState(() =>
+    FRANCHISES.map((f,i) => ({
+      franchiseId: f.id,
+      type: f.id === userFranchiseId ? 'HUMAN' : 'BOT',
+      name: f.id === userFranchiseId ? userName : BOT_NAMES[(i-1+BOT_NAMES.length)%BOT_NAMES.length],
+      personality: BOT_PERSONALITIES[i%5],
+      ready: f.id === userFranchiseId,
+    }))
+  );
+  const [countdown, setCountdown] = useState(null);
+  const uf = franchise(userFranchiseId);
+
+  const handleStart = () => {
+    setCountdown(3);
+  };
+  useEffect(() => {
+    if (countdown === null) return;
+    if (countdown === 0) { onStart(); return; }
+    const t = setTimeout(() => setCountdown(c=>c-1), 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
+
+  return (
+    <div style={{height:'100vh',display:'flex',flexDirection:'column',background:'var(--bg)'}}>
+      {/* Header */}
+      <div style={{
+        height:56, borderBottom:'1px solid var(--border)',
+        display:'flex', alignItems:'center', padding:'0 24px', gap:16, flexShrink:0,
+      }}>
+        <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:20,letterSpacing:2,color:'var(--red)'}}>NPL</div>
+        <div style={{width:1,height:20,background:'var(--border)'}}/>
+        <div style={{fontFamily:'Rajdhani',fontWeight:600,fontSize:14,color:'var(--muted2)',letterSpacing:1}}>AUCTION LOBBY</div>
+        <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8}}>
+          <div style={{width:7,height:7,borderRadius:'50%',background:'var(--green)',animation:'pulse 2s infinite'}}/>
+          <span style={{fontSize:13,color:'var(--green)',fontWeight:500}}>Room Open</span>
+          <div style={{
+            marginLeft:8, background:'var(--s2)', border:'1px solid var(--border)',
+            borderRadius:6, padding:'4px 12px',
+            fontFamily:'Rajdhani', fontWeight:700, fontSize:14, letterSpacing:3,
+          }}>NPL-2025</div>
+        </div>
+      </div>
+
+      <div style={{flex:1,display:'flex',overflow:'hidden'}}>
+        {/* Team grid */}
+        <div style={{flex:1,padding:24,overflow:'auto',alignSelf:'flex-start'}}>
+          <div style={{marginBottom:20,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div>
+              <div style={{fontSize:11,color:'var(--muted)',letterSpacing:1,marginBottom:4}}>FRANCHISE SEATS</div>
+              <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:22}}>8 Teams · 8 Players · Bot Fill</div>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <div style={{
+                background:`${uf?.p}20`, border:`1px solid ${uf?.p}80`,
+                borderRadius:6, padding:'6px 14px',
+                fontSize:13, fontWeight:500,
+              }}>
+                <span style={{color:uf?.p,fontFamily:'Rajdhani',fontWeight:700}}>{uf?.short}</span>
+                <span style={{color:'var(--muted2)',marginLeft:6}}>{uf?.name}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12}}>
+            {seats.map(seat=>{
+              const f = franchise(seat.franchiseId);
+              const isUser = seat.type==='HUMAN';
+              return (
+                <div key={f.id} style={{
+                  background: isUser ? `${f.p}12` : 'var(--s1)',
+                  border:`1px solid ${isUser ? f.p : 'var(--border)'}`,
+                  borderRadius:10, padding:'18px 16px', position:'relative',
+                  transition:'all .2s',
+                }}>
+                  <div style={{position:'absolute',top:0,left:0,right:0,height:3,background:f.p,borderRadius:'10px 10px 0 0'}}/>
+                  <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
+                    <Crest fid={f.id} size={36}/>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:600,lineHeight:1.2}}>{f.name}</div>
+                      <div style={{fontSize:11,color:'var(--muted)'}}>{f.city}</div>
+                    </div>
+                  </div>
+                  <div style={{
+                    display:'flex',alignItems:'center',gap:6,
+                    background:'var(--s2)',borderRadius:6,padding:'7px 10px',
+                  }}>
+                    <div style={{
+                      width:6,height:6,borderRadius:'50%',flexShrink:0,
+                      background: isUser ? 'var(--green)' : 'var(--muted)',
+                    }}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:12,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                        {seat.name}
+                      </div>
+                      {!isUser && <div style={{fontSize:10,color:'var(--muted)'}}>Manager</div>}
+                    </div>
+                    {isUser && <div style={{fontSize:10,color:'var(--green)',fontWeight:500}}>YOU</div>}
+                  </div>
+                  <div style={{display:'flex',justifyContent:'space-between',marginTop:10,fontSize:11,color:'var(--muted)'}}>
+                    <span>Purse: <span style={{color:'var(--gold)',fontFamily:'Rajdhani',fontWeight:600}}>NPR 90L</span></span>
+                    <span style={{color:isUser?'var(--green)':'var(--muted2)'}}>Ready</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Info cards */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginTop:16}}>
+            {[
+              {label:'PURSE PER TEAM',value:'NPR 90L',sub:'NPR 9,000,000'},
+              {label:'AUCTION POOL',value:'22 players',sub:'6A · 8B · 8C'},
+              {label:'SQUAD SIZE',value:'16 players',sub:'1 Marquee + 10 Auction + 5 Pre-signed'},
+            ].map(c=>(
+              <div key={c.label} style={{
+                background:'var(--s1)',border:'1px solid var(--border)',
+                borderRadius:10,padding:'12px 16px',
+              }}>
+                <div style={{fontSize:10,color:'var(--muted)',letterSpacing:1,marginBottom:6}}>{c.label}</div>
+                <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:24,color:'var(--text)'}}>{c.value}</div>
+                <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>{c.sub}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Side panel */}
+        <div style={{width:280,borderLeft:'1px solid var(--border)',display:'flex',flexDirection:'column',flexShrink:0}}>
+          <div style={{padding:'20px 20px 12px',borderBottom:'1px solid var(--border)'}}>
+            <div style={{fontSize:11,color:'var(--muted)',letterSpacing:1,marginBottom:8}}>AUCTION FORMAT</div>
+            {[
+              ['Marquee Draw','Lucky draw assigns 1 star to each team'],
+              ['Category A','Base NPR 10L · Max NPR 15L'],
+              ['Category B','Base NPR 5L · Max NPR 10L'],
+              ['Category C','Base NPR 2L · Max NPR 5L'],
+              ['Unsold Round','Unfilled quotas get another chance'],
+            ].map(([title,desc],i)=>(
+              <div key={i} style={{display:'flex',gap:10,marginBottom:12,alignItems:'flex-start'}}>
+                <div style={{
+                  width:20,height:20,borderRadius:'50%',background:'var(--s3)',
+                  border:'1px solid var(--border2)',display:'flex',alignItems:'center',justifyContent:'center',
+                  fontSize:10,fontFamily:'Rajdhani',fontWeight:700,flexShrink:0,color:'var(--muted2)',
+                }}>{i+1}</div>
+                <div>
+                  <div style={{fontSize:13,fontWeight:500}}>{title}</div>
+                  <div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{padding:'20px 20px 20px',borderTop:'1px solid var(--border)'}}>
+            {countdown !== null && countdown > 0 ? (
+              <div style={{
+                background:'var(--s2)',border:'1px solid var(--border)',borderRadius:10,
+                padding:'20px',textAlign:'center',
+              }}>
+                <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:64,color:'var(--gold)',lineHeight:1}}>{countdown}</div>
+                <div style={{fontSize:13,color:'var(--muted)',marginTop:4}}>Auction starting…</div>
+              </div>
+            ) : (
+              <button onClick={handleStart} style={{
+                width:'100%',background:'var(--red)',color:'#fff',border:'none',
+                borderRadius:10,padding:'14px',
+                fontFamily:'Rajdhani',fontWeight:700,fontSize:18,letterSpacing:2,
+                cursor:'pointer',transition:'background .15s',
+              }}
+              onMouseOver={e=>e.target.style.background='var(--red2)'}
+              onMouseOut={e=>e.target.style.background='var(--red)'}
+              >
+                START AUCTION
+              </button>
+            )}
+            <p style={{fontSize:11,color:'var(--muted)',textAlign:'center',marginTop:12,lineHeight:1.5}}>
+              All empty seats will be filled by bots. You are the only human player.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── SCREEN: MARQUEE DRAW ────────────────────────────────────── */
+function MarqueeDrawScreen({ userFranchiseId, onComplete }) {
+  const [step, setStep] = useState(0); // 0=intro, 1-8=reveal each
+  const [assignments] = useState(() => {
+    const players = shuffle(MARQUEE_PLAYERS);
+    return FRANCHISES.map((f,i) => ({ franchise:f, player:players[i] }));
+  });
+  const userAssignment = assignments.find(a=>a.franchise.id===userFranchiseId);
+
+  useEffect(() => {
+    if (step === 0) {
+      const t = setTimeout(()=>setStep(1), 1200);
+      return ()=>clearTimeout(t);
+    }
+    if (step > 0 && step <= 8) {
+      const t = setTimeout(()=>setStep(s=>s+1), 900);
+      return ()=>clearTimeout(t);
+    }
+    if (step === 9) {
+      const t = setTimeout(()=>onComplete(assignments), 3000);
+      return ()=>clearTimeout(t);
+    }
+  }, [step]);
+
+  return (
+    <div style={{
+      height:'100vh',display:'flex',flexDirection:'column',
+      alignItems:'center',justifyContent:'center',
+      background:'var(--bg)',gap:32,
+    }}>
+      <div style={{textAlign:'center'}}>
+        <div style={{fontSize:11,color:'var(--muted)',letterSpacing:2,marginBottom:8}}>LUCKY DRAW</div>
+        <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:36,color:'var(--text)'}}>MARQUEE ASSIGNMENT</div>
+        <div style={{fontSize:13,color:'var(--muted)',marginTop:4}}>Each franchise receives one marquee player</div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,width:'100%',maxWidth:900,padding:'0 24px'}}>
+        {assignments.map((a,i)=>{
+          const revealed = step > i;
+          const isUser = a.franchise.id===userFranchiseId;
+          return (
+            <div key={a.franchise.id} style={{
+              background: isUser && revealed ? `${a.franchise.p}18` : 'var(--s1)',
+              border:`1px solid ${revealed ? (isUser?a.franchise.p:'var(--border2)') : 'var(--border)'}`,
+              borderRadius:10,padding:'14px 12px',transition:'all .3s',
+              animation: revealed ? 'marquee-reveal .5s ease' : 'none',
+            }}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+                <Crest fid={a.franchise.id} size={28}/>
+                <div style={{fontSize:12,fontWeight:500,color:revealed?'var(--text)':'var(--muted)'}}>{a.franchise.short}</div>
+              </div>
+              {revealed ? (
+                <div>
+                  <div style={{fontSize:14,fontWeight:600,lineHeight:1.3,color:isUser?a.franchise.s:'var(--text)'}}>{a.player.name}</div>
+                  <div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{a.player.role}</div>
+                  <div style={{
+                    display:'inline-block',marginTop:6,
+                    background:`${catColor('MARQUEE')}20`,border:`1px solid ${catColor('MARQUEE')}60`,
+                    borderRadius:4,padding:'2px 6px',fontSize:10,color:catColor('MARQUEE'),
+                    fontFamily:'Rajdhani',fontWeight:700,
+                  }}>MARQUEE</div>
+                </div>
+              ) : (
+                <div style={{
+                  height:56,display:'flex',alignItems:'center',justifyContent:'center',
+                  color:'var(--muted)',fontSize:20,letterSpacing:4,
+                }}>? ? ?</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {step >= 9 && (
+        <div style={{
+          background:`${userAssignment?.franchise.p}20`,
+          border:`1px solid ${userAssignment?.franchise.p}`,
+          borderRadius:10,padding:'16px 28px',textAlign:'center',
+          animation:'pop-in .4s ease',
+        }}>
+          <div style={{fontSize:11,color:'var(--muted)',letterSpacing:1,marginBottom:4}}>YOUR MARQUEE PLAYER</div>
+          <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:24,color:userAssignment?.franchise.s}}>
+            {userAssignment?.player.name}
+          </div>
+          <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>Auction begins in a moment…</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── LUCKY DRAW OVERLAY ─────────────────────────────────────── */
+function LuckyDrawOverlay({ player, contenders, onComplete }) {
+  const [spinning, setSpinning] = useState(true);
+  const [winner, setWinner] = useState(null);
+  const [highlighted, setHighlighted] = useState(0);
+
+  useEffect(() => {
+    let speed = 80;
+    let rounds = 0;
+    let idx = 0;
+    const totalRounds = contenders.length * 4 + Math.floor(Math.random() * contenders.length);
+    const pickedIdx = Math.floor(Math.random() * contenders.length);
+    const cycle = () => {
+      idx = (idx + 1) % contenders.length;
+      setHighlighted(idx);
+      rounds++;
+      if (rounds >= totalRounds - contenders.length) speed = Math.min(speed + 55, 480);
+      if (rounds < totalRounds) {
+        setTimeout(cycle, speed);
+      } else {
+        setHighlighted(pickedIdx);
+        setWinner(contenders[pickedIdx]);
+        setSpinning(false);
+        setTimeout(() => onComplete(contenders[pickedIdx]), 2400);
+      }
+    };
+    setTimeout(cycle, speed);
+  }, []);
+
+  const catCfg = CAT_CFG[player.cat];
+  return (
+    <div style={{
+      position:'fixed', inset:0, background:'rgba(7,8,15,.85)', backdropFilter:'blur(6px)',
+      display:'flex', alignItems:'center', justifyContent:'center', zIndex:100,
+    }}>
+      <div style={{
+        background:'var(--s2)', border:`1px solid ${catCfg?.color}60`,
+        borderRadius:16, padding:'40px 52px', maxWidth:620, width:'92%', textAlign:'center',
+      }}>
+        <div style={{
+          display:'inline-block', background:`${catCfg?.color}20`,
+          border:`1px solid ${catCfg?.color}60`, borderRadius:6,
+          padding:'3px 12px', marginBottom:14,
+          fontFamily:'Rajdhani', fontWeight:700, fontSize:12, color:catCfg?.color, letterSpacing:1,
+        }}>MAX PRICE HIT — LUCKY DRAW</div>
+        <div style={{fontFamily:'Rajdhani', fontWeight:700, fontSize:26, marginBottom:2}}>{player.name}</div>
+        <div style={{fontSize:13, color:'var(--muted)', marginBottom:4}}>{player.role}</div>
+        <div style={{fontFamily:'Rajdhani', fontWeight:700, fontSize:22, color:'var(--gold)', marginBottom:22}}>
+          {fmtNPR(catCfg?.max||0)}
+        </div>
+        <div style={{display:'flex', flexWrap:'wrap', gap:8, justifyContent:'center', marginBottom:22}}>
+          {contenders.map((fid, i) => {
+            const f = franchise(fid);
+            const isHit = highlighted === i;
+            const isWon = !spinning && winner === fid;
+            return (
+              <div key={fid} style={{
+                display:'flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:8,
+                background: isWon ? `${f.p}30` : isHit ? `${f.p}22` : 'var(--s1)',
+                border:`1px solid ${isWon ? f.p : isHit ? `${f.p}aa` : 'var(--border)'}`,
+                transform: isHit && spinning ? 'scale(1.07)' : 'scale(1)',
+                transition: spinning ? 'all .07s' : 'all .4s',
+              }}>
+                <Crest fid={fid} size={22}/>
+                <span style={{fontSize:13, fontWeight:600, color: isWon ? f.s : isHit ? f.p : 'var(--muted2)'}}>
+                  {f.short}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        {spinning ? (
+          <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:8, color:'var(--muted)'}}>
+            <div style={{width:14, height:14, border:'2px solid var(--border)', borderTopColor:'var(--gold)', borderRadius:'50%', animation:'spin .7s linear infinite'}}/>
+            <span style={{fontSize:13}}>Drawing…</span>
+          </div>
+        ) : winner && (
+          <div style={{animation:'pop-in .4s ease'}}>
+            <div style={{fontSize:11, color:'var(--muted)', letterSpacing:1, marginBottom:6}}>WINNER</div>
+            <div style={{fontFamily:'Rajdhani', fontWeight:700, fontSize:26, color:franchise(winner)?.p}}>
+              {franchise(winner)?.name}
+            </div>
+            <div style={{fontSize:12, color:'var(--muted)', marginTop:4}}>
+              {player.name} signed at {fmtNPR(catCfg?.max||0)}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── SCREEN: AUCTION ─────────────────────────────────────────── */
+function AuctionScreen({ userName, userFranchiseId, marqueeAssignments }) {
+  const uf = franchise(userFranchiseId);
+
+  /* Initial game state */
+  const initState = useCallback(() => {
+    const seats = FRANCHISES.map((f,i)=>({
+      franchiseId: f.id,
+      isHuman: f.id===userFranchiseId,
+      purse: BUDGET,
+      countA:0, countB:0, countC:0,
+      squad: marqueeAssignments
+        ? [{ ...(marqueeAssignments.find(a=>a.franchise.id===f.id)?.player||{}), soldFor:0 }]
+        : [],
+      personality: BOT_PERSONALITIES[i%5],
+      thinking: false,
+    }));
+    const pool = [
+      ...shuffle(AUCTION_PLAYERS.filter(p=>p.cat==='A')),
+      ...shuffle(AUCTION_PLAYERS.filter(p=>p.cat==='B')),
+      ...shuffle(AUCTION_PLAYERS.filter(p=>p.cat==='C')),
+    ];
+    const [first,...rest] = pool;
+    return {
+      seats, pool:rest,
+      current: first,
+      currentBid: CAT_CFG[first.cat].base,
+      currentBidder: null,
+      timer: 30,
+      phase: 'bidding', // bidding | sold | unsold | luckyDraw | complete
+      luckyDrawContenders: [],
+      history: [],
+      feedLog: [`Category ${first.cat} auction begins — ${first.name} on the block`],
+    };
+  }, [userFranchiseId, marqueeAssignments]);
+
+  const [gs, setGs] = useState(initState);
+  const phaseRef = useRef(gs.phase);
+  phaseRef.current = gs.phase;
+
+  const userSeat = gs.seats.find(s=>s.franchiseId===userFranchiseId);
+  const isUserLeading = gs.currentBidder===userFranchiseId;
+  const bidder = gs.currentBidder ? franchise(gs.currentBidder) : null;
+  const timerPct = (gs.timer/30)*100;
+  const timerColor = gs.timer<=8 ? '#ef4444' : gs.timer<=18 ? '#f59e0b' : 'var(--green)';
+  const catCfg = gs.current ? CAT_CFG[gs.current.cat] : null;
+
+  /* ── Timer ── */
+  useEffect(()=>{
+    if (gs.phase!=='bidding') return;
+    const iv = setInterval(()=>{
+      setGs(prev=>{
+        if (prev.phase!=='bidding') return prev;
+        if (prev.timer<=1) {
+          const phase = prev.currentBidder ? 'sold' : 'unsold';
+          const msg = prev.currentBidder
+            ? `SOLD — ${prev.current?.name} → ${franchise(prev.currentBidder)?.short} for ${fmtNPR(prev.currentBid)}`
+            : `UNSOLD — ${prev.current?.name} returned to pool`;
+          return {...prev, timer:0, phase, feedLog:[msg,...prev.feedLog].slice(0,30)};
+        }
+        return {...prev, timer:prev.timer-1};
+      });
+    },1000);
+    return ()=>clearInterval(iv);
+  },[gs.phase]);
+
+  /* ── Bot bidding ── */
+  useEffect(()=>{
+    if (gs.phase!=='bidding'||!gs.current) return;
+    let tid;
+    const scheduleBot = ()=>{
+      const delay = 1800+Math.random()*3200;
+      tid = setTimeout(()=>{
+        setGs(prev=>{
+          if (prev.phase!=='bidding') return prev;
+          const cur = prev.current;
+          if (!cur) return prev;
+          // find eligible bots
+          const bots = prev.seats.filter(s=>{
+            if (s.isHuman||s.franchiseId===prev.currentBidder) return false;
+            if (!hasQuota(s,cur.cat)) return false;
+            const newBid = prev.currentBid+BID_INC;
+            if (!canAffordBid(s,newBid,cur)) return false;
+            // personality-based chance
+            const baseChance = {AGGRESSIVE:.65,CONSERVATIVE:.25,ROLE_HUNTER:.45,BUDGET_SNIPER:.3,BALANCED:.45}[s.personality]||.4;
+            // less likely to bid if over base
+            const premium = (prev.currentBid-CAT_CFG[cur.cat].base)/CAT_CFG[cur.cat].base;
+            const chance = Math.max(.1, baseChance-premium*.3);
+            return Math.random()<chance;
+          });
+          if (!bots.length) { scheduleBot(); return prev; }
+          const bot = bots[Math.floor(Math.random()*bots.length)];
+          const newBid = prev.currentBid+BID_INC;
+          const maxPrice = CAT_CFG[cur.cat].max;
+          if (newBid >= maxPrice) return triggerLuckyDraw(prev, bot.franchiseId) || prev;
+          const msg = `${franchise(bot.franchiseId)?.short} bids ${fmtNPR(newBid)}`;
+          const newSeats = prev.seats.map(s=>s.franchiseId===bot.franchiseId?{...s,thinking:false}:s);
+          return {
+            ...prev, seats:newSeats,
+            currentBid:newBid, currentBidder:bot.franchiseId,
+            timer:Math.max(prev.timer,12),
+            feedLog:[msg,...prev.feedLog].slice(0,30),
+          };
+        });
+        scheduleBot();
+      },delay);
+      // "thinking" state
+      const thinkDelay = delay-1000;
+      if (thinkDelay>0) {
+        const tt = setTimeout(()=>{
+          setGs(prev=>{
+            if (prev.phase!=='bidding') return prev;
+            return prev; // just a UI hint — simplified here
+          });
+        },thinkDelay);
+        return ()=>{clearTimeout(tid);clearTimeout(tt);};
+      }
+    };
+    scheduleBot();
+    return ()=>clearTimeout(tid);
+  },[gs.phase, gs.current?.id]);
+
+  /* ── SOLD → next player ── */
+  useEffect(()=>{
+    if (gs.phase!=='sold'&&gs.phase!=='unsold') return;
+    const t = setTimeout(()=>{
+      setGs(prev=>{
+        let newSeats = prev.seats;
+        if (prev.phase==='sold'&&prev.currentBidder&&prev.current){
+          const cat = prev.current.cat;
+          newSeats = prev.seats.map(s=>{
+            if (s.franchiseId!==prev.currentBidder) return s;
+            return {
+              ...s,
+              purse: s.purse-prev.currentBid,
+              countA: s.countA+(cat==='A'?1:0),
+              countB: s.countB+(cat==='B'?1:0),
+              countC: s.countC+(cat==='C'?1:0),
+              squad:[...s.squad,{...prev.current,soldFor:prev.currentBid}],
+            };
+          });
+        }
+        const newHistory=[...prev.history,{player:prev.current,soldFor:prev.phase==='sold'?prev.currentBid:null,buyer:prev.currentBidder}];
+        if (prev.pool.length===0) {
+          return {...prev,seats:newSeats,history:newHistory,phase:'complete',current:null};
+        }
+        const [next,...rest]=prev.pool;
+        const msg = `Next: ${next.name} · ${CAT_CFG[next.cat].label} · Base ${fmtNPR(CAT_CFG[next.cat].base)}`;
+        return {
+          ...prev, seats:newSeats, history:newHistory,
+          pool:rest, current:next,
+          currentBid:CAT_CFG[next.cat].base, currentBidder:null,
+          timer:30, phase:'bidding',
+          feedLog:[msg,...prev.feedLog].slice(0,30),
+        };
+      });
+    },2400);
+    return ()=>clearTimeout(t);
+  },[gs.phase]);
+
+
+  /* ── Lucky draw trigger helper ── */
+  const triggerLuckyDraw = (prev, bidderFid) => {
+    const cur = prev.current;
+    if (!cur) return null;
+    const maxPrice = CAT_CFG[cur.cat].max;
+    const contenders = prev.seats.filter(s =>
+      canAffordBid(s, maxPrice, cur) && hasQuota(s, cur.cat)
+    ).map(s => s.franchiseId);
+    // Ensure bidder is included
+    if (!contenders.includes(bidderFid)) contenders.push(bidderFid);
+    const msg = 'MAX PRICE HIT — Lucky draw for ' + cur.name + '!';
+    return {
+      ...prev, currentBid: maxPrice, currentBidder: bidderFid,
+      phase: 'luckyDraw',
+      luckyDrawContenders: contenders,
+      feedLog: [msg, ...prev.feedLog].slice(0, 30),
+    };
+  };
+
+  const placeBid = (amount)=>{
+    setGs(prev=>{
+      if (prev.phase!=='bidding') return prev;
+      if (!canAffordBid(userSeat,amount,prev.current)) return prev;
+      if (!hasQuota(userSeat,prev.current?.cat)) return prev;
+      const maxPrice = CAT_CFG[prev.current.cat].max;
+      if (amount >= maxPrice) return triggerLuckyDraw(prev, userFranchiseId) || prev;
+      const msg = `You bid ${fmtNPR(amount)}`;
+      return {
+        ...prev, currentBid:amount, currentBidder:userFranchiseId,
+        timer:Math.max(prev.timer,15),
+        feedLog:[msg,...prev.feedLog].slice(0,30),
+      };
+    });
+  };
+
+  const quickBid = ()=>{
+    const newBid = gs.currentBid+BID_INC;
+    placeBid(newBid);
+  };
+
+  const customBids = useMemo(()=>{
+    if (!gs.current) return [];
+    const base = gs.currentBid;
+    const increments = gs.current.cat==='A'
+      ? [BID_INC,BID_INC*4,BID_INC*8,BID_INC*20]
+      : gs.current.cat==='B'
+      ? [BID_INC,BID_INC*2,BID_INC*4,BID_INC*10]
+      : [BID_INC,BID_INC*2,BID_INC*4];
+    return increments.map(inc=>({inc, total:base+inc, label:`+${fmtNPR(inc)}`}));
+  },[gs.currentBid, gs.current?.id]);
+
+  /* ── stat rows helper ── */
+  const statRows = (stats)=>{
+    if (!stats) return [];
+    const labels = {mat:'Matches',runs:'Runs',wkts:'Wickets',avg:'Avg',sr:'Strike Rate',dis:'Dismissals'};
+    return Object.entries(stats).slice(0,3).map(([k,v])=>({key:k,label:labels[k]||k,value:v}));
+  };
+
+
+  /* ── Lucky draw completion ── */
+  const handleLuckyDrawComplete = useCallback((winnerFid) => {
+    setGs(prev => {
+      const cur = prev.current;
+      if (!cur) return prev;
+      const maxPrice = CAT_CFG[cur.cat].max;
+      const cat = cur.cat;
+      const newSeats = prev.seats.map(s => {
+        if (s.franchiseId !== winnerFid) return s;
+        return {
+          ...s, purse: s.purse - maxPrice,
+          countA: s.countA + (cat==='A'?1:0),
+          countB: s.countB + (cat==='B'?1:0),
+          countC: s.countC + (cat==='C'?1:0),
+          squad: [...s.squad, {...cur, soldFor: maxPrice}],
+        };
+      });
+      const newHistory = [...prev.history, {player:cur, soldFor:maxPrice, buyer:winnerFid}];
+      if (prev.pool.length === 0) {
+        return {...prev, seats:newSeats, history:newHistory, phase:'complete', current:null};
+      }
+      const [next,...rest] = prev.pool;
+      const msg = 'Next: ' + next.name + ' · ' + CAT_CFG[next.cat].label + ' · Base ' + fmtNPR(CAT_CFG[next.cat].base);
+      return {
+        ...prev, seats:newSeats, history:newHistory,
+        pool:rest, current:next,
+        currentBid:CAT_CFG[next.cat].base, currentBidder:null,
+        timer:30, phase:'bidding', luckyDrawContenders:[],
+        feedLog:[msg,...prev.feedLog].slice(0,30),
+      };
+    });
+  }, []);
+
+  if (gs.phase==='complete') {
+    return <CompleteScreen seats={gs.seats} userFranchiseId={userFranchiseId} history={gs.history}/>;
+  }
+
+  return (
+    <div style={{height:'100vh',display:'flex',flexDirection:'column',background:'var(--bg)',overflow:'hidden'}}>
+      {/* Top bar */}
+      <div style={{
+        height:52,borderBottom:'1px solid var(--border)',
+        display:'flex',alignItems:'center',padding:'0 16px',gap:12,flexShrink:0,
+      }}>
+        <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:18,letterSpacing:2,color:'var(--red)'}}>NPL</div>
+        <div style={{width:1,height:18,background:'var(--border)'}}/>
+        {gs.current && (
+          <div style={{
+            background:`${catCfg?.color}20`,border:`1px solid ${catCfg?.color}50`,
+            borderRadius:5,padding:'3px 9px',
+            fontFamily:'Rajdhani',fontWeight:700,fontSize:12,letterSpacing:1,color:catCfg?.color,
+          }}>{catCfg?.label?.toUpperCase()}</div>
+        )}
+        <div style={{fontSize:13,color:'var(--muted)'}}>
+          <span style={{color:'var(--text)',fontFamily:'Rajdhani',fontWeight:700}}>{gs.history.length}</span> sold
+          {' · '}
+          <span style={{color:'var(--text)',fontFamily:'Rajdhani',fontWeight:700}}>{gs.pool.length+(gs.current?1:0)}</span> remaining
+        </div>
+        <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:10}}>
+          <Crest fid={userFranchiseId} size={28}/>
+          <div>
+            <div style={{fontSize:12,fontWeight:600}}>{uf?.name}</div>
+            <div style={{fontSize:11,color:'var(--muted)',display:'flex',gap:8}}>
+              <span style={{color:'var(--green)',fontFamily:'Rajdhani',fontWeight:600}}>{L(userSeat?.purse||0)}</span>
+              <span>remaining</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main 3-col layout */}
+      <div style={{flex:1,display:'flex',overflow:'hidden',minHeight:0}}>
+
+        {/* LEFT: Queue */}
+        <div style={{width:210,borderRight:'1px solid var(--border)',display:'flex',flexDirection:'column',flexShrink:0}}>
+          <div style={{padding:'12px 14px',borderBottom:'1px solid var(--border)',fontSize:11,color:'var(--muted)',letterSpacing:1}}>
+            COMING UP
+          </div>
+          <div style={{flex:1,overflow:'auto',padding:'6px'}}>
+            {gs.pool.slice(0,14).map((p,i)=>(
+              <div key={p.id} style={{
+                display:'flex',alignItems:'center',gap:8,
+                padding:'7px 8px',borderRadius:6,borderBottom:'1px solid #0c0f1c',
+              }}>
+                <div style={{fontSize:11,color:'var(--muted)',width:14,flexShrink:0}}>{i+1}</div>
+                <div style={{width:6,height:6,borderRadius:'50%',background:catColor(p.cat),flexShrink:0}}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.name}</div>
+                  <div style={{fontSize:10,color:'var(--muted)'}}>{ROLE_BADGE[p.role]||p.role} · {fmtNPR(CAT_CFG[p.cat].base)}</div>
+                </div>
+              </div>
+            ))}
+            {gs.pool.length===0 && <div style={{padding:'20px',fontSize:12,color:'var(--muted)',textAlign:'center'}}>Last player</div>}
+          </div>
+        </div>
+
+        {/* CENTER: Auction floor */}
+        <div style={{
+          flex:1,display:'flex',flexDirection:'column',alignItems:'center',
+          padding:'20px',gap:16,overflow:'auto',
+        }}>
+          {gs.current && (
+            <div key={gs.current.id} style={{animation:'pop-in .35s ease',display:'flex',flexDirection:'column',alignItems:'center',gap:14,width:'100%',maxWidth:340}}>
+              {/* Player card */}
+              <div style={{
+                background:'var(--s1)',border:`1px solid ${catCfg?.color}40`,
+                borderRadius:12,overflow:'hidden',width:'100%',
+              }}>
+                <div style={{
+                  background:catCfg?.color,padding:'7px 14px',
+                  display:'flex',alignItems:'center',justifyContent:'space-between',
+                }}>
+                  <span style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:13,color:'#07080f',letterSpacing:.5}}>
+                    {catCfg?.label} · {ROLE_BADGE[gs.current.role]||gs.current.role}
+                  </span>
+                  <span style={{fontSize:11,color:'#07080f',opacity:.6}}>
+                    Base {fmtNPR(catCfg?.base||0)} · Max {fmtNPR(catCfg?.max||0)}
+                  </span>
+                </div>
+                <div style={{display:'flex',justifyContent:'center',padding:'20px 20px 12px'}}>
+                  <Avatar player={gs.current} size={108}/>
+                </div>
+                <div style={{padding:'0 16px 14px',textAlign:'center'}}>
+                  <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:24}}>{gs.current.name}</div>
+                  <div style={{fontSize:13,color:'var(--muted)',marginTop:2}}>{gs.current.role}</div>
+                </div>
+                <div style={{
+                  borderTop:'1px solid var(--border)',
+                  display:'grid',gridTemplateColumns:`repeat(${statRows(gs.current.stats).length},1fr)`,
+                  padding:'10px 14px',gap:4,
+                }}>
+                  {statRows(gs.current.stats).map(s=>(
+                    <div key={s.key} style={{textAlign:'center'}}>
+                      <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:18,color:catCfg?.color}}>
+                        {typeof s.value==='number'&&s.value%1!==0?s.value.toFixed(1):s.value}
+                      </div>
+                      <div style={{fontSize:9,color:'var(--muted)',textTransform:'uppercase',letterSpacing:.5}}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bid panel */}
+              <div style={{width:'100%',background:'var(--s1)',border:'1px solid var(--border)',borderRadius:12,padding:'14px 16px'}}>
+                {/* Current bid */}
+                {(gs.phase==='sold'||gs.phase==='unsold') ? (
+                  <div style={{textAlign:'center',padding:'8px 0',animation:'pop-in .3s ease'}}>
+                    {gs.phase==='sold'?(
+                      <>
+                        <div style={{fontSize:11,color:'var(--muted)',letterSpacing:1,marginBottom:4}}>SOLD TO</div>
+                        <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:22,color:franchise(gs.currentBidder)?.p||'var(--green)'}}>
+                          {franchise(gs.currentBidder)?.name}
+                        </div>
+                        <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:28,color:'var(--gold)',marginTop:2}}>
+                          {fmtNPR(gs.currentBid)}
+                        </div>
+                      </>
+                    ):(
+                      <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:26,color:'var(--muted)'}}>UNSOLD</div>
+                    )}
+                  </div>
+                ):(
+                  <>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:6}}>
+                      <span style={{fontSize:11,color:'var(--muted)',letterSpacing:1}}>CURRENT BID</span>
+                      {bidder&&<div style={{display:'flex',alignItems:'center',gap:5}}>
+                        <div style={{width:6,height:6,borderRadius:'50%',background:bidder.p}}/>
+                        <span style={{fontSize:11,color:bidder.p,fontWeight:500}}>
+                          {bidder.short}{isUserLeading?' · YOU':''}
+                        </span>
+                      </div>}
+                    </div>
+                    <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:38,color:'var(--text)',lineHeight:1}}>
+                      {fmtNPR(gs.currentBid)}
+                    </div>
+                    {!bidder&&<div style={{fontSize:12,color:'var(--muted)',marginTop:4}}>Base price — no bids yet</div>}
+
+                    {/* Timer */}
+                    <div style={{marginTop:14,marginBottom:14}}>
+                      <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
+                        <span style={{fontSize:11,color:'var(--muted)'}}>Timer</span>
+                        <span style={{
+                          fontFamily:'Rajdhani',fontWeight:700,fontSize:15,color:timerColor,
+                          animation:gs.timer<=6?'pulse .5s infinite':'none',
+                        }}>{String(gs.timer).padStart(2,'0')}s</span>
+                      </div>
+                      <div style={{height:3,background:'var(--border2)',borderRadius:2,overflow:'hidden'}}>
+                        <div style={{
+                          height:'100%',width:`${timerPct}%`,background:timerColor,borderRadius:2,
+                          transition:'width 1s linear, background .3s',
+                        }}/>
+                      </div>
+                    </div>
+
+                    {/* Bid buttons */}
+                    {isUserLeading ? (
+                      <div style={{
+                        background:'#10b98115',border:'1px solid #10b98140',
+                        borderRadius:8,padding:'10px',textAlign:'center',
+                      }}>
+                        <span style={{color:'var(--green)',fontFamily:'Rajdhani',fontWeight:700,fontSize:14,letterSpacing:1}}>
+                          YOU ARE LEADING
+                        </span>
+                      </div>
+                    ):(
+                      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                        <div style={{display:'flex',gap:6}}>
+                          {customBids.slice(0,3).map(({inc,total,label})=>{
+                            const can = canAffordBid(userSeat,total,gs.current)&&hasQuota(userSeat,gs.current?.cat);
+                            return (
+                              <button key={inc} onClick={()=>can&&placeBid(total)} style={{
+                                flex:1,padding:'8px 0',
+                                background: can?'var(--s2)':'var(--s1)',
+                                border:`1px solid ${can?'var(--border2)':'var(--border)'}`,
+                                borderRadius:7,color:can?'var(--text)':'var(--muted)',
+                                fontFamily:'Rajdhani',fontWeight:700,fontSize:13,
+                                cursor:can?'pointer':'not-allowed',transition:'all .1s',
+                              }}
+                              onMouseOver={e=>{if(can)e.currentTarget.style.borderColor='var(--gold)';}}
+                              onMouseOut={e=>{if(can)e.currentTarget.style.borderColor='var(--border2)';}}
+                              >{label}</button>
+                            );
+                          })}
+                        </div>
+                        <button onClick={quickBid}
+                          disabled={!canAffordBid(userSeat,gs.currentBid+BID_INC,gs.current)||!hasQuota(userSeat,gs.current?.cat)}
+                          style={{
+                            background:'var(--red)',color:'#fff',border:'none',borderRadius:8,
+                            padding:'11px',fontFamily:'Rajdhani',fontWeight:700,fontSize:16,letterSpacing:1.5,
+                            cursor:'pointer',transition:'background .15s',
+                          }}
+                          onMouseOver={e=>e.currentTarget.style.background='var(--red2)'}
+                          onMouseOut={e=>e.currentTarget.style.background='var(--red)'}
+                        >
+                          BID {fmtNPR(gs.currentBid+BID_INC)}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT: My Squad + Feed */}
+        <div style={{width:240,borderLeft:'1px solid var(--border)',display:'flex',flexDirection:'column',flexShrink:0}}>
+          <div style={{padding:'12px 14px',borderBottom:'1px solid var(--border)'}}>
+            <div style={{fontSize:11,color:'var(--muted)',letterSpacing:1,marginBottom:2}}>MY SQUAD</div>
+            <div style={{fontSize:13,fontWeight:500,color:uf?.p}}>{uf?.name}</div>
+          </div>
+
+          {/* Budget bar */}
+          <div style={{padding:'10px 14px',borderBottom:'1px solid var(--border)'}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+              <span style={{fontSize:10,color:'var(--muted)'}}>PURSE REMAINING</span>
+              <span style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:14,color:'var(--green)'}}>
+                {L(userSeat?.purse||0)}
+              </span>
+            </div>
+            <div style={{height:3,background:'var(--border)',borderRadius:2,overflow:'hidden'}}>
+              <div style={{
+                height:'100%',
+                width:`${((userSeat?.purse||0)/BUDGET)*100}%`,
+                background:'var(--green)',borderRadius:2,transition:'width .5s',
+              }}/>
+            </div>
+          </div>
+
+          {/* Quota slots */}
+          <div style={{padding:'10px 14px',borderBottom:'1px solid var(--border)'}}>
+            {[['A',3,'countA'],['B',4,'countB'],['C',3,'countC']].map(([cat,max,key])=>{
+              const filled = userSeat?.[key]||0;
+              return (
+                <div key={cat} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                  <div style={{
+                    width:20,height:20,borderRadius:4,
+                    background:`${catColor(cat)}20`,border:`1px solid ${catColor(cat)}60`,
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    fontFamily:'Rajdhani',fontWeight:700,fontSize:11,color:catColor(cat),
+                  }}>{cat}</div>
+                  <div style={{flex:1,display:'flex',gap:3}}>
+                    {Array.from({length:max}).map((_,i)=>(
+                      <div key={i} style={{
+                        flex:1,height:4,borderRadius:2,
+                        background:i<filled?catColor(cat):'var(--border)',
+                        transition:'background .3s',
+                      }}/>
+                    ))}
+                  </div>
+                  <span style={{fontSize:10,color:'var(--muted)',width:24,textAlign:'right'}}>{filled}/{max}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Squad list */}
+          <div style={{flex:1,overflow:'auto',padding:'6px'}}>
+            {(userSeat?.squad||[]).length===0?(
+              <div style={{padding:'20px 8px',fontSize:12,color:'var(--muted)',textAlign:'center'}}>No players yet</div>
+            ):(userSeat?.squad||[]).map((p,i)=>(
+              <div key={i} style={{
+                display:'flex',alignItems:'center',gap:7,
+                padding:'6px 8px',borderRadius:6,borderBottom:'1px solid #0c0f1c',
+              }}>
+                <div style={{width:6,height:6,borderRadius:'50%',background:catColor(p.cat),flexShrink:0}}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.name}</div>
+                  <div style={{fontSize:10,color:'var(--muted)'}}>{p.role}</div>
+                </div>
+                <div style={{fontSize:11,color:'var(--gold)',fontFamily:'Rajdhani',fontWeight:600,flexShrink:0}}>
+                  {p.soldFor>0?fmtNPR(p.soldFor):'—'}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Feed */}
+          <div style={{borderTop:'1px solid var(--border)',maxHeight:130,overflow:'hidden'}}>
+            <div style={{fontSize:10,color:'var(--muted)',letterSpacing:1,padding:'8px 12px 4px'}}>LIVE FEED</div>
+            <div style={{overflow:'auto',maxHeight:100}}>
+              {gs.feedLog.slice(0,8).map((msg,i)=>(
+                <div key={i} style={{
+                  fontSize:11,color:i===0?'var(--text)':'var(--muted)',
+                  padding:'3px 12px',lineHeight:1.4,
+                  borderBottom:'1px solid #0c0f1c',
+                }}>{msg}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Lucky Draw Overlay */}
+      {gs.phase==='luckyDraw' && gs.current && gs.luckyDrawContenders.length > 0 && (
+        <LuckyDrawOverlay
+          player={gs.current}
+          contenders={gs.luckyDrawContenders}
+          onComplete={handleLuckyDrawComplete}
+        />
+      )}
+
+      {/* Bottom teams bar */}
+      <div style={{
+        height:58,borderTop:'1px solid var(--border)',
+        display:'flex',alignItems:'center',padding:'0 12px',gap:6,
+        flexShrink:0,overflowX:'auto',
+      }}>
+        {gs.seats.map(seat=>{
+          const f = franchise(seat.franchiseId);
+          const isLeading = seat.franchiseId===gs.currentBidder;
+          const isUser = seat.franchiseId===userFranchiseId;
+          return (
+            <div key={f.id} style={{
+              display:'flex',alignItems:'center',gap:7,
+              padding:'6px 10px',borderRadius:7,
+              background: isLeading?`${f.p}18`:(isUser?`${f.p}0d`:'var(--s1)'),
+              border:`1px solid ${isLeading?f.p:(isUser?`${f.p}60`:'var(--border)')}`,
+              flex:1,minWidth:120,maxWidth:168,transition:'all .25s',
+            }}>
+              <Crest fid={f.id} size={26}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:11,fontWeight:isUser?600:400,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                  {f.short}{isUser?' ★':''}
+                </div>
+                <div style={{fontSize:10,color:'var(--muted)',fontFamily:'Rajdhani',display:'flex',gap:6}}>
+                  <span style={{color:seat.purse<1000000?'#ef4444':'var(--muted2)'}}>{L(seat.purse)}</span>
+                  <span>{seat.squad.length}P</span>
+                </div>
+              </div>
+              {isLeading&&<div style={{width:6,height:6,borderRadius:'50%',background:f.p,flexShrink:0,animation:'pulse .8s infinite'}}/>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ── SCREEN: COMPLETE ────────────────────────────────────────── */
+function CompleteScreen({ seats, userFranchiseId, history }) {
+  const userSeat = seats.find(s=>s.franchiseId===userFranchiseId);
+  const uf = franchise(userFranchiseId);
+  const spent = BUDGET-(userSeat?.purse||0);
+  const sorted = [...seats].sort((a,b)=>b.squad.length-a.squad.length);
+
+  return (
+    <div style={{height:'100vh',display:'flex',flexDirection:'column',background:'var(--bg)',overflow:'auto'}}>
+      <div style={{
+        borderBottom:'1px solid var(--border)',padding:'20px 28px',
+        display:'flex',alignItems:'center',gap:12,
+      }}>
+        <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:20,letterSpacing:2,color:'var(--red)'}}>NPL</div>
+        <div style={{width:1,height:18,background:'var(--border)'}}/>
+        <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:18,letterSpacing:1}}>AUCTION COMPLETE</div>
+        <div style={{marginLeft:'auto',fontSize:13,color:'var(--muted)'}}>
+          {history.length} players sold · {history.filter(h=>!h.buyer).length} unsold
+        </div>
+      </div>
+
+      <div style={{flex:1,display:'flex',gap:0,overflow:'hidden'}}>
+        {/* My squad */}
+        <div style={{flex:1,padding:24,overflow:'auto'}}>
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:11,color:'var(--muted)',letterSpacing:1,marginBottom:4}}>YOUR FINAL SQUAD</div>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <Crest fid={userFranchiseId} size={32}/>
+              <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:24}}>{uf?.name}</div>
+            </div>
+          </div>
+
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:20}}>
+            {[
+              {label:'PLAYERS',value:userSeat?.squad?.length||0},
+              {label:'SPENT',value:fmtNPR(spent)},
+              {label:'PURSE LEFT',value:fmtNPR(userSeat?.purse||0)},
+            ].map(c=>(
+              <div key={c.label} style={{
+                background:'var(--s1)',border:'1px solid var(--border)',borderRadius:8,padding:'12px 14px',
+              }}>
+                <div style={{fontSize:10,color:'var(--muted)',marginBottom:4}}>{c.label}</div>
+                <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:20}}>{c.value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{background:'var(--s1)',border:`1px solid ${uf?.p}40`,borderRadius:10,overflow:'hidden'}}>
+            {(userSeat?.squad||[]).map((p,i)=>(
+              <div key={i} style={{
+                display:'flex',alignItems:'center',gap:10,padding:'11px 14px',
+                borderBottom:'1px solid var(--border)',
+                animation:`slide-up .3s ease ${i*.05}s both`,
+              }}>
+                <div style={{
+                  width:24,height:24,borderRadius:4,
+                  background:`${catColor(p.cat)}20`,border:`1px solid ${catColor(p.cat)}50`,
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  fontSize:10,fontFamily:'Rajdhani',fontWeight:700,color:catColor(p.cat),
+                }}>{p.cat}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:500}}>{p.name}</div>
+                  <div style={{fontSize:11,color:'var(--muted)'}}>{p.role}</div>
+                </div>
+                <div style={{fontFamily:'Rajdhani',fontWeight:700,fontSize:14,color:p.soldFor>0?'var(--gold)':'var(--muted)'}}>
+                  {p.soldFor>0?fmtNPR(p.soldFor):'Lucky Draw'}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* All teams */}
+        <div style={{width:300,borderLeft:'1px solid var(--border)',overflow:'auto',padding:16}}>
+          <div style={{fontSize:11,color:'var(--muted)',letterSpacing:1,marginBottom:12}}>ALL FRANCHISES</div>
+          {sorted.map(seat=>{
+            const f = franchise(seat.franchiseId);
+            const isUser = seat.franchiseId===userFranchiseId;
+            return (
+              <div key={f.id} style={{
+                background:isUser?`${f.p}12`:'var(--s1)',
+                border:`1px solid ${isUser?f.p:'var(--border)'}`,
+                borderRadius:8,padding:'10px 12px',marginBottom:8,
+              }}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                  <Crest fid={f.id} size={24}/>
+                  <div style={{fontSize:12,fontWeight:600}}>{f.short}</div>
+                  <div style={{marginLeft:'auto',fontSize:11,color:'var(--muted)'}}>
+                    {seat.squad.length} players · {L(seat.purse)} left
+                  </div>
+                </div>
+                <div style={{display:'flex',gap:4}}>
+                  {seat.squad.slice(0,6).map((p,i)=>(
+                    <div key={i} style={{
+                      flex:1,height:3,borderRadius:1,background:catColor(p.cat),
+                    }}/>
+                  ))}
+                  {Array.from({length:Math.max(0,6-seat.squad.length)}).map((_,i)=>(
+                    <div key={`e${i}`} style={{flex:1,height:3,borderRadius:1,background:'var(--border)'}}/>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── ROOT APP ────────────────────────────────────────────────── */
+function App() {
+  const [screen,  setScreen]  = useState('landing');
+  const [userName, setUserName] = useState('');
+  const [userFid,  setUserFid]  = useState('KTM');
+  const [marquee,  setMarquee]  = useState(null);
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  useEffect(() => {
+    const t = THEMES[tweaks.theme] || THEMES['Midnight Navy'];
+    Object.entries(t).forEach(([k,v]) => document.documentElement.style.setProperty(k,v));
+  }, [tweaks.theme]);
+
+  const handleEnter = (name, fid) => {
+    setUserName(name);
+    setUserFid(fid);
+    setScreen('lobby');
+  };
+  const handleStart = () => setScreen('marquee');
+  const handleMarqueeDone = (assignments) => {
+    setMarquee(assignments);
+    setScreen('auction');
+  };
+
+  const themeNames = Object.keys(THEMES);
+  const themeAccents = {
+    'Midnight Navy':'#dc2626','Pitch Black':'#ffd60a',
+    'Forest Green':'#16a34a','Royal Blue':'#3b82f6','Nepal Crimson':'#DC143C',
+  };
+
+  return (
+    <>
+      {screen==='landing' && <LandingScreen onEnter={handleEnter}/>}
+      {screen==='lobby'   && <LobbyScreen userName={userName} userFranchiseId={userFid} onStart={handleStart}/>}
+      {screen==='marquee' && <MarqueeDrawScreen userFranchiseId={userFid} onComplete={handleMarqueeDone}/>}
+      {screen==='auction' && <AuctionScreen userName={userName} userFranchiseId={userFid} marqueeAssignments={marquee}/>}
+
+      <TweaksPanel>
+        <TweakSection title="Color Theme">
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            {themeNames.map(name => {
+              const active = tweaks.theme === name;
+              const accent = themeAccents[name];
+              const t = THEMES[name];
+              return (
+                <button key={name} onClick={()=>setTweak('theme',name)} style={{
+                  display:'flex',alignItems:'center',gap:10,
+                  padding:'9px 12px',borderRadius:8,border:'none',cursor:'pointer',
+                  background: active ? '#ffffff12' : 'transparent',
+                  outline: active ? `1.5px solid ${accent}` : '1.5px solid transparent',
+                  transition:'all .15s',textAlign:'left',width:'100%',
+                }}>
+                  {/* Swatch strip */}
+                  <div style={{display:'flex',gap:2,flexShrink:0}}>
+                    {['--bg','--s2','--red','--gold'].map(v=>(
+                      <div key={v} style={{width:12,height:24,borderRadius:3,background:t[v]}}/>
+                    ))}
+                  </div>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:active?600:400,color: active?'#f0f0f0':'#aaa'}}>{name}</div>
+                  </div>
+                  {active && <div style={{marginLeft:'auto',width:6,height:6,borderRadius:'50%',background:accent}}/>}
+                </button>
+              );
+            })}
+          </div>
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

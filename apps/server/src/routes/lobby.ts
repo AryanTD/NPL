@@ -38,9 +38,10 @@ async function getFranchises() {
 // ─── POST /lobby/create ───────────────────────────────────────────────────────
 
 const CreateSchema = z.object({
-  userId:      z.string().min(1),
-  displayName: z.string().min(1),
-  season:      z.number().int().min(2024).max(2025).default(2025),
+  userId:             z.string().min(1),
+  displayName:        z.string().min(1),
+  season:             z.number().int().min(2024).max(2025).default(2025),
+  franchiseShortName: z.string().optional(),
 });
 
 router.post('/create', async (req: Request, res: Response): Promise<void> => {
@@ -50,13 +51,18 @@ router.post('/create', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const { userId, displayName, season } = parsed.data;
+  const { userId, displayName, season, franchiseShortName } = parsed.data;
 
   const franchises = await getFranchises();
   if (franchises.length !== 8) {
     res.status(500).json({ error: 'Franchises not seeded — run prisma db seed first' });
     return;
   }
+
+  // Determine which franchise index is the creator's seat
+  const creatorIdx = franchiseShortName
+    ? Math.max(0, franchises.findIndex(f => f.shortName === franchiseShortName))
+    : 0;
 
   // Retry loop: generate a code and insert; on unique-constraint collision, try again.
   // This is safe under concurrency unlike the check-then-act pattern.
@@ -75,7 +81,7 @@ router.post('/create', async (req: Request, res: Response): Promise<void> => {
           season,
           seats: {
             create: franchises.map((franchise, i) => {
-              const isCreator = i === 0;
+              const isCreator = i === creatorIdx;
               return {
                 franchiseId:    franchise.id,
                 seatType:       isCreator ? SeatType.HUMAN : SeatType.BOT,
