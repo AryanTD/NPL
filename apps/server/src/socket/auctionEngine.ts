@@ -1,5 +1,5 @@
 import { Server, Socket } from "socket.io";
-import { AuctionPhase, SlotType } from "@prisma/client";
+import { AuctionPhase, SlotType, PlayerRole } from "@prisma/client";
 import type {
   ClientToServerEvents,
   ServerToClientEvents,
@@ -9,7 +9,6 @@ import type {
   LobbySeat,
   Player,
   PlayerCategory,
-  PlayerRole,
 } from "@npl-auction/types";
 import prisma from "../lib/prisma";
 import {
@@ -21,7 +20,6 @@ import {
   updateRosterOnSold,
 } from "../bots/botManager";
 import { PERSONALITIES } from "../bots/botPersonalities";
-import { PlayerRole } from "@prisma/client";
 
 // ─── Type aliases ─────────────────────────────────────────────────────────────
 
@@ -63,11 +61,18 @@ const PHASE_ORDER: AuctionState["phase"][] = [
 
 interface QueueEntry {
   player: Player;
+  playerInfo: PlayerInfo;
 }
 
 interface LiveAuctionState extends AuctionState {
   timerId: NodeJS.Timeout | null;
   botController: AbortController | null;
+  botSessions: Map<string, BotSession>;
+  maxPriceBidders: Set<string>;
+  phaseQueueCache: QueueEntry[] | null;
+  seatsMap: Map<string, LobbySeat>;
+  humanSeatIds: Set<string>;
+  currentPlayerDb: PlayerInfo | null;
 }
 
 const auctionStates = new Map<string, LiveAuctionState>();
@@ -90,6 +95,42 @@ function fisherYates<T>(arr: T[]): T[] {
 // Change 1: parsePayload helper — eliminates repeated inline ternary
 function parsePayload<T>(data: T | string): T {
   return typeof data === "string" ? JSON.parse(data) : data;
+}
+
+type DbPlayer = {
+  id: string; name: string; basePrice: number; quality: number; category: string; role: string;
+  season: number; isMarquee: boolean; runs: number; wickets: number;
+  battingAvg: number | null; strikeRate: number | null; bowlingAvg: number | null; economy: number | null;
+};
+
+function dbPlayerToPlayer(p: DbPlayer): Player {
+  return {
+    id: p.id,
+    name: p.name,
+    category: p.category as PlayerCategory,
+    role: p.role as import("@npl-auction/types").PlayerRole,
+    base_price: p.basePrice,
+    season: p.season,
+    is_marquee: p.isMarquee,
+    stats: {
+      runs: p.runs,
+      wickets: p.wickets,
+      batting_avg: p.battingAvg,
+      strike_rate: p.strikeRate,
+      bowling_avg: p.bowlingAvg,
+      economy: p.economy,
+    },
+  };
+}
+
+function dbPlayerToPlayerInfo(p: DbPlayer): PlayerInfo {
+  return {
+    id: p.id,
+    basePrice: p.basePrice,
+    quality: p.quality,
+    role: p.role as PlayerRole,
+    category: p.category as import("@prisma/client").PlayerCategory,
+  };
 }
 
 function formatSeatFromDb(seat: {
@@ -223,6 +264,29 @@ export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
         seats: lobby.seats.map(formatSeatFromDb),
         createdAt: lobby.createdAt.toISOString(),
       });
+
+      // Re-send active auction state so a reconnecting client catches up
+      const auctionState = auctionStates.get(lobbyId);
+      if (auctionState?.currentPlayer) {
+        socket.emit("lobby:player_revealed", auctionState.currentPlayer);
+        if (auctionState.currentBid) {
+          socket.emit("lobby:bid_placed", {
+            seatId: auctionState.currentBid.seatId,
+            franchiseName: auctionState.currentBid.franchiseName,
+            amount: auctionState.currentBid.amount,
+            timestamp: new Date().toISOString(),
+          });
+        }
+        socket.emit("lobby:timer_tick", { secondsLeft: auctionState.timerSeconds });
+        const upcoming = (auctionState.phaseQueueCache ?? []).slice(0, 8).map((e) => ({
+          playerId: e.player.id,
+          playerName: e.player.name,
+          category: e.player.category,
+          role: e.player.role,
+          basePrice: e.player.base_price,
+        }));
+        socket.emit("lobby:queue_update", { upcoming });
+      }
     } catch (err) {
       console.error("[auction] lobby:join error", err);
       socket.emit("lobby:error", { message: "Failed to join lobby" });
@@ -404,6 +468,8 @@ async function startAuction(
   // Change 7: build seatsMap once so handleBid/sellPlayer use O(1) lookups
   const seatsMap = new Map(liveSeats.map((s) => [s.seatId, s]));
 
+  const humanSeatIds = new Set(liveSeats.filter((s) => s.seatType === "HUMAN").map((s) => s.seatId));
+
   const state: LiveAuctionState = {
     lobbyId,
     phase: "MARQUEE_DRAW",
@@ -416,6 +482,12 @@ async function startAuction(
     luckyDrawContenders: [],
     timerId: null,
     botController: null,
+    botSessions: new Map(),
+    maxPriceBidders: new Set(),
+    phaseQueueCache: null,
+    seatsMap,
+    humanSeatIds,
+    currentPlayerDb: null,
   };
   auctionStates.set(lobbyId, state);
 
@@ -425,7 +497,7 @@ async function startAuction(
     const personality = PERSONALITIES[personalityType];
     const priorityRoles: PlayerRole[] =
       personality.type === "ROLE_HUNTER"
-        ? shuffleArray([
+        ? fisherYates([
             PlayerRole.BAT,
             PlayerRole.BOWL,
             PlayerRole.AR,
@@ -538,13 +610,9 @@ async function revealNextPlayer(io: IoServer, lobbyId: string): Promise<void> {
   const state = auctionStates.get(lobbyId);
   if (!state) return;
 
-  // Change 6: reset max-price bidder set for each new player
-  state.maxPriceBidders = new Set();
-
   state.maxPriceBidders = new Set();
 
   // Load the phase queue from DB once per phase — subsequent calls use the in-memory cache.
-  // This eliminates ~20+ redundant DB round-trips per auction round.
   if (state.phaseQueueCache === null) {
     const rows = await prisma.auctionQueue.findMany({
       where: { lobbyId, phase: state.phase as AuctionPhase, isDone: false },
@@ -553,77 +621,43 @@ async function revealNextPlayer(io: IoServer, lobbyId: string): Promise<void> {
     });
     state.phaseQueueCache = rows.map((row) => ({
       player: dbPlayerToPlayer(row.player),
+      playerInfo: dbPlayerToPlayerInfo(row.player),
     }));
   }
 
-  // Shift next player from the in-memory queue (O(1))
+  // Shift next player from the in-memory queue
   const entry = state.phaseQueueCache.shift();
   if (!entry) {
     await advancePhase(io, lobbyId);
     return;
   }
 
-  const p = next.player;
-  const player: Player = {
-    id: p.id,
-    name: p.name,
-    category: p.category as PlayerCategory,
-    role: p.role as import("@npl-auction/types").PlayerRole,
-    base_price: p.basePrice,
-    season: p.season,
-    is_marquee: p.isMarquee,
-    stats: {
-      runs: p.runs,
-      wickets: p.wickets,
-      batting_avg: p.battingAvg,
-      strike_rate: p.strikeRate,
-      bowling_avg: p.bowlingAvg,
-      economy: p.economy,
-    },
-  };
-
-  const category = player.category;
+  const player = entry.player;
 
   state.currentPlayer = player;
+  state.currentPlayerDb = entry.playerInfo;
   state.currentBid = null;
   state.timerSeconds = TIMER_SECONDS;
 
   io.to(lobbyId).emit("lobby:player_revealed", player);
   startPlayerTimer(io, lobbyId);
 
-  // Trigger all bot seats (fire-and-forget)
-  for (const seat of state.seats) {
-    if (seat.seatType !== "BOT" || !seat.botPersonality) continue;
+  // Emit upcoming queue so clients can populate the COMING UP panel
+  const upcoming = (state.phaseQueueCache ?? []).slice(0, 8).map((e) => ({
+    playerId: e.player.id,
+    playerName: e.player.name,
+    category: e.player.category,
+    role: e.player.role,
+    basePrice: e.player.base_price,
+  }));
+  io.to(lobbyId).emit("lobby:queue_update", { upcoming });
 
-    const currentBidAmount = null; // no bids yet at reveal time
-    const buffer = minPurseBuffer(seat, category);
-
-    triggerBotDecision(
-      io,
-      lobbyId,
-      {
-        seatId: seat.seatId,
-        franchiseName: seat.franchiseName,
-        personality:
-          seat.botPersonality as import("@prisma/client").BotPersonality,
-        purseRemaining: seat.purseRemaining,
-        minPurseBuffer: buffer,
-      },
-      currentBidAmount,
-      BASE_PRICE[category],
-      MAX_PRICE[category],
-      category as import("@prisma/client").PlayerCategory,
-      controller.signal,
-      (bidSeatId, amount) => {
-        // Route bot bid through the same validation path as human bids
-        const fakeBidSocket = { emit: () => {} } as unknown as IoSocket;
-        handleBid(io, fakeBidSocket, lobbyId, bidSeatId, amount);
-      },
-    ).catch((err) => {
-      if (err instanceof DOMException && err.name === "AbortError") return;
-      console.error("[auction] bot decision error", err);
-    });
-  }
+  const isUnsoldRound = state.phase === "UNSOLD_ROUND";
+  const onBotBid = (bidSeatId: string, amount: number) => {
+    const fakeBidSocket = { emit: () => {} } as unknown as IoSocket;
+    handleBid(io, fakeBidSocket, lobbyId, bidSeatId, amount);
+  };
+  revealPlayerToBots(io, lobbyId, entry.playerInfo, state.humanSeatIds, state.botSessions, isUnsoldRound, onBotBid);
 }
 
 // ─── startPlayerTimer ─────────────────────────────────────────────────────────
@@ -695,25 +729,35 @@ function handleBid(
   }
 
   const category = state.currentPlayer.category;
-  const minBid = (state.currentBid?.amount ?? 0) + BID_INCREMENT;
+  const maxAllowed = MAX_PRICE[category];
+  const currentAmount = state.currentBid?.amount ?? 0;
+  const atMaxPrice = currentAmount >= maxAllowed;
 
-  // 3. Minimum increment
+  // 3. Minimum increment — at max price others may match (lucky draw entry), otherwise must increment
+  const minBid = atMaxPrice ? maxAllowed : currentAmount + BID_INCREMENT;
   if (amount < minBid) {
     socket.emit("lobby:error", {
-      message: `Bid must be at least ${minBid} (current + ${BID_INCREMENT})`,
+      message: atMaxPrice
+        ? `Bid must be exactly ${maxAllowed} to enter the lucky draw`
+        : `Bid must be at least ${minBid} (current + ${BID_INCREMENT})`,
       code: "BID_TOO_LOW",
     });
     return;
   }
 
   // 4. Does not exceed max price
-  const maxAllowed = MAX_PRICE[category];
   if (amount > maxAllowed) {
     socket.emit("lobby:error", {
       message: `Bid exceeds max price of ${maxAllowed} for category ${category}`,
       code: "BID_TOO_HIGH",
     });
     return;
+  }
+
+  // 4b. At max price: prevent the current leader from re-bidding; prevent double-entry to draw
+  if (atMaxPrice) {
+    if (state.currentBid?.seatId === seatId) return; // already leading, silently ignore
+    if (state.maxPriceBidders.has(seatId)) return;   // already entered draw
   }
 
   // 5. Seat can afford this bid
@@ -767,7 +811,7 @@ function handleBid(
     const isUnsoldRound = state.phase === "UNSOLD_ROUND";
     const fakeBidSocket = { emit: () => {} } as unknown as IoSocket;
     const onBotBid = (bidSeatId: string, amount: number) =>
-      handleBid(io, fakeBidSocket, lobbyId, bidSeatId, amount);
+      handleBid(io, fakeBidSocket, lobbyId, bidSeatId, Math.min(amount, MAX_PRICE[category]));
     onBidPlaced(
       io,
       lobbyId,
@@ -973,28 +1017,21 @@ async function advancePhase(io: IoServer, lobbyId: string): Promise<void> {
   const state = auctionStates.get(lobbyId);
   if (!state) return;
 
-  const order: AuctionState["phase"][] = [
-    "MARQUEE_DRAW",
-    "CATEGORY_A",
-    "CATEGORY_B",
-    "CATEGORY_C",
-    "UNSOLD_ROUND",
-    "COMPLETE",
-  ];
-  const idx = order.indexOf(state.phase);
-  const next = order[idx + 1] ?? "COMPLETE";
+  const idx = PHASE_ORDER.indexOf(state.phase);
+  const nextPhase = PHASE_ORDER[idx + 1] ?? "COMPLETE";
 
   console.log(
-    `[auction] advancePhase ${state.phase} → ${next} lobbyId=${lobbyId}`,
+    `[auction] advancePhase ${state.phase} → ${nextPhase} lobbyId=${lobbyId}`,
   );
-  state.phase = next;
+  state.phase = nextPhase;
+  state.phaseQueueCache = null;
 
-  if (next === "UNSOLD_ROUND") {
+  if (nextPhase === "UNSOLD_ROUND") {
     await setupUnsoldRound(io, lobbyId);
     return;
   }
 
-  if (next === "COMPLETE") {
+  if (nextPhase === "COMPLETE") {
     await completeAuction(io, lobbyId);
     return;
   }

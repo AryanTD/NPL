@@ -61,7 +61,7 @@ export function decideBid(input: BotDecisionInput): BotDecisionOutput {
 
   let effectiveMinQuality = personality.minQuality
   if (personality.type === 'ROLE_HUNTER') {
-    effectiveMinQuality = priorityRoles.includes(player.role) ? 50 : 70
+    effectiveMinQuality = priorityRoles.includes(player.role) ? 38 : 58
   }
   if (player.quality < effectiveMinQuality) return pass
 

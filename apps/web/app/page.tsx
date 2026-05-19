@@ -95,7 +95,7 @@ export default function LandingPage() {
         body: JSON.stringify({
           userId: user.id,
           displayName: name.trim(),
-          season: 2025,
+          season: 2024,
           ...(franchiseShortName ? { franchiseShortName } : {}),
         }),
       });

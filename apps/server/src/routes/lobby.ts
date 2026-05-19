@@ -41,7 +41,7 @@ function getFranchises() {
 const CreateSchema = z.object({
   userId:             z.string().min(1),
   displayName:        z.string().min(1),
-  season:             z.number().int().min(2024).max(2025).default(2025),
+  season:             z.number().int().min(2024).max(2025).default(2024),
   franchiseShortName: z.string().optional(),
 });
 
@@ -107,7 +107,8 @@ router.post('/create', async (req: Request, res: Response): Promise<void> => {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         continue;
       }
-      res.status(500).json({ error: 'Failed to create lobby' });
+      console.error('[lobby] create failed:', err);
+      res.status(500).json({ error: 'Failed to create lobby', detail: String(err) });
       return;
     }
   }

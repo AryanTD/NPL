@@ -29,9 +29,11 @@ This is a real product targeting real users — Nepali cricket fans.
 - `packages/types/index.ts` — all shared types + Socket.io event contracts
 - `apps/server/src/index.ts` — Express + Socket.io bootstrap, CORS, graceful shutdown
 - `apps/server/prisma/schema.prisma` — full schema (8 models, all enums)
-- `apps/server/prisma/seed.ts` — bulk-insert franchises + players via `createMany`
-- `data/players/npl-2024.json` + `npl-2025.json` — 88 players each
-- DB migration applied to Railway (`20260426165922_init`), DB seeded
+- `apps/server/prisma/seed.ts` — bulk-insert franchises + players via `createMany`; quality formula calibrated for single-tournament stats (batting_avg ref=25, wickets ref=15)
+- `data/players/npl-2024.json` — **82 real NPL 2024 players** (8 marquee + 74 non-marquee); sourced from Kaggle dataset, overseas players excluded; `npl-2025.json` is no longer used
+- `data/scripts/clean_players.py` — Python script that built npl-2024.json from the Kaggle CSVs; re-run to regenerate if raw data changes
+- DB migrations applied (`20260426165922_init`, `20260501120500_add_player_quality`), DB seeded with real players
+- Quality range in DB: 25–88; calibrated bot `minQuality` thresholds in `botPersonalities.ts` and `botDecision.ts`
 - `src/lib/prisma.ts` — singleton Prisma client
 - `src/routes/lobby.ts` — `POST /lobby/create`, `POST /lobby/join/:code`, `GET /lobby/:id`
 - `src/bots/botPersonalities.ts` — all 5 personality configs
@@ -63,8 +65,9 @@ NPL/
 ├── CLAUDE.md                 ← this file
 ├── ROADMAP.md                ← ordered build plan with task breakdown
 ├── data/players/
-│   ├── npl-2024.json
-│   └── npl-2025.json
+│   └── npl-2024.json          ← 82 real NPL 2024 players (npl-2025.json removed)
+├── data/scripts/
+│   └── clean_players.py       ← generates npl-2024.json from Kaggle CSVs
 ├── packages/types/
 │   └── index.ts              ← @npl-auction/types (imported by server + web)
 └── apps/
@@ -163,6 +166,16 @@ Bots use `claude-sonnet-4-6` to reason about each bid. Personality shapes the sy
 Bot thinking delay: **1.5–3.5s** (random). Always emit `lobby:bot_thinking` first.
 Bots run entirely server-side — the client never sees bot logic or Claude API calls.
 
+### Bot `minQuality` thresholds (calibrated for real 2024 tournament stats, quality range 25–88)
+
+| Personality | minQuality | Bids on ~% of pool |
+|---|---|---|
+| AGGRESSIVE | 25 | ~100% |
+| BALANCED | 35 | ~55% |
+| CONSERVATIVE | 45 | ~46% |
+| ROLE_HUNTER | 38 priority / 58 non-priority | varies |
+| BUDGET_SNIPER | 58 | ~30% |
+
 ---
 
 ## Prisma Schema — Model Summary
@@ -260,7 +273,7 @@ CLERK_SECRET_KEY=sk_...
 - **Socket rooms = lobby IDs** — `socket.join(lobbyId)` on connect, all broadcasts to room
 - **Prices always NPR integers** — no decimals, no paisa in business logic
 - **Player IDs are stable strings** — not cuid, set from JSON (e.g. `npl-sandeep-lamichhane`)
-- **2025 stats win for marquee players** — seed merges both JSON files into a Map, 2025 overwrites
+- **Single season (2024)** — only `npl-2024.json` is seeded; both lobby creation and the auction engine use `season: 2024`; do not hardcode `2025` anywhere
 - **tsconfig rootDir is `.`** — covers both `src/` and `prisma/` so `tsc --noEmit` catches seed.ts too
 - **start script is `dist/src/index.js`** — not `dist/index.js`, because rootDir is `.`
 
@@ -275,3 +288,4 @@ CLERK_SECRET_KEY=sk_...
 - Don't start building fantasy scoring until auction engine is solid
 - Don't add `node_modules/` to git — covered by `.gitignore`
 - Don't run `prisma migrate` without a valid `DATABASE_URL` in `.env`
+- Don't hardcode `season: 2025` anywhere — only season 2024 data exists; using 2025 causes empty player queries and auction crashes

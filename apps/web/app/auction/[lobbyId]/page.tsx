@@ -68,7 +68,6 @@ const FRANCHISE_META: Record<
     city: "Karnali",
   },
 };
-import { meta } from "../../../lib/franchiseMeta";
 
 const CAT_COLOR: Record<string, string> = {
   A: "#F59E0B",

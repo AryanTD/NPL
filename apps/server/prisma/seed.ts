@@ -50,6 +50,27 @@ function readPlayerFile(filePath: string): PlayerFile {
   return JSON.parse(raw) as PlayerFile;
 }
 
+function calcQuality(stats: PlayerStats, role: string): number {
+  // Reference values calibrated for a single ~10-match T20 tournament:
+  // batting_avg 25 = excellent (vs career 35), 15 wickets = excellent (vs career 70)
+  const avgScore  = Math.min(100, ((stats.batting_avg  ?? 0) / 25) * 100);
+  const srScore   = Math.min(100, Math.max(0, ((stats.strike_rate ?? 0) - 70) / 90 * 100));
+  const batQuality = avgScore * 0.55 + srScore * 0.45;
+
+  const wktScore  = Math.min(100, (stats.wickets / 15) * 100);
+  const ecoScore  = stats.economy != null
+    ? Math.min(100, Math.max(0, (13.0 - stats.economy) / 5.6 * 100))
+    : 30;
+  const bowlQuality = wktScore * 0.6 + ecoScore * 0.4;
+
+  const weights: Record<string, [number, number]> = {
+    BAT: [0.85, 0.15], WK: [0.80, 0.20], AR: [0.50, 0.50], BOWL: [0.15, 0.85],
+  };
+  const [bw, pw] = weights[role] ?? [0.50, 0.50];
+
+  return Math.min(100, Math.max(25, Math.round(batQuality * bw + bowlQuality * pw)));
+}
+
 function toRow(p: PlayerJSON, season: number) {
   return {
     id:        p.id,
@@ -59,6 +80,7 @@ function toRow(p: PlayerJSON, season: number) {
     basePrice: p.base_price,
     season,
     isMarquee: p.is_marquee,
+    quality:   calcQuality(p.stats, p.role),
     runs:       p.stats.runs,
     wickets:    p.stats.wickets,
     battingAvg: p.stats.batting_avg,
@@ -88,23 +110,14 @@ async function main(): Promise<void> {
   await prisma.franchise.createMany({ data: [...FRANCHISES] });
   console.log(`Seeded ${FRANCHISES.length} franchises`);
 
-  // 3. Locate data files (process.cwd() = apps/server when run via `prisma db seed`)
+  // 3. Locate data file (process.cwd() = apps/server when run via `prisma db seed`)
   const repoRoot = path.resolve(process.cwd(), '..', '..');
   const data2024 = readPlayerFile(path.join(repoRoot, 'data', 'players', 'npl-2024.json'));
-  const data2025 = readPlayerFile(path.join(repoRoot, 'data', 'players', 'npl-2025.json'));
 
-  // 4. Merge both seasons into a Map so 2025 stats win for shared marquee IDs.
-  //    DB is empty at this point (deleted above), so a single createMany suffices —
-  //    no upsert needed.
-  const playerMap = new Map<string, ReturnType<typeof toRow>>();
-  for (const p of data2024.players) playerMap.set(p.id, toRow(p, data2024.season));
-  for (const p of data2025.players) playerMap.set(p.id, toRow(p, data2025.season));
+  // 4. Insert all players from the 2024 season file.
+  await prisma.player.createMany({ data: data2024.players.map(p => toRow(p, data2024.season)) });
 
-  await prisma.player.createMany({ data: [...playerMap.values()] });
-
-  console.log(
-    `Seeded ${playerMap.size} players (2024: ${data2024.players.length}, 2025: ${data2025.players.length})`,
-  );
+  console.log(`Seeded ${data2024.players.length} players (season ${data2024.season})`);
   console.log('Done.');
 }
 
