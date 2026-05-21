@@ -259,14 +259,19 @@ function AuctionPage() {
     primary: string;
     price: number;
   } | null>(null);
-  const [feedLog, setFeedLog] = useState<string[]>([]);
   const [playerKey, setPlayerKey] = useState(0); // for pop-in re-trigger
   const [bidPending, setBidPending] = useState(false);
+  const [bidNotifs, setBidNotifs] = useState<Array<{ id: number; shortName: string; amount: number; primary: string }>>([]);
+  const bidNotifCounter = useRef(0);
+  const bidNotifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Lucky draw state
   const [luckyActive, setLuckyActive] = useState(false);
   const [luckyContenders, setLuckyContenders] = useState<string[]>([]);
   const [luckyWinner, setLuckyWinner] = useState<string | null>(null);
+  const [hasEnteredLuckyDraw, setHasEnteredLuckyDraw] = useState(false);
+  // Tracks which seatIds have bid max price for the current player (shown in real-time)
+  const [luckyDrawEntrants, setLuckyDrawEntrants] = useState<string[]>([]);
 
   // Complete state
   const [auctionComplete, setAuctionComplete] = useState(false);
@@ -274,6 +279,11 @@ function AuctionPage() {
 
   // Sold/unsold counts
   const [soldCount, setSoldCount] = useState(0);
+
+  // Recent buys (last 5 sold players, shown in the left panel)
+  const [recentBuys, setRecentBuys] = useState<
+    Array<{ playerName: string; franchiseName: string; shortName: string; finalPrice: number; category: PlayerCategory }>
+  >([]);
 
   // Upcoming queue
   const [upcomingQueue, setUpcomingQueue] = useState<
@@ -292,9 +302,10 @@ function AuctionPage() {
     currentPlayerRef.current = currentPlayer;
   }, [currentPlayer]);
 
-  function pushFeed(msg: string) {
-    setFeedLog((prev) => [msg, ...prev].slice(0, 30));
-  }
+  // Ref so socket closures always see current luckyActive (state is stale inside socket handlers)
+  const luckyActiveRef = useRef(false);
+  // Buffer for player_revealed events that arrive while the lucky draw overlay is showing
+  const pendingRevealRef = useRef<Player | null>(null);
 
   // ── Socket lifecycle ──────────────────────────────────────────────────────
 
@@ -329,20 +340,13 @@ function AuctionPage() {
     });
 
     socket.on("lobby:player_revealed", (player: Player) => {
-      setCurrentPlayer(player);
-      setCurrentBid(null);
-      setTimerSeconds(TIMER_MAX);
-      setTimerMax(0); // reset so the first timer_tick sets the new max
-      setBidPanelState("bidding");
-      setSoldInfo(null);
-      setBidPending(false);
-      setLuckyActive(false);
-      setLuckyContenders([]);
-      setLuckyWinner(null);
-      setPlayerKey((k) => k + 1);
-      pushFeed(
-        `${CAT_LABEL[player.category] ?? player.category} · ${player.name} · Base ${fmtNPR(player.base_price)}`,
-      );
+      // If the lucky draw overlay is still showing, buffer this event.
+      // handleLuckyDrawClose will apply it after the overlay closes.
+      if (luckyActiveRef.current) {
+        pendingRevealRef.current = player;
+        return;
+      }
+      applyPlayerRevealed(player);
     });
 
     socket.on("lobby:bid_placed", (event: BidEvent) => {
@@ -353,7 +357,19 @@ function AuctionPage() {
         amount: event.amount,
       });
       setBidPending(false);
-      pushFeed(`${m.shortName} bids ${fmtNPR(event.amount)}`);
+      const notifId = ++bidNotifCounter.current;
+      setBidNotifs((prev) => [{ id: notifId, shortName: m.shortName, amount: event.amount, primary: m.primary }, ...prev].slice(0, 4));
+      if (bidNotifTimerRef.current) clearTimeout(bidNotifTimerRef.current);
+      bidNotifTimerRef.current = setTimeout(() => setBidNotifs([]), 4_000);
+      // Track teams that have reached max price (entered the lucky draw pool)
+      const catMaxNow = currentPlayerRef.current
+        ? (CAT_MAX[currentPlayerRef.current.category] ?? 0)
+        : 0;
+      if (catMaxNow > 0 && event.amount >= catMaxNow) {
+        setLuckyDrawEntrants((prev) =>
+          prev.includes(event.seatId) ? prev : [...prev, event.seatId],
+        );
+      }
     });
 
     socket.on(
@@ -407,13 +423,17 @@ function AuctionPage() {
           );
         }
         setSoldCount((c) => c + 1);
-        pushFeed(
-          `SOLD — ${player?.name ?? ""} → ${meta(franchiseName).shortName} for ${fmtNPR(finalPrice)}`,
-        );
+        if (player) {
+          setRecentBuys((prev) =>
+            [{ playerName: player.name, franchiseName, shortName: m.shortName, finalPrice, category: player.category }, ...prev].slice(0, 5)
+          );
+        }
 
-        if (luckyActive) {
-          // Lucky draw: set winner so overlay can reveal it
+        if (luckyActiveRef.current) {
+          // Lucky draw path: store winner + sold info; don't clear currentPlayer so
+          // the overlay stays mounted and can reveal the winner before closing.
           setLuckyWinner(winnerId);
+          setSoldInfo({ franchiseName, primary: m.primary, price: finalPrice });
         } else {
           // Normal sold flow
           setSoldInfo({ franchiseName, primary: m.primary, price: finalPrice });
@@ -430,7 +450,6 @@ function AuctionPage() {
         setBidPanelState("unsold");
         setCurrentPlayer(null);
         setCurrentBid(null);
-        pushFeed(`UNSOLD — ${playerName} returned to pool`);
       },
     );
 
@@ -442,12 +461,10 @@ function AuctionPage() {
         playerId: string;
         contenderSeatIds: string[];
       }) => {
+        luckyActiveRef.current = true;
         setLuckyActive(true);
         setLuckyContenders(contenderSeatIds);
         setLuckyWinner(null);
-        pushFeed(
-          `MAX PRICE HIT — Lucky draw for ${currentPlayerRef.current?.name ?? ""}!`,
-        );
       },
     );
 
@@ -462,7 +479,6 @@ function AuctionPage() {
         franchiseId: string;
         franchiseName: string;
       }) => {
-        pushFeed(`MARQUEE — ${playerName} → ${meta(franchiseName).shortName}`);
       },
     );
 
@@ -498,9 +514,10 @@ function AuctionPage() {
       },
     );
 
-    socket.on("lobby:error", ({ message }: { message: string }) => {
+    socket.on("lobby:error", ({ message, code }: { message: string; code?: string }) => {
       setBidPending(false);
-      pushFeed(`Error: ${message}`);
+      setHasEnteredLuckyDraw(false);
+      if (code === "SESSION_LOST") return; // handled by redirect logic
     });
 
     return () => {
@@ -570,12 +587,12 @@ function AuctionPage() {
       ? currentBid.amount + BID_INC
       : (currentPlayer?.base_price ?? 0);
 
-  // At max price, disable if already the current bid leader (server silently ignores duplicates)
   const canBidNow = !!(
     mySeat &&
     currentPlayer &&
     !luckyActive &&
     !bidPending &&
+    !hasEnteredLuckyDraw &&
     bidPanelState === "bidding" &&
     mySeat.seatType === "HUMAN" &&
     hasQuota(mySeat, currentPlayer.category, catQuotas) &&
@@ -587,18 +604,46 @@ function AuctionPage() {
     if (!mySeat || !currentPlayer) return;
     if (!hasQuota(mySeat, currentPlayer.category, catQuotas)) return;
     if (!canAffordBid(mySeat, amount, currentPlayer, catQuotas)) return;
+    if (atMaxPrice) setHasEnteredLuckyDraw(true);
     setBidPending(true);
     socket.emit("lobby:place_bid", { lobbyId, amount });
   }
 
-  function handleLuckyDrawClose() {
+  function applyPlayerRevealed(player: Player) {
+    setBidNotifs([]);
+    if (bidNotifTimerRef.current) { clearTimeout(bidNotifTimerRef.current); bidNotifTimerRef.current = null; }
+    setCurrentPlayer(player);
+    setCurrentBid(null);
+    setTimerSeconds(TIMER_MAX);
+    setTimerMax(0);
+    setBidPanelState("bidding");
+    setSoldInfo(null);
+    setBidPending(false);
     setLuckyActive(false);
     setLuckyContenders([]);
     setLuckyWinner(null);
-    // sold info was already applied to seats via player_sold handler
-    setCurrentPlayer(null);
+    setHasEnteredLuckyDraw(false);
+    setLuckyDrawEntrants([]);
+    setPlayerKey((k) => k + 1);
+  }
+
+  function handleLuckyDrawClose() {
+    luckyActiveRef.current = false;
+    setLuckyActive(false);
+    setLuckyContenders([]);
+    setLuckyWinner(null);
+    setHasEnteredLuckyDraw(false);
     setCurrentBid(null);
-    setBidPanelState("bidding");
+    // Show "SOLD TO" panel with the winner; cleared when the next player arrives
+    setBidPanelState("sold");
+
+    // player_revealed was buffered while the overlay was open — apply it after
+    // showing the sold panel briefly so the user can see who won
+    const buffered = pendingRevealRef.current;
+    pendingRevealRef.current = null;
+    if (buffered) {
+      setTimeout(() => applyPlayerRevealed(buffered), 1_500);
+    }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -809,6 +854,72 @@ function AuctionPage() {
               ))
             )}
           </div>
+
+          {/* Recent buys */}
+          {recentBuys.length > 0 && (
+            <div style={{ borderTop: "1px solid var(--border)", flexShrink: 0 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "var(--muted)",
+                  letterSpacing: 1,
+                  padding: "8px 14px 4px",
+                }}
+              >
+                RECENT BUYS
+              </div>
+              <div style={{ padding: "0 6px 6px" }}>
+                {recentBuys.map((b, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "4px 8px",
+                      borderBottom: "1px solid #0c0f1c",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        background: CAT_COLOR[b.category] ?? CAT_COLOR.MARQUEE,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 500,
+                          color: "var(--text)",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {b.playerName}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: "var(--muted)",
+                          marginTop: 1,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {b.shortName} · {fmtNPR(b.finalPrice)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* CENTER: Auction floor */}
@@ -1078,6 +1189,8 @@ function AuctionPage() {
                   </div>
                 </div>
 
+
+
                 {/* Bid buttons */}
                 {isUserLeading ? (
                   <div
@@ -1181,13 +1294,119 @@ function AuctionPage() {
                     >
                       {bidPending
                         ? "BIDDING…"
-                        : atMaxPrice
-                          ? "ENTER LUCKY DRAW"
-                          : `BID ${fmtNPR(nextBid)}`}
+                        : atMaxPrice && hasEnteredLuckyDraw
+                          ? "LUCKY DRAW ENTERED"
+                          : atMaxPrice
+                            ? "ENTER LUCKY DRAW"
+                            : `BID ${fmtNPR(nextBid)}`}
                     </button>
+
+                    {/* Lucky draw entrants — shown in real-time as teams bid max price */}
+                    {atMaxPrice && luckyDrawEntrants.length > 0 && (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 6,
+                          justifyContent: "center",
+                          marginTop: 10,
+                        }}
+                      >
+                        {luckyDrawEntrants.map((entrantSeatId) => {
+                          const s = seats.find(
+                            (seat) => seat.seatId === entrantSeatId,
+                          );
+                          if (!s) return null;
+                          const m = meta(s.franchiseName);
+                          return (
+                            <div
+                              key={entrantSeatId}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 5,
+                                padding: "3px 8px",
+                                borderRadius: 6,
+                                background: `${m.primary}20`,
+                                border: `1px solid ${m.primary}55`,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: "50%",
+                                  background: m.primary,
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  color: m.primary,
+                                  fontFamily: "Rajdhani",
+                                  letterSpacing: 0.5,
+                                }}
+                              >
+                                {m.shortName}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
+
+              {/* Bid notification stack — outside the card, last 4, dimming by age */}
+              {bidNotifs.length > 0 && (
+                <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
+                  {bidNotifs.map((notif, i) => (
+                    <div
+                      key={notif.id}
+                      className={i === 0 ? "animate-slide-up" : undefined}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 7,
+                        padding: "5px 10px",
+                        borderRadius: 7,
+                        background: `${notif.primary}14`,
+                        border: `1px solid ${notif.primary}30`,
+                        opacity: [1, 0.55, 0.28, 0.12][i] ?? 0.12,
+                        transition: "opacity .3s",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 7,
+                          height: 7,
+                          borderRadius: "50%",
+                          background: notif.primary,
+                          flexShrink: 0,
+                          opacity: [1, 0.7, 0.45, 0.25][i] ?? 0.25,
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontFamily: "Rajdhani",
+                          fontWeight: 700,
+                          fontSize: 12,
+                          color: notif.primary,
+                          letterSpacing: 0.5,
+                        }}
+                      >
+                        {notif.shortName}
+                      </span>
+                      <span style={{ fontSize: 11, color: "var(--muted2)" }}>
+                        bid {fmtNPR(notif.amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : bidPanelState === "sold" || bidPanelState === "unsold" ? (
             <div
@@ -1495,41 +1714,6 @@ function AuctionPage() {
             )}
           </div>
 
-          {/* Live feed */}
-          <div
-            style={{
-              borderTop: "1px solid var(--border)",
-              maxHeight: 130,
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 10,
-                color: "var(--muted)",
-                letterSpacing: 1,
-                padding: "8px 12px 4px",
-              }}
-            >
-              LIVE FEED
-            </div>
-            <div style={{ overflow: "auto", maxHeight: 100 }}>
-              {feedLog.slice(0, 8).map((msg, i) => (
-                <div
-                  key={i}
-                  style={{
-                    fontSize: 11,
-                    color: i === 0 ? "var(--text)" : "var(--muted)",
-                    padding: "3px 12px",
-                    lineHeight: 1.4,
-                    borderBottom: "1px solid #0c0f1c",
-                  }}
-                >
-                  {msg}
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 
@@ -1782,7 +1966,7 @@ function LuckyDrawOverlay({
         setRevealed(true);
         setTimeout(() => {
           if (!stopped) onClose();
-        }, 2_400);
+        }, 2_800);
         return;
       }
 
