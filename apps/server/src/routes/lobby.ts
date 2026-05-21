@@ -60,6 +60,24 @@ router.post('/create', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
+  // Block if user already has an active seat in any lobby
+  const activeSeat = await prisma.lobbySeat.findFirst({
+    where: { userId, lobby: { status: { not: 'COMPLETE' } } },
+    include: { lobby: true },
+  });
+  if (activeSeat) {
+    res.status(409).json({
+      error: 'You are already in an active game',
+      activeGame: {
+        lobbyId: activeSeat.lobbyId,
+        seatId:  activeSeat.id,
+        code:    activeSeat.lobby.code,
+        status:  activeSeat.lobby.status,
+      },
+    });
+    return;
+  }
+
   // Determine which franchise index is the creator's seat
   const creatorIdx = franchiseShortName
     ? Math.max(0, franchises.findIndex(f => f.shortName === franchiseShortName))
@@ -80,6 +98,7 @@ router.post('/create', async (req: Request, res: Response): Promise<void> => {
         data: {
           code,
           season,
+          hostUserId: userId,
           seats: {
             create: franchises.map((franchise, i) => {
               const isCreator = i === creatorIdx;
@@ -158,7 +177,7 @@ router.post('/join/:code', async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    // If user already has a seat, return it (idempotent)
+    // If user already has a seat in THIS lobby, return it (idempotent rejoin)
     const existing = lobby.seats.find((s) => s.userId === userId);
     if (existing) {
       res.json({
@@ -167,6 +186,24 @@ router.post('/join/:code', async (req: Request, res: Response): Promise<void> =>
         seatId:        existing.id,
         franchiseName: existing.franchise.name,
         seats:         lobby.seats.map(formatSeat),
+      });
+      return;
+    }
+
+    // Block if user already has an active seat in a different lobby
+    const activeSeat = await prisma.lobbySeat.findFirst({
+      where: { userId, lobbyId: { not: lobby.id }, lobby: { status: { not: 'COMPLETE' } } },
+      include: { lobby: true },
+    });
+    if (activeSeat) {
+      res.status(409).json({
+        error: 'You are already in an active game',
+        activeGame: {
+          lobbyId: activeSeat.lobbyId,
+          seatId:  activeSeat.id,
+          code:    activeSeat.lobby.code,
+          status:  activeSeat.lobby.status,
+        },
       });
       return;
     }
@@ -214,6 +251,31 @@ router.post('/join/:code', async (req: Request, res: Response): Promise<void> =>
     });
   } catch {
     res.status(500).json({ error: 'Failed to join lobby' });
+  }
+});
+
+// ─── POST /lobby/leave ────────────────────────────────────────────────────────
+// Releases the user's seat in any non-COMPLETE lobby so they can start a new game.
+
+router.post('/leave', async (req: Request, res: Response): Promise<void> => {
+  const { userId } = req.body;
+  if (!userId || typeof userId !== 'string') {
+    res.status(400).json({ error: 'Missing userId' });
+    return;
+  }
+  try {
+    const seat = await prisma.lobbySeat.findFirst({
+      where: { userId, lobby: { status: { not: 'COMPLETE' } } },
+    });
+    if (seat) {
+      await prisma.lobbySeat.update({
+        where: { id: seat.id },
+        data: { userId: null, displayName: null },
+      });
+    }
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Failed to leave lobby' });
   }
 });
 

@@ -95,7 +95,7 @@ const CAT_LABEL: Record<string, string> = {
   MARQUEE_DRAW: "Marquee Draw",
   UNSOLD_ROUND: "Unsold Round",
 };
-const CAT_QUOTAS = { A: 3, B: 4, C: 3 } as const;
+const DEFAULT_CAT_QUOTAS = { A: 3, B: 4, C: 3 } as const;
 const BUDGET = 9_000_000;
 const BID_INC = 25_000;
 const TIMER_MAX = 10;
@@ -139,21 +139,35 @@ function canAffordBid(
   seat: LobbySeat,
   newBid: number,
   player: Player,
+  quota: { A: number; B: number; C: number },
 ): boolean {
   if (seat.purseRemaining < newBid) return false;
   const cat = player.category;
-  const aLeft = Math.max(0, 3 - seat.categoryCount.A - (cat === "A" ? 1 : 0));
-  const bLeft = Math.max(0, 4 - seat.categoryCount.B - (cat === "B" ? 1 : 0));
-  const cLeft = Math.max(0, 3 - seat.categoryCount.C - (cat === "C" ? 1 : 0));
+  const aLeft = Math.max(
+    0,
+    quota.A - seat.categoryCount.A - (cat === "A" ? 2 : 0),
+  );
+  const bLeft = Math.max(
+    0,
+    quota.B - seat.categoryCount.B - (cat === "B" ? 1 : 0),
+  );
+  const cLeft = Math.max(
+    0,
+    quota.C - seat.categoryCount.C - (cat === "C" ? 1 : 0),
+  );
   const minNeeded =
     aLeft * CAT_BASE.A + bLeft * CAT_BASE.B + cLeft * CAT_BASE.C;
   return seat.purseRemaining - newBid >= minNeeded;
 }
 
-function hasQuota(seat: LobbySeat, cat: string): boolean {
-  if (cat === "A" && seat.categoryCount.A >= CAT_QUOTAS.A) return false;
-  if (cat === "B" && seat.categoryCount.B >= CAT_QUOTAS.B) return false;
-  if (cat === "C" && seat.categoryCount.C >= CAT_QUOTAS.C) return false;
+function hasQuota(
+  seat: LobbySeat,
+  cat: string,
+  quota: { A: number; B: number; C: number },
+): boolean {
+  if (cat === "A" && seat.categoryCount.A >= quota.A) return false;
+  if (cat === "B" && seat.categoryCount.B >= quota.B) return false;
+  if (cat === "C" && seat.categoryCount.C >= quota.C) return false;
   return true;
 }
 
@@ -230,9 +244,12 @@ function AuctionPage() {
   const seatId = sp.get("seatId") ?? "";
 
   // Core state
+  const [catQuotas, setCatQuotas] = useState<{
+    A: number;
+    B: number;
+    C: number;
+  }>(DEFAULT_CAT_QUOTAS);
   const [seats, setSeats] = useState<LobbySeat[]>([]);
-  const [lobbyCode, setLobbyCode] = useState("");
-  const [auctionPhase, setAuctionPhase] = useState("MARQUEE_DRAW");
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const [currentBid, setCurrentBid] = useState<CurrentBidInfo | null>(null);
   const [timerSeconds, setTimerSeconds] = useState(TIMER_MAX);
@@ -292,20 +309,36 @@ function AuctionPage() {
 
     socket.on("lobby:state", (lobby: Lobby) => {
       setSeats(lobby.seats);
-      setLobbyCode(lobby.code);
+      if (lobby.quota) setCatQuotas(lobby.quota);
+      // Restore sold count from squad data on reconnect
+      const auctionSold = lobby.seats.reduce(
+        (sum, s) =>
+          sum + s.squad.filter((sl) => sl.slotType === "AUCTION").length,
+        0,
+      );
+      setSoldCount(auctionSold);
+      // Keep session fresh so the landing page can offer rejoin (skip if already complete)
+      if (lobby.status !== "COMPLETE") {
+        localStorage.setItem(
+          "npl_session",
+          JSON.stringify({ lobbyId, seatId, code: lobby.code }),
+        );
+      } else {
+        localStorage.removeItem("npl_session");
+      }
     });
 
     socket.on("lobby:player_revealed", (player: Player) => {
       setCurrentPlayer(player);
       setCurrentBid(null);
       setTimerSeconds(TIMER_MAX);
+      setTimerMax(0); // reset so the first timer_tick sets the new max
       setBidPanelState("bidding");
       setSoldInfo(null);
       setBidPending(false);
       setLuckyActive(false);
       setLuckyContenders([]);
       setLuckyWinner(null);
-      setAuctionPhase(`CATEGORY_${player.category}`);
       setPlayerKey((k) => k + 1);
       pushFeed(
         `${CAT_LABEL[player.category] ?? player.category} · ${player.name} · Base ${fmtNPR(player.base_price)}`,
@@ -327,6 +360,8 @@ function AuctionPage() {
       "lobby:timer_tick",
       ({ secondsLeft }: { secondsLeft: number }) => {
         setTimerSeconds(secondsLeft);
+        // Capture the starting value so the progress bar always starts full
+        setTimerMax((prev) => Math.max(prev, secondsLeft));
       },
     );
 
@@ -427,7 +462,6 @@ function AuctionPage() {
         franchiseId: string;
         franchiseName: string;
       }) => {
-        setAuctionPhase("MARQUEE_DRAW");
         pushFeed(`MARQUEE — ${playerName} → ${meta(franchiseName).shortName}`);
       },
     );
@@ -460,6 +494,7 @@ function AuctionPage() {
         setFinalSeats(done);
         setCurrentPlayer(null);
         setCurrentBid(null);
+        localStorage.removeItem("npl_session");
       },
     );
 
@@ -491,11 +526,12 @@ function AuctionPage() {
   const mySeat = seats.find((s) => s.seatId === seatId) ?? null;
   const isUserLeading = currentBid?.seatId === seatId;
   const bidderMeta = currentBid ? meta(currentBid.franchiseName) : null;
-  const timerPct = (timerSeconds / TIMER_MAX) * 100;
+  const [timerMax, setTimerMax] = useState(TIMER_MAX);
+  const timerPct = (timerSeconds / timerMax) * 100;
   const timerColor =
     timerSeconds <= 3
       ? "#ef4444"
-      : timerSeconds <= 6
+      : timerSeconds <= Math.ceil(timerMax * 0.6)
         ? "#f59e0b"
         : "var(--green)";
   const catCfg = currentPlayer
@@ -507,9 +543,16 @@ function AuctionPage() {
       }
     : null;
 
-  // Increment buttons based on category
+  const catMax = currentPlayer ? (CAT_MAX[currentPlayer.category] ?? 0) : 0;
+  const atMaxPrice = !!(
+    currentBid &&
+    currentBid.amount >= catMax &&
+    catMax > 0
+  );
+
+  // Increment buttons — hidden when at max price (lucky draw entry only)
   const incrementOptions: { label: string; amount: number }[] =
-    currentPlayer && mySeat
+    currentPlayer && mySeat && !atMaxPrice
       ? (currentPlayer.category === "C"
           ? [BID_INC, BID_INC * 2]
           : [BID_INC, BID_INC * 2, BID_INC * 4]
@@ -520,10 +563,14 @@ function AuctionPage() {
         }))
       : [];
 
-  const nextBid = currentBid
-    ? currentBid.amount + BID_INC
-    : (currentPlayer?.base_price ?? 0);
+  // At max price: bid exactly max (to enter lucky draw); otherwise current + increment
+  const nextBid = atMaxPrice
+    ? catMax
+    : currentBid
+      ? currentBid.amount + BID_INC
+      : (currentPlayer?.base_price ?? 0);
 
+  // At max price, disable if already the current bid leader (server silently ignores duplicates)
   const canBidNow = !!(
     mySeat &&
     currentPlayer &&
@@ -531,14 +578,15 @@ function AuctionPage() {
     !bidPending &&
     bidPanelState === "bidding" &&
     mySeat.seatType === "HUMAN" &&
-    hasQuota(mySeat, currentPlayer.category) &&
-    canAffordBid(mySeat, nextBid, currentPlayer)
+    hasQuota(mySeat, currentPlayer.category, catQuotas) &&
+    canAffordBid(mySeat, nextBid, currentPlayer, catQuotas) &&
+    !(atMaxPrice && isUserLeading)
   );
 
   function handleBid(amount: number) {
     if (!mySeat || !currentPlayer) return;
-    if (!hasQuota(mySeat, currentPlayer.category)) return;
-    if (!canAffordBid(mySeat, amount, currentPlayer)) return;
+    if (!hasQuota(mySeat, currentPlayer.category, catQuotas)) return;
+    if (!canAffordBid(mySeat, amount, currentPlayer, catQuotas)) return;
     setBidPending(true);
     socket.emit("lobby:place_bid", { lobbyId, amount });
   }
@@ -711,7 +759,7 @@ function AuctionPage() {
                 Auction starting…
               </div>
             ) : (
-              upcomingQueue.map((player, i) => (
+              upcomingQueue.map((player) => (
                 <div
                   key={player.playerId}
                   style={{
@@ -1063,8 +1111,8 @@ function AuctionPage() {
                         const can = !!(
                           mySeat &&
                           currentPlayer &&
-                          hasQuota(mySeat, currentPlayer.category) &&
-                          canAffordBid(mySeat, amount, currentPlayer)
+                          hasQuota(mySeat, currentPlayer.category, catQuotas) &&
+                          canAffordBid(mySeat, amount, currentPlayer, catQuotas)
                         );
                         return (
                           <button
@@ -1131,7 +1179,11 @@ function AuctionPage() {
                           ).style.background = "var(--red)";
                       }}
                     >
-                      {bidPending ? "BIDDING…" : `BID ${fmtNPR(nextBid)}`}
+                      {bidPending
+                        ? "BIDDING…"
+                        : atMaxPrice
+                          ? "ENTER LUCKY DRAW"
+                          : `BID ${fmtNPR(nextBid)}`}
                     </button>
                   </div>
                 )}
@@ -1314,7 +1366,7 @@ function AuctionPage() {
             }}
           >
             {(["A", "B", "C"] as const).map((cat) => {
-              const max = CAT_QUOTAS[cat];
+              const max = catQuotas[cat];
               const filled = mySeat?.categoryCount[cat] ?? 0;
               const cc = CAT_COLOR[cat];
               return (

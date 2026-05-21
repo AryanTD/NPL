@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, SignInButton } from "@clerk/nextjs";
 
@@ -68,9 +68,18 @@ const FRANCHISES = [
 const SERVER_URL =
   process.env.NEXT_PUBLIC_SERVER_URL ?? "http://localhost:3001";
 
+const SESSION_KEY = "npl_session";
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 type View = "default" | "create" | "join";
+
+interface ActiveSession {
+  lobbyId: string;
+  seatId: string;
+  code: string;
+  status: string;
+}
 
 export default function LandingPage() {
   const router = useRouter();
@@ -81,6 +90,30 @@ export default function LandingPage() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
+
+  // ── Check for an existing active session on mount ───────────────────────────
+
+  useEffect(() => {
+    if (!user) return;
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return;
+    try {
+      const s = JSON.parse(raw) as Omit<ActiveSession, "status">;
+      fetch(`${SERVER_URL}/lobby/${s.lobbyId}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data && data.status !== "COMPLETE") {
+            setActiveSession({ ...s, status: data.status });
+          } else {
+            localStorage.removeItem(SESSION_KEY);
+          }
+        })
+        .catch(() => localStorage.removeItem(SESSION_KEY));
+    } catch {
+      localStorage.removeItem(SESSION_KEY);
+    }
+  }, [user]);
 
   // ── API helpers ─────────────────────────────────────────────────────────────
 
@@ -101,9 +134,17 @@ export default function LandingPage() {
       });
       if (!res.ok) {
         const body = await res.json();
+        if (res.status === 409 && body.activeGame) {
+          localStorage.setItem(SESSION_KEY, JSON.stringify(body.activeGame));
+          setActiveSession(body.activeGame);
+          setView("default");
+          setLoading(false);
+          return;
+        }
         throw new Error(body.error ?? "Failed to create lobby");
       }
       const data = await res.json();
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ lobbyId: data.lobbyId, seatId: data.seatId, code: data.code }));
       router.push(`/lobby?lobbyId=${data.lobbyId}&seatId=${data.seatId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -129,13 +170,45 @@ export default function LandingPage() {
       );
       if (!res.ok) {
         const body = await res.json();
+        if (res.status === 409 && body.activeGame) {
+          localStorage.setItem(SESSION_KEY, JSON.stringify(body.activeGame));
+          setActiveSession(body.activeGame);
+          setView("default");
+          setLoading(false);
+          return;
+        }
         throw new Error(body.error ?? "Failed to join lobby");
       }
       const data = await res.json();
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ lobbyId: data.lobbyId, seatId: data.seatId, code: data.code }));
       router.push(`/lobby?lobbyId=${data.lobbyId}&seatId=${data.seatId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setLoading(false);
+    }
+  }
+
+  // ── Rejoin / dismiss ────────────────────────────────────────────────────────
+
+  function handleRejoin() {
+    if (!activeSession) return;
+    const dest =
+      activeSession.status === "WAITING"
+        ? `/lobby?lobbyId=${activeSession.lobbyId}&seatId=${activeSession.seatId}`
+        : `/auction/${activeSession.lobbyId}?seatId=${activeSession.seatId}`;
+    router.push(dest);
+  }
+
+  function handleDismissRejoin() {
+    localStorage.removeItem(SESSION_KEY);
+    setActiveSession(null);
+    // Release the server-side seat so the user can create/join a new game
+    if (user) {
+      fetch(`${SERVER_URL}/lobby/leave`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id }),
+      }).catch(() => {});
     }
   }
 
@@ -233,6 +306,9 @@ export default function LandingPage() {
             setName={setName}
             error={error}
             loading={loading}
+            activeSession={activeSession}
+            onRejoin={handleRejoin}
+            onDismissRejoin={handleDismissRejoin}
             onCreate={() => {
               setError(null);
               setView("create");
@@ -290,11 +366,20 @@ function SignedOutView() {
 
 // ─── Default view ─────────────────────────────────────────────────────────────
 
+const STATUS_LABEL: Record<string, string> = {
+  WAITING: "In Lobby",
+  MARQUEE_DRAW: "Starting…",
+  AUCTION: "In Auction",
+};
+
 function DefaultView({
   name,
   setName,
   error,
   loading,
+  activeSession,
+  onRejoin,
+  onDismissRejoin,
   onCreate,
   onJoin,
   onQuickPlay,
@@ -303,10 +388,129 @@ function DefaultView({
   setName: (v: string) => void;
   error: string | null;
   loading: boolean;
+  activeSession: ActiveSession | null;
+  onRejoin: () => void;
+  onDismissRejoin: () => void;
   onCreate: () => void;
   onJoin: () => void;
   onQuickPlay: () => void;
 }) {
+  if (activeSession) {
+    const statusLabel = STATUS_LABEL[activeSession.status] ?? activeSession.status;
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* Active game banner */}
+        <div
+          style={{
+            background: "#92400e18",
+            border: "1px solid #92400e60",
+            borderRadius: 10,
+            padding: "16px 18px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 12,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div
+                className="animate-pulse-fade"
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: "var(--gold)",
+                  flexShrink: 0,
+                }}
+              />
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--gold)",
+                  letterSpacing: 1,
+                }}
+              >
+                ACTIVE GAME
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {/* Status chip */}
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: "var(--gold)",
+                  background: "#92400e30",
+                  border: "1px solid #92400e80",
+                  borderRadius: 4,
+                  padding: "2px 7px",
+                }}
+              >
+                {statusLabel}
+              </span>
+              {/* Room code */}
+              <span
+                style={{
+                  fontFamily: "Rajdhani, sans-serif",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  letterSpacing: 2,
+                  color: "var(--text)",
+                  background: "var(--s3)",
+                  border: "1px solid var(--border2)",
+                  borderRadius: 4,
+                  padding: "2px 8px",
+                }}
+              >
+                {activeSession.code}
+              </span>
+            </div>
+          </div>
+
+          <button
+            onClick={onRejoin}
+            style={{
+              width: "100%",
+              background: "var(--gold)",
+              border: "none",
+              borderRadius: 8,
+              padding: "12px 0",
+              fontFamily: "Rajdhani, sans-serif",
+              fontWeight: 700,
+              fontSize: 16,
+              letterSpacing: 1.5,
+              color: "#000",
+              cursor: "pointer",
+            }}
+          >
+            REJOIN GAME
+          </button>
+        </div>
+
+        <button
+          onClick={onDismissRejoin}
+          style={{
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            fontSize: 12,
+            color: "var(--muted)",
+            textAlign: "center",
+            padding: "0",
+            marginTop: -8,
+          }}
+        >
+          Leave game and start a new one
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Name input */}

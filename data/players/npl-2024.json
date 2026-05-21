@@ -8,6 +8,7 @@
       "role": "AR",
       "base_price": 1000000,
       "is_marquee": true,
+      "quality": 80,
       "stats": {
         "runs": 51,
         "wickets": 12,
@@ -24,6 +25,7 @@
       "role": "AR",
       "base_price": 1000000,
       "is_marquee": true,
+      "quality": 84,
       "stats": {
         "runs": 54,
         "wickets": 5,
@@ -40,6 +42,7 @@
       "role": "AR",
       "base_price": 1000000,
       "is_marquee": true,
+      "quality": 80,
       "stats": {
         "runs": 223,
         "wickets": 9,
@@ -51,11 +54,12 @@
     },
     {
       "id": "npl-sandeep-lamichhane",
-      "name": "S Lamichhane",
+      "name": "Sandeep Lamichhane",
       "category": "A",
       "role": "BOWL",
       "base_price": 1000000,
       "is_marquee": true,
+      "quality": 89,
       "stats": {
         "runs": 22,
         "wickets": 6,
@@ -72,6 +76,7 @@
       "role": "WK",
       "base_price": 1000000,
       "is_marquee": true,
+      "quality": 83,
       "stats": {
         "runs": 162,
         "wickets": 0,
@@ -88,6 +93,7 @@
       "role": "AR",
       "base_price": 1000000,
       "is_marquee": true,
+      "quality": 85,
       "stats": {
         "runs": 279,
         "wickets": 8,
@@ -104,6 +110,7 @@
       "role": "AR",
       "base_price": 1000000,
       "is_marquee": true,
+      "quality": 87,
       "stats": {
         "runs": 227,
         "wickets": 9,
@@ -120,6 +127,7 @@
       "role": "AR",
       "base_price": 1000000,
       "is_marquee": true,
+      "quality": 80,
       "stats": {
         "runs": 52,
         "wickets": 9,

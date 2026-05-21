@@ -125,6 +125,7 @@ function LobbyPage() {
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [testMode, setTestMode] = useState(false);
   const [showMarquee, setShowMarquee] = useState(false);
   const [marqueeAssignments, setMarqueeAssignments] = useState<
     MarqueeAssignment[]
@@ -184,7 +185,7 @@ function LobbyPage() {
         clearInterval(countdownRef.current!);
         countdownRef.current = null;
         setCountdown(null);
-        socket.emit("lobby:start", { lobbyId });
+        socket.emit("lobby:start", { lobbyId, testMode });
       } else {
         setCountdown(count);
       }
@@ -367,6 +368,9 @@ function LobbyPage() {
           starting={starting}
           countdown={countdown}
           onStart={handleStart}
+          isHost={!lobby?.hostUserId || lobby.hostUserId === user?.id}
+          testMode={testMode}
+          onToggleTestMode={() => setTestMode((v) => !v)}
         />
       </div>
     </div>
@@ -658,10 +662,16 @@ function Sidebar({
   starting,
   countdown,
   onStart,
+  isHost,
+  testMode,
+  onToggleTestMode,
 }: {
   starting: boolean;
   countdown: number | null;
   onStart: () => void;
+  isHost: boolean;
+  testMode: boolean;
+  onToggleTestMode: () => void;
 }) {
   return (
     <div
@@ -746,66 +756,147 @@ function Sidebar({
 
       {/* Start section */}
       <div style={{ padding: 20, borderTop: "1px solid var(--border)" }}>
-        {countdown !== null ? (
-          /* Countdown card */
+        {isHost ? (
+          countdown !== null ? (
+            /* Countdown card */
+            <div
+              style={{
+                background: "var(--s2)",
+                border: "1px solid var(--border2)",
+                borderRadius: 10,
+                padding: "24px 0",
+                textAlign: "center",
+                marginBottom: 12,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: "Rajdhani, sans-serif",
+                  fontWeight: 700,
+                  fontSize: 64,
+                  color: "var(--gold)",
+                  lineHeight: 1,
+                }}
+              >
+                {countdown}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>
+                Starting auction…
+              </div>
+            </div>
+          ) : (
+            /* Test mode toggle + start button */
+            <>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: 12,
+                cursor: "pointer",
+                userSelect: "none",
+              }}
+            >
+              <div
+                onClick={onToggleTestMode}
+                style={{
+                  width: 36,
+                  height: 20,
+                  borderRadius: 10,
+                  background: testMode ? "#F59E0B" : "var(--s3)",
+                  border: "1px solid var(--border2)",
+                  position: "relative",
+                  transition: "background 0.2s",
+                  flexShrink: 0,
+                  cursor: "pointer",
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 2,
+                    left: testMode ? 18 : 2,
+                    width: 14,
+                    height: 14,
+                    borderRadius: "50%",
+                    background: testMode ? "#fff" : "var(--muted)",
+                    transition: "left 0.2s",
+                  }}
+                />
+              </div>
+              <span style={{ fontSize: 12, color: testMode ? "#F59E0B" : "var(--muted)" }}>
+                Quick Test (1A+1B+1C per team)
+              </span>
+            </label>
+            <button
+              onClick={onStart}
+              disabled={starting}
+              style={{
+                width: "100%",
+                background: starting ? "var(--s3)" : "var(--red)",
+                border: "none",
+                borderRadius: 10,
+                padding: "14px 0",
+                fontFamily: "Rajdhani, sans-serif",
+                fontWeight: 700,
+                fontSize: 18,
+                letterSpacing: 2,
+                color: starting ? "var(--muted)" : "#fff",
+                cursor: starting ? "not-allowed" : "pointer",
+                transition: "background 0.15s",
+                marginBottom: 12,
+              }}
+              onMouseEnter={(e) => {
+                if (!starting)
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    "var(--red2)";
+              }}
+              onMouseLeave={(e) => {
+                if (!starting)
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    "var(--red)";
+              }}
+            >
+              START AUCTION
+            </button>
+            </>
+          )
+        ) : (
+          /* Non-host waiting state */
           <div
             style={{
               background: "var(--s2)",
-              border: "1px solid var(--border2)",
+              border: "1px solid var(--border)",
               borderRadius: 10,
-              padding: "24px 0",
+              padding: "18px 12px",
               textAlign: "center",
               marginBottom: 12,
             }}
           >
             <div
+              className="animate-pulse-fade"
               style={{
-                fontFamily: "Rajdhani, sans-serif",
-                fontWeight: 700,
-                fontSize: 64,
-                color: "var(--gold)",
-                lineHeight: 1,
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: "var(--gold)",
+                margin: "0 auto 10px",
+              }}
+            />
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--text)",
+                marginBottom: 4,
               }}
             >
-              {countdown}
+              Waiting for host
             </div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>
-              Starting auction…
+            <div style={{ fontSize: 11, color: "var(--muted)" }}>
+              The host will start the auction
             </div>
           </div>
-        ) : (
-          /* Start button */
-          <button
-            onClick={onStart}
-            disabled={starting}
-            style={{
-              width: "100%",
-              background: starting ? "var(--s3)" : "var(--red)",
-              border: "none",
-              borderRadius: 10,
-              padding: "14px 0",
-              fontFamily: "Rajdhani, sans-serif",
-              fontWeight: 700,
-              fontSize: 18,
-              letterSpacing: 2,
-              color: starting ? "var(--muted)" : "#fff",
-              cursor: starting ? "not-allowed" : "pointer",
-              transition: "background 0.15s",
-              marginBottom: 12,
-            }}
-            onMouseEnter={(e) => {
-              if (!starting)
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  "var(--red2)";
-            }}
-            onMouseLeave={(e) => {
-              if (!starting)
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  "var(--red)";
-            }}
-          >
-            START AUCTION
-          </button>
         )}
 
         <p
@@ -816,7 +907,7 @@ function Sidebar({
             margin: 0,
           }}
         >
-          Any player in the room can start
+          {isHost ? "You are the host" : "Only the host can start"}
         </p>
       </div>
     </div>

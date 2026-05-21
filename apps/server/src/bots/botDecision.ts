@@ -30,6 +30,7 @@ export interface BotDecisionInput {
   roster: RosterState
   remainingPurse: number
   isUnsoldRound: boolean
+  quota: { A: number; B: number; C: number }
 }
 
 export interface BotDecisionOutput {
@@ -42,19 +43,22 @@ const TOTAL_PURSE = 9_000_000
 const TOTAL_SLOTS = 11
 
 export function decideBid(input: BotDecisionInput): BotDecisionOutput {
-  const { player, currentBid, currentWinnerId, myFranchiseId, personality, priorityRoles, roster, remainingPurse, isUnsoldRound } = input
+  const { player, currentBid, currentWinnerId, myFranchiseId, personality, priorityRoles, roster, remainingPurse, isUnsoldRound, quota } = input
   const delayMs = personality.minDelay + Math.random() * (personality.maxDelay - personality.minDelay)
   const pass: BotDecisionOutput = { action: 'PASS', delayMs }
+
+  const totalSlots = 1 + quota.A + quota.B + quota.C // marquee + auction
 
   // Hard blocks
   if (currentWinnerId === myFranchiseId) return pass
   if (remainingPurse < currentBid + 25_000) return pass
-  if (roster.totalWon >= TOTAL_SLOTS) return pass
+  if (roster.totalWon >= totalSlots) return pass
 
   const categoryCount: Record<string, number> = {
     MARQUEE: roster.marqueeCount, A: roster.aCount, B: roster.bCount, C: roster.cCount,
   }
-  if ((categoryCount[player.category] ?? 0) >= CATEGORY_SLOTS[player.category]) return pass
+  const categorySlots: Record<string, number> = { MARQUEE: 1, A: quota.A, B: quota.B, C: quota.C }
+  if ((categoryCount[player.category] ?? 0) >= categorySlots[player.category]) return pass
 
   if (player.role === PlayerRole.BAT  && roster.batsmanCount >= 6) return pass
   if (player.role === PlayerRole.BOWL && roster.bowlerCount  >= 4) return pass
@@ -75,7 +79,7 @@ export function decideBid(input: BotDecisionInput): BotDecisionOutput {
 
   const humanBoost = input.isHumanWinner ? personality.humanRivalMult : 1.0
 
-  const categoryRemaining = CATEGORY_SLOTS[player.category] - (categoryCount[player.category] ?? 0)
+  const categoryRemaining = categorySlots[player.category] - (categoryCount[player.category] ?? 0)
   const categoryUrgency = categoryRemaining <= 1 ? 1.25 : categoryRemaining <= 2 ? 1.10 : 1.0
 
   let roleUrgency = 1.0
@@ -83,7 +87,7 @@ export function decideBid(input: BotDecisionInput): BotDecisionOutput {
   if (player.role === PlayerRole.BOWL && roster.bowlerCount  < 3) roleUrgency = 1.20
 
   const categoryAllocation = TOTAL_PURSE * CATEGORY_BUDGET_SHARE[player.category]
-  const avgBudgetPerSlot   = categoryAllocation / CATEGORY_SLOTS[player.category]
+  const avgBudgetPerSlot   = categoryAllocation / categorySlots[player.category]
   const spendingRatio = currentBid / avgBudgetPerSlot
   const pacingMult = spendingRatio > 1.5 ? 0.80 : spendingRatio > 1.2 ? 0.90 : 1.0
 
@@ -92,7 +96,7 @@ export function decideBid(input: BotDecisionInput): BotDecisionOutput {
                          : overspend > categoryAllocation * 0.25 ? 0.88
                          : 1.0
 
-  const remainingSlots  = TOTAL_SLOTS - roster.totalWon
+  const remainingSlots  = totalSlots - roster.totalWon
   const desperation     = remainingSlots > 0 ? remainingPurse / remainingSlots : remainingPurse
   const isDesperateLate = remainingPurse < TOTAL_PURSE * 0.15 && remainingSlots <= 3
 

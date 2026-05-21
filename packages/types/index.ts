@@ -93,6 +93,8 @@ export interface Lobby {
   season: number;
   seats: LobbySeat[];
   createdAt: string; // ISO timestamp
+  hostUserId?: string;
+  quota?: { A: number; B: number; C: number };
 }
 
 // ─── Auction State ───────────────────────────────────────────────────────────
@@ -195,7 +197,7 @@ export interface ClientToServerEvents {
   'lobby:join': (data: { lobbyId: string; userId: string; seatId: string }) => void;
 
   /** Host starts the auction (lobby must be in WAITING status) */
-  'lobby:start': (data: { lobbyId: string }) => void;
+  'lobby:start': (data: { lobbyId: string; testMode?: boolean }) => void;
 
   /** Human places a bid */
   'lobby:place_bid': (data: { lobbyId: string; amount: number }) => void;

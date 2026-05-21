@@ -54,6 +54,7 @@ function scheduleBot(
   currentWinnerId: string | null,
   isHumanWinner: boolean,
   isUnsoldRound: boolean,
+  quota: { A: number; B: number; C: number },
   onBid: (seatId: string, amount: number) => void,
 ): void {
   session.abortController?.abort()
@@ -70,6 +71,7 @@ function scheduleBot(
     roster: buildRoster(session),
     remainingPurse: session.remainingPurse,
     isUnsoldRound,
+    quota,
   })
 
   if (decision.action !== 'BID' || decision.amount == null) return
@@ -99,10 +101,11 @@ export function revealPlayerToBots(
   humanSeatIds: Set<string>,
   sessions: Map<string, BotSession>,
   isUnsoldRound: boolean,
+  quota: { A: number; B: number; C: number },
   onBid: (seatId: string, amount: number) => void,
 ): void {
   for (const session of sessions.values()) {
-    scheduleBot(io, lobbyId, session, player, 0, null, false, isUnsoldRound, onBid)
+    scheduleBot(io, lobbyId, session, player, 0, null, false, isUnsoldRound, quota, onBid)
   }
 }
 
@@ -115,12 +118,13 @@ export function onBidPlaced(
   humanSeatIds: Set<string>,
   sessions: Map<string, BotSession>,
   isUnsoldRound: boolean,
+  quota: { A: number; B: number; C: number },
   onBid: (seatId: string, amount: number) => void,
 ): void {
   const isHumanWinner = humanSeatIds.has(currentWinnerId)
   for (const session of sessions.values()) {
     if (session.seatId === currentWinnerId) continue
-    scheduleBot(io, lobbyId, session, player, currentBid, currentWinnerId, isHumanWinner, isUnsoldRound, onBid)
+    scheduleBot(io, lobbyId, session, player, currentBid, currentWinnerId, isHumanWinner, isUnsoldRound, quota, onBid)
   }
 }
 
@@ -135,6 +139,7 @@ export function updateRosterOnSold(
   sessions: Map<string, BotSession>,
   winningSeatId: string,
   player: { category: PlayerCategory; role: PlayerRole; finalPrice: number },
+  quota: { A: number; B: number; C: number },
 ): void {
   const session = sessions.get(winningSeatId)
   if (!session) return
@@ -148,6 +153,7 @@ export function updateRosterOnSold(
   if      (player.role === PlayerRole.BAT)  session.batsmanCount++
   else if (player.role === PlayerRole.BOWL) session.bowlerCount++
 
-  const avgBudgetPerSlot = TOTAL_PURSE * CATEGORY_BUDGET_SHARE[player.category] / CATEGORY_SLOTS[player.category]
+  const categorySlots: Record<string, number> = { A: quota.A, B: quota.B, C: quota.C }
+  const avgBudgetPerSlot = TOTAL_PURSE * CATEGORY_BUDGET_SHARE[player.category] / categorySlots[player.category]
   session.categoryOverspend[player.category] = (session.categoryOverspend[player.category] ?? 0) + (player.finalPrice - avgBudgetPerSlot)
 }

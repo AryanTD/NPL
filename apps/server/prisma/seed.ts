@@ -35,6 +35,7 @@ interface PlayerJSON {
   role: string;
   base_price: number;
   is_marquee: boolean;
+  quality?: number;
   stats: PlayerStats;
 }
 
@@ -80,7 +81,7 @@ function toRow(p: PlayerJSON, season: number) {
     basePrice: p.base_price,
     season,
     isMarquee: p.is_marquee,
-    quality:   calcQuality(p.stats, p.role),
+    quality:   p.quality ?? calcQuality(p.stats, p.role),
     runs:       p.stats.runs,
     wickets:    p.stats.wickets,
     battingAvg: p.stats.batting_avg,

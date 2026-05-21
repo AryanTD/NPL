@@ -113,10 +113,11 @@ model Franchise {
 // ─── Lobby ───────────────────────────────────────────────────────────────────
 
 model Lobby {
-  id        String      @id @default(cuid())
-  code      String      @unique // 6-char join code
-  status    LobbyStatus @default(WAITING)
-  season    Int         // which player pool to use
+  id          String      @id @default(cuid())
+  code        String      @unique // 6-char join code
+  status      LobbyStatus @default(WAITING)
+  season      Int         // which player pool to use
+  hostUserId  String?     // Clerk userId of the player who created the lobby
 
   seats         LobbySeat[]
   auctionQueues AuctionQueue[]
