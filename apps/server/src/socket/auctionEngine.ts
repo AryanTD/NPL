@@ -1,5 +1,5 @@
 import { Server, Socket } from "socket.io";
-import { AuctionPhase, SlotType, PlayerRole } from "@prisma/client";
+import { Prisma, AuctionPhase, SlotType, PlayerRole } from "@prisma/client";
 import type {
   ClientToServerEvents,
   ServerToClientEvents,
@@ -69,7 +69,6 @@ interface QueueEntry {
 
 interface LiveAuctionState extends AuctionState {
   timerId: NodeJS.Timeout | null;
-  botController: AbortController | null;
   botSessions: Map<string, BotSession>;
   maxPriceBidders: Set<string>;
   phaseQueueCache: QueueEntry[] | null;
@@ -260,6 +259,15 @@ export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
       }
 
       const auctionState = auctionStates.get(lobbyId);
+
+      if (lobby.status === "AUCTION" && !auctionState) {
+        socket.emit("lobby:error", {
+          message: "Auction session lost — server was restarted. Please start a new game.",
+          code: "SESSION_LOST",
+        });
+        return;
+      }
+
       socket.emit("lobby:state", {
         id: lobby.id,
         code: lobby.code,
@@ -399,7 +407,7 @@ export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
       const remaining = room ? room.size : 0;
 
       if (remaining === 0) {
-        state.botController?.abort();
+        cancelAllBots(state.botSessions);
         if (state.timerId) {
           clearInterval(state.timerId);
           state.timerId = null;
@@ -437,10 +445,12 @@ async function startAuction(
   });
 
   const cap = testMode ? TEST_PLAYERS_PER_CAT : undefined;
+  const buckets: Record<"A" | "B" | "C", typeof players> = { A: [], B: [], C: [] };
+  for (const p of players) buckets[p.category as "A" | "B" | "C"].push(p);
   const byCategory = {
-    A: fisherYates(players.filter((p) => p.category === "A")).slice(0, cap),
-    B: fisherYates(players.filter((p) => p.category === "B")).slice(0, cap),
-    C: fisherYates(players.filter((p) => p.category === "C")).slice(0, cap),
+    A: fisherYates(buckets.A).slice(0, cap),
+    B: fisherYates(buckets.B).slice(0, cap),
+    C: fisherYates(buckets.C).slice(0, cap),
   };
 
   const queueData = [
@@ -464,15 +474,19 @@ async function startAuction(
     })),
   ];
 
-  // Atomically flip lobby to AUCTION and create the auction queue.
-  // If the queue insert fails, the lobby won't be left stranded in AUCTION status.
-  await prisma.$transaction([
-    prisma.lobby.update({
-      where: { id: lobbyId },
+  // Atomically claim WAITING → AUCTION using the interactive transaction form so we
+  // can inspect the updateMany result before proceeding — prevents double-start races.
+  let startClaimed = false;
+  await prisma.$transaction(async (tx) => {
+    const result = await tx.lobby.updateMany({
+      where: { id: lobbyId, status: "WAITING" },
       data: { status: "AUCTION" },
-    }),
-    prisma.auctionQueue.createMany({ data: queueData }),
-  ]);
+    });
+    if (result.count === 0) return; // concurrent start already ran
+    startClaimed = true;
+    await tx.auctionQueue.createMany({ data: queueData });
+  });
+  if (!startClaimed) return;
 
   // Initialise in-memory state
   const liveSeats: LobbySeat[] = seats.map(formatSeatFromDb);
@@ -493,7 +507,6 @@ async function startAuction(
     luckyDrawActive: false,
     luckyDrawContenders: [],
     timerId: null,
-    botController: null,
     botSessions: new Map(),
     maxPriceBidders: new Set(),
     phaseQueueCache: null,
@@ -865,10 +878,10 @@ async function resolveCurrentPlayer(
   const state = auctionStates.get(lobbyId);
   if (!state || !state.currentPlayer) return;
 
-  // Abort any in-flight bot decisions (wired in commit 4)
-  state.botController?.abort();
+  // Cancel all bots synchronously before any await. Bot timers that fire during
+  // subsequent DB operations would otherwise emit spurious lobby:bid_placed events.
+  cancelAllBots(state.botSessions);
 
-  // Clear any residual timer
   if (state.timerId) {
     clearInterval(state.timerId);
     state.timerId = null;
@@ -876,8 +889,9 @@ async function resolveCurrentPlayer(
 
   const player = state.currentPlayer;
   const category = player.category;
+  const winningBid = state.currentBid; // snapshot before any async yield
 
-  if (!state.currentBid) {
+  if (!winningBid) {
     // ── Unsold ───────────────────────────────────────────────────────────────
     await prisma.auctionQueue.updateMany({
       where: { lobbyId, playerId: player.id, isDone: false },
@@ -888,7 +902,6 @@ async function resolveCurrentPlayer(
       playerId: player.id,
       playerName: player.name,
     });
-    cancelAllBots(state.botSessions);
     state.currentPlayerDb = null;
     state.currentPlayer = null;
     setImmediate(() => revealNextPlayer(io, lobbyId).catch(console.error));
@@ -901,7 +914,7 @@ async function resolveCurrentPlayer(
     data: { isDone: true },
   });
 
-  const winningAmount = state.currentBid.amount;
+  const winningAmount = winningBid.amount;
 
   if (winningAmount === MAX_PRICE[category]) {
     const contenders = [...state.maxPriceBidders];
@@ -912,7 +925,7 @@ async function resolveCurrentPlayer(
     }
   }
 
-  await sellPlayer(io, lobbyId, state.currentBid.seatId, winningAmount, false);
+  await sellPlayer(io, lobbyId, winningBid.seatId, winningAmount, false);
 }
 
 // ─── sellPlayer ───────────────────────────────────────────────────────────────
@@ -981,7 +994,6 @@ async function sellPlayer(
     finalPrice,
   });
 
-  cancelAllBots(state.botSessions);
   updateRosterOnSold(state.botSessions, winningSeatId, {
     category: player.category as import("@prisma/client").PlayerCategory,
     role: player.role as PlayerRole,
@@ -1093,16 +1105,20 @@ async function setupUnsoldRound(io: IoServer, lobbyId: string): Promise<void> {
     return true;
   });
 
-  // @@unique([lobbyId, playerId]) prevents inserting a second row for the same player.
-  // Instead, update the existing rows: change phase → UNSOLD_ROUND, reset isDone: false.
-  await prisma.$transaction(
-    capped.map((row, i) =>
-      prisma.auctionQueue.update({
-        where: { id: row.id },
-        data: { phase: AuctionPhase.UNSOLD_ROUND, isDone: false, position: i },
-      }),
-    ),
+  // Single SQL UPDATE with per-row CASE values — avoids N separate round-trips.
+  // (Prisma's updateMany can't set different values per row, so raw SQL is needed.)
+  const caseWhenClauses = Prisma.join(
+    capped.map((row, i) => Prisma.sql`WHEN ${row.id} THEN ${i}`),
+    " ",
   );
+  const inList = Prisma.join(capped.map((r) => Prisma.sql`${r.id}`));
+  await prisma.$executeRaw`
+    UPDATE "AuctionQueue"
+    SET phase = 'UNSOLD_ROUND'::"AuctionPhase",
+        "isDone" = false,
+        position = CASE id ${caseWhenClauses} END
+    WHERE id IN (${inList})
+  `;
 
   // Clear in-memory unsold pool
   state.unsoldPool = [];

@@ -31,7 +31,12 @@ let franchiseCachePromise: Promise<Awaited<ReturnType<typeof prisma.franchise.fi
 
 function getFranchises() {
   if (!franchiseCachePromise) {
-    franchiseCachePromise = prisma.franchise.findMany({ orderBy: { name: 'asc' } });
+    franchiseCachePromise = prisma.franchise
+      .findMany({ orderBy: { name: 'asc' } })
+      .catch((err) => {
+        franchiseCachePromise = null;
+        return Promise.reject(err);
+      });
   }
   return franchiseCachePromise;
 }
