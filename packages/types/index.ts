@@ -189,6 +189,12 @@ export interface ServerToClientEvents {
       basePrice: number;
     }>;
   }) => void;
+
+  /** Auction paused (quickplay only) */
+  'lobby:auction_paused': (data: { isPaused: true }) => void;
+
+  /** Auction resumed after pause (quickplay only) */
+  'lobby:auction_resumed': (data: { isPaused: false }) => void;
 }
 
 /** Events the CLIENT emits to the SERVER */
@@ -204,6 +210,12 @@ export interface ClientToServerEvents {
 
   /** Human explicitly passes on the current player */
   'lobby:pass': (data: { lobbyId: string }) => void;
+
+  /** Pause the auction (quickplay / bot-only games only) */
+  'lobby:pause': (data: { lobbyId: string }) => void;
+
+  /** Resume a paused auction (quickplay / bot-only games only) */
+  'lobby:resume': (data: { lobbyId: string }) => void;
 }
 
 /** Inter-server events (not used client-side, but exported for completeness) */

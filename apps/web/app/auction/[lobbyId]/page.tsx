@@ -273,6 +273,9 @@ function AuctionPage() {
   // Tracks which seatIds have bid max price for the current player (shown in real-time)
   const [luckyDrawEntrants, setLuckyDrawEntrants] = useState<string[]>([]);
 
+  // Pause state (quickplay only)
+  const [isPaused, setIsPaused] = useState(false);
+
   // Complete state
   const [auctionComplete, setAuctionComplete] = useState(false);
   const [finalSeats, setFinalSeats] = useState<LobbySeat[] | null>(null);
@@ -520,6 +523,9 @@ function AuctionPage() {
       if (code === "SESSION_LOST") return; // handled by redirect logic
     });
 
+    socket.on("lobby:auction_paused", () => setIsPaused(true));
+    socket.on("lobby:auction_resumed", () => setIsPaused(false));
+
     return () => {
       socket.off("connect");
       socket.off("lobby:state");
@@ -534,6 +540,8 @@ function AuctionPage() {
       socket.off("lobby:bot_thinking");
       socket.off("lobby:auction_complete");
       socket.off("lobby:error");
+      socket.off("lobby:auction_paused");
+      socket.off("lobby:auction_resumed");
       socket.disconnect();
     };
   }, [lobbyId, seatId, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -541,6 +549,7 @@ function AuctionPage() {
   // ── Derived ──────────────────────────────────────────────────────────────
 
   const mySeat = seats.find((s) => s.seatId === seatId) ?? null;
+  const isQuickPlay = seats.filter((s) => s.seatType === "HUMAN").length === 1;
   const isUserLeading = currentBid?.seatId === seatId;
   const bidderMeta = currentBid ? meta(currentBid.franchiseName) : null;
   const [timerMax, setTimerMax] = useState(TIMER_MAX);
@@ -592,6 +601,7 @@ function AuctionPage() {
     currentPlayer &&
     !luckyActive &&
     !bidPending &&
+    !isPaused &&
     !hasEnteredLuckyDraw &&
     bidPanelState === "bidding" &&
     mySeat.seatType === "HUMAN" &&
@@ -1159,14 +1169,14 @@ function AuctionPage() {
                         fontFamily: "Rajdhani",
                         fontWeight: 700,
                         fontSize: 15,
-                        color: timerColor,
+                        color: isPaused ? "#10b981" : timerColor,
                         animation:
-                          timerSeconds <= 5
+                          !isPaused && timerSeconds <= 5
                             ? "pulse-fade .5s ease-in-out infinite"
                             : "none",
                       }}
                     >
-                      {String(timerSeconds).padStart(2, "0")}s
+                      {isPaused ? "PAUSED" : `${String(timerSeconds).padStart(2, "0")}s`}
                     </span>
                   </div>
                   <div
@@ -1181,13 +1191,16 @@ function AuctionPage() {
                       style={{
                         height: "100%",
                         width: `${timerPct}%`,
-                        background: timerColor,
+                        background: isPaused ? "#10b981" : timerColor,
                         borderRadius: 2,
                         transition: "width 1s linear, background .3s",
+                        opacity: isPaused ? 0.35 : 1,
                       }}
                     />
                   </div>
                 </div>
+
+
 
 
 
@@ -1713,6 +1726,40 @@ function AuctionPage() {
               ))
             )}
           </div>
+
+          {/* Pause / Resume footer — quickplay only */}
+          {isQuickPlay && !auctionComplete && (
+            <div
+              style={{
+                padding: "10px 12px",
+                borderTop: "1px solid var(--border)",
+              }}
+            >
+              <button
+                onClick={() =>
+                  socket.emit(isPaused ? "lobby:resume" : "lobby:pause", { lobbyId })
+                }
+                disabled={luckyActive || !currentPlayer}
+                style={{
+                  width: "100%",
+                  padding: "10px 0",
+                  background: isPaused ? "#10b98115" : "#ef444415",
+                  border: `1px solid ${isPaused ? "#10b98150" : "#ef444450"}`,
+                  borderRadius: 8,
+                  color: isPaused ? "#10b981" : "#ef4444",
+                  fontFamily: "Rajdhani",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  letterSpacing: 1,
+                  cursor: luckyActive || !currentPlayer ? "not-allowed" : "pointer",
+                  opacity: luckyActive || !currentPlayer ? 0.4 : 1,
+                  transition: "all .2s",
+                }}
+              >
+                {isPaused ? "▶  RESUME AUCTION" : "⏸  PAUSE AUCTION"}
+              </button>
+            </div>
+          )}
 
         </div>
       </div>

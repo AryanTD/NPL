@@ -76,6 +76,7 @@ interface LiveAuctionState extends AuctionState {
   humanSeatIds: Set<string>;
   currentPlayerDb: PlayerInfo | null;
   quota: { A: number; B: number; C: number };
+  isPaused: boolean;
 }
 
 const auctionStates = new Map<string, LiveAuctionState>();
@@ -289,6 +290,9 @@ export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
           });
         }
         socket.emit("lobby:timer_tick", { secondsLeft: auctionState.timerSeconds });
+        if (auctionState.isPaused) {
+          socket.emit("lobby:auction_paused", { isPaused: true });
+        }
         const upcoming = (auctionState.phaseQueueCache ?? []).slice(0, 8).map((e) => ({
           playerId: e.player.id,
           playerName: e.player.name,
@@ -388,6 +392,26 @@ export function registerAuctionHandlers(io: IoServer, socket: IoSocket): void {
     console.log(
       `[auction] lobby:pass — lobbyId ${lobbyId} seat ${socket.data.seatId}`,
     );
+  });
+
+  // ── lobby:pause ─────────────────────────────────────────────────────────────
+  socket.on("lobby:pause", (data) => {
+    const { lobbyId } = parsePayload(data);
+    if (!lobbyId) {
+      socket.emit("lobby:error", { message: "Missing lobbyId", code: "BAD_PAYLOAD" });
+      return;
+    }
+    handlePause(io, socket, lobbyId);
+  });
+
+  // ── lobby:resume ────────────────────────────────────────────────────────────
+  socket.on("lobby:resume", (data) => {
+    const { lobbyId } = parsePayload(data);
+    if (!lobbyId) {
+      socket.emit("lobby:error", { message: "Missing lobbyId", code: "BAD_PAYLOAD" });
+      return;
+    }
+    handleResume(io, socket, lobbyId);
   });
 
   // ── disconnect ──────────────────────────────────────────────────────────────
@@ -514,6 +538,7 @@ async function startAuction(
     humanSeatIds,
     currentPlayerDb: null,
     quota,
+    isPaused: false,
   };
   auctionStates.set(lobbyId, state);
 
@@ -692,6 +717,7 @@ async function revealNextPlayer(io: IoServer, lobbyId: string): Promise<void> {
 function startPlayerTimer(io: IoServer, lobbyId: string): void {
   const state = auctionStates.get(lobbyId);
   if (!state) return;
+  if (state.isPaused) return;
 
   if (state.timerId) clearInterval(state.timerId);
 
@@ -726,6 +752,95 @@ function minPurseBuffer(
     Math.max(0, quota.B - bAfter) * BASE_PRICE.B +
     Math.max(0, quota.C - cAfter) * BASE_PRICE.C
   );
+}
+
+// ─── handlePause / handleResume ───────────────────────────────────────────────
+
+function handlePause(io: IoServer, socket: IoSocket, lobbyId: string): void {
+  const state = auctionStates.get(lobbyId);
+  if (!state) {
+    socket.emit("lobby:error", { message: "Lobby not found", code: "NOT_FOUND" });
+    return;
+  }
+
+  const seatId = socket.data.seatId;
+  if (!state.humanSeatIds.has(seatId) || state.humanSeatIds.size !== 1) {
+    socket.emit("lobby:error", { message: "Not authorized to pause", code: "UNAUTHORIZED" });
+    return;
+  }
+
+  if (state.isPaused) return;
+
+  if (state.luckyDrawActive) {
+    socket.emit("lobby:error", { message: "Cannot pause during lucky draw", code: "LUCKY_DRAW_ACTIVE" });
+    return;
+  }
+  if (state.phase === "MARQUEE_DRAW") {
+    socket.emit("lobby:error", { message: "Cannot pause during marquee draw", code: "MARQUEE_DRAW_ACTIVE" });
+    return;
+  }
+  if (!state.currentPlayer) return;
+
+  if (state.timerId) {
+    clearInterval(state.timerId);
+    state.timerId = null;
+  }
+  cancelAllBots(state.botSessions);
+  state.isPaused = true;
+
+  io.to(lobbyId).emit("lobby:auction_paused", { isPaused: true });
+  console.log(`[auction] paused lobbyId=${lobbyId} timerSeconds=${state.timerSeconds}`);
+}
+
+function handleResume(io: IoServer, socket: IoSocket, lobbyId: string): void {
+  const state = auctionStates.get(lobbyId);
+  if (!state) {
+    socket.emit("lobby:error", { message: "Lobby not found", code: "NOT_FOUND" });
+    return;
+  }
+
+  const seatId = socket.data.seatId;
+  if (!state.humanSeatIds.has(seatId) || state.humanSeatIds.size !== 1) {
+    socket.emit("lobby:error", { message: "Not authorized to resume", code: "UNAUTHORIZED" });
+    return;
+  }
+
+  if (!state.isPaused) return;
+  if (!state.currentPlayer || !state.currentPlayerDb) return;
+
+  state.isPaused = false;
+
+  io.to(lobbyId).emit("lobby:timer_tick", { secondsLeft: state.timerSeconds });
+  startPlayerTimer(io, lobbyId);
+
+  const isUnsoldRound = state.phase === "UNSOLD_ROUND";
+  const onBotBid = (bidSeatId: string, amount: number) => {
+    const fakeBidSocket = { emit: () => {} } as unknown as IoSocket;
+    handleBid(io, fakeBidSocket, lobbyId, bidSeatId, amount);
+  };
+
+  if (state.currentBid) {
+    onBidPlaced(
+      io, lobbyId,
+      state.currentPlayerDb,
+      state.currentBid.amount,
+      state.currentBid.seatId,
+      state.humanSeatIds, state.botSessions,
+      isUnsoldRound, state.quota,
+      onBotBid,
+    );
+  } else {
+    revealPlayerToBots(
+      io, lobbyId,
+      state.currentPlayerDb,
+      state.humanSeatIds, state.botSessions,
+      isUnsoldRound, state.quota,
+      onBotBid,
+    );
+  }
+
+  io.to(lobbyId).emit("lobby:auction_resumed", { isPaused: false });
+  console.log(`[auction] resumed lobbyId=${lobbyId} timerSeconds=${state.timerSeconds}`);
 }
 
 // ─── handleBid ────────────────────────────────────────────────────────────────
