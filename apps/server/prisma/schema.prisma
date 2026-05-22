@@ -72,6 +72,7 @@ model Player {
   quality     Int            @default(50)
 
   // Stats (flat columns for query efficiency)
+  matches     Int            @default(0)
   runs        Int            @default(0)
   wickets     Int            @default(0)
   battingAvg  Float?
