@@ -102,7 +102,7 @@ function parsePayload<T>(data: T | string): T {
 
 type DbPlayer = {
   id: string; name: string; basePrice: number; quality: number; category: string; role: string;
-  season: number; isMarquee: boolean; runs: number; wickets: number;
+  season: number; isMarquee: boolean; matches: number; runs: number; wickets: number;
   battingAvg: number | null; strikeRate: number | null; bowlingAvg: number | null; economy: number | null;
 };
 
@@ -116,6 +116,7 @@ function dbPlayerToPlayer(p: DbPlayer): Player {
     season: p.season,
     is_marquee: p.isMarquee,
     stats: {
+      matches: p.matches,
       runs: p.runs,
       wickets: p.wickets,
       batting_avg: p.battingAvg,
@@ -165,6 +166,7 @@ function formatSeatFromDb(seat: {
       basePrice: number;
       season: number;
       isMarquee: boolean;
+      matches: number;
       runs: number;
       wickets: number;
       battingAvg: number | null;
@@ -188,6 +190,7 @@ function formatSeatFromDb(seat: {
       season: slot.player.season,
       is_marquee: slot.player.isMarquee,
       stats: {
+        matches: slot.player.matches,
         runs: slot.player.runs,
         wickets: slot.player.wickets,
         batting_avg: slot.player.battingAvg,
@@ -621,6 +624,7 @@ async function runMarqueeDraw(
         season: player.season,
         is_marquee: player.isMarquee,
         stats: {
+          matches: player.matches,
           runs: player.runs,
           wickets: player.wickets,
           batting_avg: player.battingAvg,

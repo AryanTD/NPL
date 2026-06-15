@@ -171,21 +171,53 @@ function hasQuota(
   return true;
 }
 
-function statRows(player: Player): { label: string; value: string | number }[] {
-  const rows: { label: string; value: string | number }[] = [];
-  if (player.stats.runs > 0)
-    rows.push({ label: "RUNS", value: player.stats.runs });
-  if (player.stats.wickets > 0)
-    rows.push({ label: "WKTS", value: player.stats.wickets });
-  if (player.stats.batting_avg !== null)
-    rows.push({ label: "AVG", value: player.stats.batting_avg.toFixed(1) });
-  if (player.stats.strike_rate !== null)
-    rows.push({ label: "SR", value: player.stats.strike_rate.toFixed(1) });
-  if (player.stats.bowling_avg !== null)
-    rows.push({ label: "BWL AVG", value: player.stats.bowling_avg.toFixed(1) });
-  if (player.stats.economy !== null)
-    rows.push({ label: "ECON", value: player.stats.economy.toFixed(2) });
-  return rows.slice(0, 3);
+function statRows(player: Player): { label: string; value: string }[] {
+  const s = player.stats;
+  const dec = (v: number | null): string =>
+    v === null || v === 0 ? "—" : v.toFixed(1);
+  const int = (v: number): string => v === 0 ? "—" : String(v);
+
+  switch (player.role) {
+    case "BAT":
+    case "WK":
+      return [
+        { label: "MATCHES", value: String(s.matches) },
+        { label: "RUNS",    value: String(s.runs) },
+        { label: "AVG",     value: dec(s.batting_avg) },
+        { label: "SR",      value: dec(s.strike_rate) },
+      ];
+    case "BOWL":
+      return [
+        { label: "MATCHES", value: String(s.matches) },
+        { label: "WKTS",    value: int(s.wickets) },
+        { label: "ECON",    value: dec(s.economy) },
+        { label: "AVG",     value: dec(s.bowling_avg) },
+      ];
+    case "AR": {
+      let flexValue: string;
+      let flexLabel: string;
+      if (s.strike_rate !== null && s.strike_rate > 110) {
+        flexLabel = "SR";   flexValue = dec(s.strike_rate);
+      } else if (s.economy !== null && s.economy < 7.5) {
+        flexLabel = "ECON"; flexValue = dec(s.economy);
+      } else {
+        flexLabel = "AVG";  flexValue = dec(s.batting_avg);
+      }
+      return [
+        { label: "MATCHES", value: String(s.matches) },
+        { label: "RUNS",    value: String(s.runs) },
+        { label: "WKTS",    value: int(s.wickets) },
+        { label: flexLabel, value: flexValue },
+      ];
+    }
+    default:
+      return [
+        { label: "MATCHES", value: String(s.matches) },
+        { label: "RUNS",    value: String(s.runs) },
+        { label: "WKTS",    value: int(s.wickets) },
+        { label: "AVG",     value: dec(s.batting_avg) },
+      ];
+  }
 }
 
 // ─── Root export (Suspense for params) ───────────────────────────────────────
@@ -1040,9 +1072,9 @@ function AuctionPage() {
                       style={{
                         borderTop: "1px solid var(--border)",
                         display: "grid",
-                        gridTemplateColumns: `repeat(${rows.length}, 1fr)`,
-                        padding: "10px 14px",
-                        gap: 4,
+                        gridTemplateColumns: "repeat(4, 1fr)",
+                        padding: "8px 10px",
+                        gap: 2,
                       }}
                     >
                       {rows.map((s) => (
@@ -1051,7 +1083,7 @@ function AuctionPage() {
                             style={{
                               fontFamily: "Rajdhani",
                               fontWeight: 700,
-                              fontSize: 18,
+                              fontSize: 15,
                               color: catCfg?.color,
                             }}
                           >
@@ -1059,7 +1091,7 @@ function AuctionPage() {
                           </div>
                           <div
                             style={{
-                              fontSize: 9,
+                              fontSize: 8,
                               color: "var(--muted)",
                               textTransform: "uppercase",
                               letterSpacing: 0.5,
