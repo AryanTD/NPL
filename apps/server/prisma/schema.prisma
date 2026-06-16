@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
@@ -79,6 +80,8 @@ model Player {
   strikeRate  Float?
   bowlingAvg  Float?
   economy     Float?
+  hs          String?        // e.g. "34*"
+  bbi         String?        // e.g. "4/16"
 
   squadSlots    SquadSlot[]
   auctionQueues AuctionQueue[]

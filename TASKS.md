@@ -1,34 +1,24 @@
 # NPL Auction Game — Task List
 
-## 🔴 Immediate (do these first)
+## ✅ Completed
 
-### 1. Manual Player Quality
-
-Update `data/players/npl-2024.json` to add `"quality": N` for at least the 8 marquee players, then re-seed.
-
-**Seed.ts change needed first** — make `quality` in JSON override the computed value:
-
-- In `toRow()`, change: `quality: calcQuality(p.stats, p.role)`
-- To: `quality: p.quality ?? calcQuality(p.stats, p.role)`
-- Add `quality?: number` to `PlayerJSON` interface
-
-**Suggested marquee quality values:**
-| Player | Set to |
-|---|---|
-| Sandeep Lamichhane | 85 |
-| Rohit Paudel | 85 |
-| Dipendra Singh Airee | 88 |
-| Kushal Malla | 82 |
-| Kushal Bhurtel | 68 |
-| Sompal Kami | 78 |
-| Karan KC | 72 |
-| Aasif Sheikh | 65 |
-
-After edits: `cd apps/server && npx prisma db seed`
+- Full auction engine with state machine, timer, bid validation, lucky draw, bots, phase transitions
+- All server-side optimizations: TOCTOU fix, single-pass bucket sort, bulk `$executeRaw` for unsold round, `cancelAllBots` before awaits
+- Lucky draw button lock (`hasEnteredLuckyDraw` state)
+- Lucky draw winner reveal after overlay (stale-closure fix via `luckyActiveRef` + `pendingRevealRef`)
+- Stacking bid notifications (last 4, opacity-dimmed by age) outside bid card
+- Recent buys list (last 5) in left panel under COMING UP
+- Lucky draw entrant chips shown in real-time as teams hit max price
+- Live feed removed, replaced with recent buys
+- Migrated DB from Railway (trial expired) to Neon (free tier, permanent); added `DIRECT_URL` + `directUrl` in schema for Prisma migrations
+- Added `hs` and `bbi` fields to Player (schema, seed, types, engine, UI)
+- Player card stat redesign: 3-zone layout with overlapping center hero box; role-aware 5-stat display with AR flex logic
 
 ---
 
-### 2. Bug Testing Session
+## 🔴 Immediate (do these first)
+
+### 1. Bug Testing Session
 
 Open **two browser windows with different accounts** and work through this checklist:
 
@@ -57,9 +47,9 @@ Open **two browser windows with different accounts** and work through this check
 
 ---
 
-### 3. Fix Bugs Found Above
+### 2. Fix Bugs Found Above
 
-Fix whatever breaks in step 2 before moving on.
+Fix whatever breaks in step 1 before moving on.
 
 ---
 
@@ -124,16 +114,17 @@ The server is currently started manually with a background `ts-node` command. Fi
 ## Quick Reference
 
 ```bash
-# Start server (manual, until nodemon is fixed)
-cd apps/server
-kill $(lsof -ti :3001) 2>/dev/null
-npx ts-node --project tsconfig.json src/index.ts &
+# Start server (Terminal 1 — manual until nodemon is fixed)
+cd apps/server && npx ts-node --project tsconfig.json src/index.ts
+
+# Start web (Terminal 2)
+cd apps/web && npm run dev
 
 # Re-seed after JSON edits
 cd apps/server && npx prisma db seed
 
-# Start web
-cd apps/web && npm run dev
+# Create + apply a new migration
+cd apps/server && npx prisma migrate dev --name <migration_name>
 
 # View DB
 cd apps/server && npx prisma studio

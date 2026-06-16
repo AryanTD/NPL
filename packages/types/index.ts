@@ -33,6 +33,8 @@ export interface PlayerStats {
   strike_rate: number | null;
   bowling_avg: number | null;
   economy: number | null;
+  hs: string | null;
+  bbi: string | null;
 }
 
 export interface Player {

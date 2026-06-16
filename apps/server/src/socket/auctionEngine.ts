@@ -104,6 +104,7 @@ type DbPlayer = {
   id: string; name: string; basePrice: number; quality: number; category: string; role: string;
   season: number; isMarquee: boolean; matches: number; runs: number; wickets: number;
   battingAvg: number | null; strikeRate: number | null; bowlingAvg: number | null; economy: number | null;
+  hs: string | null; bbi: string | null;
 };
 
 function dbPlayerToPlayer(p: DbPlayer): Player {
@@ -123,6 +124,8 @@ function dbPlayerToPlayer(p: DbPlayer): Player {
       strike_rate: p.strikeRate,
       bowling_avg: p.bowlingAvg,
       economy: p.economy,
+      hs: p.hs,
+      bbi: p.bbi,
     },
   };
 }
@@ -173,6 +176,8 @@ function formatSeatFromDb(seat: {
       strikeRate: number | null;
       bowlingAvg: number | null;
       economy: number | null;
+      hs: string | null;
+      bbi: string | null;
     };
     slotType: string;
     pricePaid: number;
@@ -197,6 +202,8 @@ function formatSeatFromDb(seat: {
         strike_rate: slot.player.strikeRate,
         bowling_avg: slot.player.bowlingAvg,
         economy: slot.player.economy,
+        hs: slot.player.hs,
+        bbi: slot.player.bbi,
       },
     },
     slotType: slot.slotType as SlotType,
@@ -631,6 +638,8 @@ async function runMarqueeDraw(
           strike_rate: player.strikeRate,
           bowling_avg: player.bowlingAvg,
           economy: player.economy,
+          hs: player.hs,
+          bbi: player.bbi,
         },
       },
       slotType: "MARQUEE",

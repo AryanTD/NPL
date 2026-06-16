@@ -27,6 +27,8 @@ interface PlayerStats {
   bowling_avg: number | null;
   economy: number | null;
   matches: number;
+  hs?: string | null;
+  bbi?: string | null;
 }
 
 interface PlayerJSON {
@@ -99,6 +101,8 @@ function toRow(p: PlayerJSON, season: number) {
     strikeRate: p.stats.strike_rate,
     bowlingAvg: p.stats.bowling_avg,
     economy:    p.stats.economy,
+    hs:         p.stats.hs  ?? null,
+    bbi:        p.stats.bbi ?? null,
   };
 }
 
