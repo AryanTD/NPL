@@ -18,7 +18,7 @@ This is a real product targeting real users — Nepali cricket fans.
 - **Database**: PostgreSQL + Prisma ORM (in `apps/server/prisma/`)
 - **Auth**: Clerk
 - **AI Bots**: Anthropic Claude API (claude-sonnet-4-6)
-- **Hosting**: Vercel (web) + Railway (server + DB)
+- **Hosting**: Vercel (web) + Railway (server) + Neon (PostgreSQL, free tier)
 - **Monorepo**: npm workspaces, shared types in `packages/types/`
 
 ---
@@ -32,8 +32,9 @@ This is a real product targeting real users — Nepali cricket fans.
 - `apps/server/prisma/seed.ts` — bulk-insert franchises + players via `createMany`; quality formula calibrated for single-tournament stats (batting_avg ref=25, wickets ref=15)
 - `data/players/npl-2024.json` — **82 real NPL 2024 players** (8 marquee + 74 non-marquee); sourced from Kaggle dataset, overseas players excluded; `npl-2025.json` is no longer used
 - `data/scripts/clean_players.py` — Python script that built npl-2024.json from the Kaggle CSVs; re-run to regenerate if raw data changes
-- DB migrations applied (`20260426165922_init`, `20260501120500_add_player_quality`), DB seeded with real players
-- Quality range in DB: 25–88; calibrated bot `minQuality` thresholds in `botPersonalities.ts` and `botDecision.ts`
+- DB migrations applied through `20260616162003_add_player_hs_bbi`, DB seeded with real players on Neon
+- Quality range in DB: 45–89; per-category floor applied in seed.ts (A≥65, B≥55, C≥45); marquee quality is manually set in npl-2024.json and preserved as-is
+- Player stats include `hs` (highest score, e.g. "34*") and `bbi` (best bowling innings, e.g. "4/16") as nullable strings
 - `src/lib/prisma.ts` — singleton Prisma client
 - `src/routes/lobby.ts` — `POST /lobby/create`, `POST /lobby/join/:code`, `GET /lobby/:id`
 - `src/bots/botPersonalities.ts` — all 5 personality configs
@@ -47,7 +48,13 @@ This is a real product targeting real users — Nepali cricket fans.
 - `apps/web/lib/socket.ts` — singleton typed `socket.io-client` export
 - `apps/web/app/page.tsx` — landing page (logo lockup, Clerk gate, 3-state card: default/create/join)
 - `apps/web/app/lobby/page.tsx` — lobby waiting room (socket lifecycle, 8 seat cards, auction format sidebar, START AUCTION with 3s countdown, marquee draw screen)
-- `apps/web/app/auction/[lobbyId]/page.tsx` — auction room (player card, timer, bid controls, queue panel, squad panel, teams bar, lucky draw overlay)
+- `apps/web/app/auction/[lobbyId]/page.tsx` — auction room (player card, timer, bid controls, queue panel, squad panel, teams bar, lucky draw overlay); includes:
+  - Lucky draw: `hasEnteredLuckyDraw` state locks button; `luckyActiveRef` + `pendingRevealRef` fix stale-closure winner reveal; 2.8s overlay auto-close
+  - Bid notifications: stacking feed of last 4 bids below bid card, opacity-dimmed by age, auto-clears 4s after last bid
+  - Recent buys: last 5 sold players shown in left panel under COMING UP
+  - Lucky draw entrants: real-time chips showing which teams hit max price
+  - All server optimizations applied to `auctionEngine.ts` (TOCTOU fix, single-pass bucket sort, bulk `$executeRaw` for unsold round, `cancelAllBots` before first await)
+  - Player card stat layout: 3-zone design — side columns (2 stats each, stacked) + overlapping center hero box (primary stat at large font); role-aware stat selection with AR flex logic for SR/ECON and HS/BBI
 
 ### Not yet built
 - Fantasy scoring system (post-auction)
@@ -174,7 +181,7 @@ Bots run entirely server-side — the client never sees bot logic or Claude API 
 | BALANCED | 35 | ~55% |
 | CONSERVATIVE | 45 | ~46% |
 | ROLE_HUNTER | 38 priority / 58 non-priority | varies |
-| BUDGET_SNIPER | 58 | ~30% |
+| BUDGET_SNIPER | 45 | ~100% (low aggression wins naturally) |
 
 ---
 
@@ -182,7 +189,7 @@ Bots run entirely server-side — the client never sees bot logic or Claude API 
 
 | Model | Key fields |
 |---|---|
-| `Player` | id (from JSON), name, category, role, basePrice, season, isMarquee, flat stat columns |
+| `Player` | id (from JSON), name, category, role, basePrice, season, isMarquee, flat stat columns (matches, runs, wickets, battingAvg, strikeRate, bowlingAvg, economy, hs, bbi) |
 | `Franchise` | name, shortName, city, colorPrimary, colorSecondary |
 | `Lobby` | code (6-char), status, season |
 | `LobbySeat` | lobbyId, franchiseId, seatType, userId?, botPersonality?, purseRemaining, countA/B/C |
@@ -249,7 +256,8 @@ npx prisma generate      # regenerate client after schema change
 ### apps/server/.env
 
 ```
-DATABASE_URL=postgresql://user:password@localhost:5432/npl_auction
+DATABASE_URL=postgresql://...@...neon.tech/neondb?sslmode=require   # pooled (Neon)
+DIRECT_URL=postgresql://...@...neon.tech/neondb?sslmode=require      # unpooled, used by Prisma migrations
 ANTHROPIC_API_KEY=sk-ant-...
 CLIENT_URL=http://localhost:3000
 PORT=3001
@@ -276,6 +284,8 @@ CLERK_SECRET_KEY=sk_...
 - **Single season (2024)** — only `npl-2024.json` is seeded; both lobby creation and the auction engine use `season: 2024`; do not hardcode `2025` anywhere
 - **tsconfig rootDir is `.`** — covers both `src/` and `prisma/` so `tsc --noEmit` catches seed.ts too
 - **start script is `dist/src/index.js`** — not `dist/index.js`, because rootDir is `.`
+- **Neon DB requires `directUrl`** — `schema.prisma` uses `DATABASE_URL` (pooled) for queries and `DIRECT_URL` (unpooled) for migrations; both must be set in `.env`
+- **Server must be started manually** — `npx ts-node --project tsconfig.json src/index.ts` from `apps/server/`; nodemon orphan issue not yet fixed
 
 ---
 

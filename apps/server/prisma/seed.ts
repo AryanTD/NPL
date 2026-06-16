@@ -26,6 +26,9 @@ interface PlayerStats {
   strike_rate: number | null;
   bowling_avg: number | null;
   economy: number | null;
+  matches: number;
+  hs?: string | null;
+  bbi?: string | null;
 }
 
 interface PlayerJSON {
@@ -51,6 +54,8 @@ function readPlayerFile(filePath: string): PlayerFile {
   return JSON.parse(raw) as PlayerFile;
 }
 
+const CAT_FLOOR: Record<string, number> = { A: 65, B: 55, C: 45 }
+
 function calcQuality(stats: PlayerStats, role: string): number {
   // Reference values calibrated for a single ~10-match T20 tournament:
   // batting_avg 25 = excellent (vs career 35), 15 wickets = excellent (vs career 70)
@@ -69,7 +74,12 @@ function calcQuality(stats: PlayerStats, role: string): number {
   };
   const [bw, pw] = weights[role] ?? [0.50, 0.50];
 
-  return Math.min(100, Math.max(25, Math.round(batQuality * bw + bowlQuality * pw)));
+  // Credibility discount for small sample sizes: scales 0.6→1.0 over 0→16 matches.
+  // Players with few games have unreliable stats; floor still catches them afterwards.
+  const credibility = Math.min(1.0, 0.6 + (stats.matches / 16) * 0.4);
+  const raw = batQuality * bw + bowlQuality * pw;
+
+  return Math.min(100, Math.max(25, Math.round(raw * credibility)));
 }
 
 function toRow(p: PlayerJSON, season: number) {
@@ -81,13 +91,18 @@ function toRow(p: PlayerJSON, season: number) {
     basePrice: p.base_price,
     season,
     isMarquee: p.is_marquee,
-    quality:   p.quality ?? calcQuality(p.stats, p.role),
+    quality:   (p.is_marquee && p.quality != null)
+               ? p.quality
+               : Math.max(calcQuality(p.stats, p.role), CAT_FLOOR[p.category] ?? 25),
+    matches:    p.stats.matches,
     runs:       p.stats.runs,
     wickets:    p.stats.wickets,
     battingAvg: p.stats.batting_avg,
     strikeRate: p.stats.strike_rate,
     bowlingAvg: p.stats.bowling_avg,
     economy:    p.stats.economy,
+    hs:         p.stats.hs  ?? null,
+    bbi:        p.stats.bbi ?? null,
   };
 }
 

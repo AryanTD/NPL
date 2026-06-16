@@ -10,12 +10,15 @@
       "is_marquee": true,
       "quality": 80,
       "stats": {
-        "runs": 51,
-        "wickets": 12,
-        "batting_avg": 7.28,
-        "strike_rate": 130.76,
-        "bowling_avg": 12.66,
-        "economy": 6.37
+        "runs": 100,
+        "wickets": 25,
+        "batting_avg": 9.09,
+        "strike_rate": 142.86,
+        "bowling_avg": 14.64,
+        "economy": 6.95,
+        "matches": 15,
+        "hs": "34*",
+        "bbi": "4/16"
       }
     },
     {
@@ -27,12 +30,15 @@
       "is_marquee": true,
       "quality": 84,
       "stats": {
-        "runs": 54,
+        "runs": 210,
         "wickets": 5,
-        "batting_avg": 9.0,
-        "strike_rate": 83.07,
+        "batting_avg": 16.15,
+        "strike_rate": 118.64,
         "bowling_avg": 22.6,
-        "economy": 7.97
+        "economy": 7.98,
+        "matches": 14,
+        "hs": "59",
+        "bbi": "2/25"
       }
     },
     {
@@ -44,12 +50,15 @@
       "is_marquee": true,
       "quality": 80,
       "stats": {
-        "runs": 223,
-        "wickets": 9,
-        "batting_avg": 27.87,
-        "strike_rate": 121.19,
-        "bowling_avg": 19.55,
-        "economy": 6.51
+        "runs": 358,
+        "wickets": 10,
+        "batting_avg": 27.54,
+        "strike_rate": 121.36,
+        "bowling_avg": 31.2,
+        "economy": 7.28,
+        "matches": 15,
+        "hs": "72",
+        "bbi": "2/18"
       }
     },
     {
@@ -61,12 +70,15 @@
       "is_marquee": true,
       "quality": 89,
       "stats": {
-        "runs": 22,
-        "wickets": 6,
-        "batting_avg": 5.5,
-        "strike_rate": 110.0,
-        "bowling_avg": 31.83,
-        "economy": 6.82
+        "runs": 53,
+        "wickets": 23,
+        "batting_avg": 8.83,
+        "strike_rate": 132.5,
+        "bowling_avg": 16.0,
+        "economy": 5.75,
+        "matches": 16,
+        "hs": "9*",
+        "bbi": "4/11"
       }
     },
     {
@@ -78,12 +90,15 @@
       "is_marquee": true,
       "quality": 83,
       "stats": {
-        "runs": 162,
+        "runs": 267,
         "wickets": 0,
-        "batting_avg": 16.2,
-        "strike_rate": 107.28,
+        "batting_avg": 15.71,
+        "strike_rate": 109.43,
         "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 17,
+        "hs": "54",
+        "bbi": null
       }
     },
     {
@@ -95,12 +110,15 @@
       "is_marquee": true,
       "quality": 85,
       "stats": {
-        "runs": 279,
-        "wickets": 8,
-        "batting_avg": 39.85,
-        "strike_rate": 131.6,
-        "bowling_avg": 13.37,
-        "economy": 5.63
+        "runs": 555,
+        "wickets": 18,
+        "batting_avg": 32.65,
+        "strike_rate": 113.5,
+        "bowling_avg": 11.44,
+        "economy": 6.44,
+        "matches": 17,
+        "hs": "95",
+        "bbi": "4/17"
       }
     },
     {
@@ -112,12 +130,15 @@
       "is_marquee": true,
       "quality": 87,
       "stats": {
-        "runs": 227,
-        "wickets": 9,
-        "batting_avg": 37.83,
-        "strike_rate": 160.99,
-        "bowling_avg": 19.44,
-        "economy": 7.0
+        "runs": 389,
+        "wickets": 18,
+        "batting_avg": 32.42,
+        "strike_rate": 147.35,
+        "bowling_avg": 22.11,
+        "economy": 8.12,
+        "matches": 18,
+        "hs": "57*",
+        "bbi": "4/23"
       }
     },
     {
@@ -129,108 +150,91 @@
       "is_marquee": true,
       "quality": 80,
       "stats": {
-        "runs": 52,
-        "wickets": 9,
-        "batting_avg": 17.33,
-        "strike_rate": 152.94,
-        "bowling_avg": 26.66,
-        "economy": 8.04
+        "runs": 103,
+        "wickets": 18,
+        "batting_avg": 17.17,
+        "strike_rate": 127.16,
+        "bowling_avg": 25.33,
+        "economy": 8.47,
+        "matches": 16,
+        "hs": "29*",
+        "bbi": "3/32"
       }
     },
     {
       "id": "npl-ln-rajbanshi",
-      "name": "LN Rajbanshi",
+      "name": "Lalit Narayan Rajbanshi",
       "category": "A",
       "role": "BOWL",
       "base_price": 1000000,
       "is_marquee": false,
       "stats": {
-        "runs": 4,
-        "wickets": 17,
-        "batting_avg": 1.33,
-        "strike_rate": 28.57,
-        "bowling_avg": 12.52,
-        "economy": 5.32
+        "runs": 19,
+        "wickets": 21,
+        "batting_avg": 6.33,
+        "strike_rate": 67.86,
+        "bowling_avg": 16.57,
+        "economy": 5.93,
+        "matches": 15,
+        "hs": "10*",
+        "bbi": "3/8"
       }
     },
     {
       "id": "npl-r-dhakal",
-      "name": "R Dhakal",
+      "name": "Rijan Dhakal",
       "category": "A",
       "role": "BOWL",
       "base_price": 1000000,
       "is_marquee": false,
       "stats": {
-        "runs": 22,
-        "wickets": 13,
-        "batting_avg": 22.0,
-        "strike_rate": 122.22,
-        "bowling_avg": 17.84,
-        "economy": 8.04
+        "runs": 25,
+        "wickets": 16,
+        "batting_avg": 12.5,
+        "strike_rate": 119.05,
+        "bowling_avg": 22.19,
+        "economy": 7.98,
+        "matches": 13,
+        "hs": "15*",
+        "bbi": "3/10"
       }
     },
     {
       "id": "npl-k-mahato",
-      "name": "K Mahato",
+      "name": "Kishore Mahato",
       "category": "A",
       "role": "BOWL",
       "base_price": 1000000,
       "is_marquee": false,
       "stats": {
-        "runs": 6,
-        "wickets": 14,
-        "batting_avg": 6.0,
-        "strike_rate": 28.57,
-        "bowling_avg": 18.92,
-        "economy": 8.03
-      }
-    },
-    {
-      "id": "npl-h-thaker",
-      "name": "H Thaker",
-      "category": "A",
-      "role": "AR",
-      "base_price": 1000000,
-      "is_marquee": false,
-      "stats": {
-        "runs": 138,
-        "wickets": 11,
-        "batting_avg": 27.6,
-        "strike_rate": 93.87,
-        "bowling_avg": 17.9,
-        "economy": 6.35
-      }
-    },
-    {
-      "id": "npl-mohammad-mohsin",
-      "name": "Mohammad Mohsin",
-      "category": "A",
-      "role": "BOWL",
-      "base_price": 1000000,
-      "is_marquee": false,
-      "stats": {
-        "runs": 42,
-        "wickets": 12,
-        "batting_avg": 8.4,
-        "strike_rate": 105.0,
-        "bowling_avg": 16.66,
-        "economy": 5.79
+        "runs": 9,
+        "wickets": 15,
+        "batting_avg": 9.0,
+        "strike_rate": 34.62,
+        "bowling_avg": 22.4,
+        "economy": 8.2,
+        "matches": 14,
+        "hs": "4*",
+        "bbi": "4/35"
       }
     },
     {
       "id": "npl-bp-sharma",
-      "name": "BP Sharma",
+      "name": "Bipin Prasad Sharma",
       "category": "A",
       "role": "BOWL",
       "base_price": 1000000,
       "is_marquee": false,
       "stats": {
         "runs": 0,
-        "wickets": 13,
-        "batting_avg": null,
-        "strike_rate": null,
-        "bowling_avg": 13.15,
-        "economy": 5.89
+        "wickets": 15,
+        "batting_avg": 0.0,
+        "strike_rate": 0.0,
+        "bowling_avg": 17.27,
+        "economy": 6.17,
+        "matches": 13,
+        "hs": "0*",
+        "bbi": "3/17"
       }
     },
     {
@@ -241,12 +245,15 @@
       "base_price": 1000000,
       "is_marquee": false,
       "stats": {
-        "runs": 20,
-        "wickets": 9,
-        "batting_avg": 6.66,
-        "strike_rate": 117.64,
-        "bowling_avg": 14.11,
-        "economy": 6.68
+        "runs": 87,
+        "wickets": 18,
+        "batting_avg": 9.67,
+        "strike_rate": 152.63,
+        "bowling_avg": 19.17,
+        "economy": 7.84,
+        "matches": 15,
+        "hs": "30",
+        "bbi": "4/17"
       }
     },
     {
@@ -257,12 +264,15 @@
       "base_price": 1000000,
       "is_marquee": false,
       "stats": {
-        "runs": 181,
-        "wickets": 6,
-        "batting_avg": 36.2,
-        "strike_rate": 123.12,
-        "bowling_avg": 20.5,
-        "economy": 6.47
+        "runs": 372,
+        "wickets": 9,
+        "batting_avg": 28.62,
+        "strike_rate": 120.39,
+        "bowling_avg": 30.33,
+        "economy": 7.06,
+        "matches": 16,
+        "hs": "68*",
+        "bbi": "2/22"
       }
     },
     {
@@ -273,140 +283,148 @@
       "base_price": 1000000,
       "is_marquee": false,
       "stats": {
-        "runs": 24,
-        "wickets": 9,
-        "batting_avg": 6.0,
-        "strike_rate": 92.3,
-        "bowling_avg": 14.77,
-        "economy": 7.38
+        "runs": 7,
+        "wickets": 17,
+        "batting_avg": 7.0,
+        "strike_rate": 87.5,
+        "bowling_avg": 14.59,
+        "economy": 7.02,
+        "matches": 13,
+        "hs": "10",
+        "bbi": "4/15"
       }
     },
     {
       "id": "npl-d-kandel",
-      "name": "D Kandel",
+      "name": "Dipesh Kandel",
       "category": "A",
       "role": "BOWL",
       "base_price": 1000000,
       "is_marquee": false,
       "stats": {
-        "runs": 12,
+        "runs": 18,
         "wickets": 7,
-        "batting_avg": 12.0,
-        "strike_rate": 133.33,
-        "bowling_avg": 12.42,
-        "economy": 5.43
+        "batting_avg": 9.0,
+        "strike_rate": 128.57,
+        "bowling_avg": 12.43,
+        "economy": 5.44,
+        "matches": 8,
+        "hs": "11*",
+        "bbi": "3/6"
       }
     },
     {
       "id": "npl-nk-yadav",
-      "name": "NK Yadav",
+      "name": "Nandan Yadav",
       "category": "A",
       "role": "BOWL",
       "base_price": 1000000,
       "is_marquee": false,
       "stats": {
-        "runs": 4,
-        "wickets": 9,
-        "batting_avg": 1.33,
-        "strike_rate": 25.0,
-        "bowling_avg": 19.66,
-        "economy": 7.53
+        "runs": 9,
+        "wickets": 19,
+        "batting_avg": 2.25,
+        "strike_rate": 34.62,
+        "bowling_avg": 20.16,
+        "economy": 7.9,
+        "matches": 16,
+        "hs": "4*",
+        "bbi": "3/19"
       }
     },
     {
       "id": "npl-s-malla",
-      "name": "S Malla",
+      "name": "Sher Malla",
+      "category": "A",
+      "role": "BOWL",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": {
+        "runs": 46,
+        "wickets": 24,
+        "batting_avg": 15.33,
+        "strike_rate": 153.33,
+        "bowling_avg": 15.25,
+        "economy": 6.59,
+        "matches": 10,
+        "hs": "27",
+        "bbi": "3/11"
+      }
+    },
+    {
+      "id": "npl-n-saud",
+      "name": "Naren Saud",
       "category": "A",
       "role": "BOWL",
       "base_price": 1000000,
       "is_marquee": false,
       "stats": {
         "runs": 24,
-        "wickets": 7,
+        "wickets": 8,
         "batting_avg": 6.0,
-        "strike_rate": 88.88,
-        "bowling_avg": 18.85,
-        "economy": 6.76
-      }
-    },
-    {
-      "id": "npl-b-yadav",
-      "name": "B Yadav",
-      "category": "A",
-      "role": "AR",
-      "base_price": 1000000,
-      "is_marquee": false,
-      "stats": {
-        "runs": 100,
-        "wickets": 3,
-        "batting_avg": 50.0,
-        "strike_rate": 138.88,
-        "bowling_avg": 57.0,
-        "economy": 11.52
-      }
-    },
-    {
-      "id": "npl-n-saud",
-      "name": "N Saud",
-      "category": "A",
-      "role": "BOWL",
-      "base_price": 1000000,
-      "is_marquee": false,
-      "stats": {
-        "runs": 14,
-        "wickets": 6,
-        "batting_avg": 7.0,
-        "strike_rate": 107.69,
-        "bowling_avg": 16.16,
-        "economy": 6.84
+        "strike_rate": 85.71,
+        "bowling_avg": 17.12,
+        "economy": 6.79,
+        "matches": 12,
+        "hs": "10",
+        "bbi": "5/19"
       }
     },
     {
       "id": "npl-a-bohara",
-      "name": "A Bohara",
+      "name": "Abhinash Bohara",
       "category": "A",
       "role": "BOWL",
       "base_price": 1000000,
       "is_marquee": false,
       "stats": {
-        "runs": 2,
-        "wickets": 7,
-        "batting_avg": null,
-        "strike_rate": 66.66,
-        "bowling_avg": 24.71,
-        "economy": 7.52
+        "runs": 5,
+        "wickets": 24,
+        "batting_avg": 2.5,
+        "strike_rate": 41.67,
+        "bowling_avg": 15.33,
+        "economy": 7.48,
+        "matches": 18,
+        "hs": "2*",
+        "bbi": "4/30"
       }
     },
     {
       "id": "npl-i-pandey",
-      "name": "I Pandey",
+      "name": "Ishan Pandey",
       "category": "A",
       "role": "AR",
       "base_price": 1000000,
       "is_marquee": false,
       "stats": {
-        "runs": 128,
-        "wickets": 4,
-        "batting_avg": 25.6,
-        "strike_rate": 114.28,
-        "bowling_avg": 13.0,
-        "economy": 7.42
+        "runs": 288,
+        "wickets": 6,
+        "batting_avg": 24.0,
+        "strike_rate": 106.27,
+        "bowling_avg": 18.5,
+        "economy": 7.93,
+        "matches": 18,
+        "hs": "56",
+        "bbi": "2/11"
       }
     },
     {
       "id": "npl-as-routela",
-      "name": "AS Routela",
+      "name": "Amar Singh Routela",
       "category": "A",
       "role": "AR",
       "base_price": 1000000,
       "is_marquee": false,
       "stats": {
-        "runs": 85,
-        "wickets": 4,
-        "batting_avg": 21.25,
-        "strike_rate": 149.12,
-        "bowling_avg": 17.5,
-        "economy": 7.77
+        "runs": 98,
+        "wickets": 5,
+        "batting_avg": 19.6,
+        "strike_rate": 144.12,
+        "bowling_avg": 17.8,
+        "economy": 8.09,
+        "matches": 12,
+        "hs": "42",
+        "bbi": "2/9"
       }
     },
     {
@@ -417,12 +435,15 @@
       "base_price": 1000000,
       "is_marquee": false,
       "stats": {
-        "runs": 20,
-        "wickets": 6,
-        "batting_avg": 5.0,
-        "strike_rate": 71.42,
-        "bowling_avg": 20.83,
-        "economy": 5.43
+        "runs": 27,
+        "wickets": 19,
+        "batting_avg": 6.75,
+        "strike_rate": 64.29,
+        "bowling_avg": 15.74,
+        "economy": 5.86,
+        "matches": 15,
+        "hs": "8*",
+        "bbi": "6/25"
       }
     },
     {
@@ -433,60 +454,53 @@
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
-        "runs": 0,
-        "wickets": 6,
-        "batting_avg": null,
-        "strike_rate": null,
-        "bowling_avg": 13.0,
-        "economy": 4.87
-      }
-    },
-    {
-      "id": "npl-a-kharel",
-      "name": "A Kharel",
-      "category": "B",
-      "role": "BOWL",
-      "base_price": 500000,
-      "is_marquee": false,
-      "stats": {
-        "runs": 17,
-        "wickets": 5,
-        "batting_avg": null,
-        "strike_rate": 89.47,
-        "bowling_avg": 24.6,
-        "economy": 8.78
+        "runs": 12,
+        "wickets": 13,
+        "batting_avg": 4.0,
+        "strike_rate": 92.31,
+        "bowling_avg": 22.54,
+        "economy": 6.23,
+        "matches": 14,
+        "hs": "6",
+        "bbi": "3/20"
       }
     },
     {
       "id": "npl-s-dhakal",
-      "name": "S Dhakal",
+      "name": "Sagar Dhakal",
       "category": "B",
       "role": "BOWL",
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
-        "runs": 2,
-        "wickets": 5,
-        "batting_avg": null,
-        "strike_rate": 40.0,
-        "bowling_avg": 32.8,
-        "economy": 6.56
+        "runs": 9,
+        "wickets": 8,
+        "batting_avg": 9.0,
+        "strike_rate": 100.0,
+        "bowling_avg": 37.38,
+        "economy": 7.57,
+        "matches": 13,
+        "hs": "6",
+        "bbi": "2/15"
       }
     },
     {
       "id": "npl-d-kharel",
-      "name": "D Kharel",
+      "name": "Dinesh Kharel",
       "category": "B",
       "role": "WK",
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
-        "runs": 162,
+        "runs": 220,
         "wickets": 1,
-        "batting_avg": 27.0,
-        "strike_rate": 114.08,
+        "batting_avg": 22.0,
+        "strike_rate": 106.8,
         "bowling_avg": 15.0,
-        "economy": 12.85
+        "economy": 12.86,
+        "matches": 11,
+        "hs": "61*",
+        "bbi": "1/9"
       }
     },
     {
@@ -497,17 +511,20 @@
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
-        "runs": 131,
+        "runs": 301,
         "wickets": 1,
-        "batting_avg": 18.71,
-        "strike_rate": 136.45,
+        "batting_avg": 21.5,
+        "strike_rate": 119.44,
         "bowling_avg": 8.0,
-        "economy": 8.0
+        "economy": 8.0,
+        "matches": 16,
+        "hs": "72",
+        "bbi": "1/8"
       }
     },
     {
       "id": "npl-d-gupta",
-      "name": "D Gupta",
+      "name": "Durgesh Gupta",
       "category": "B",
       "role": "BOWL",
       "base_price": 500000,
@@ -517,24 +534,30 @@
         "wickets": 3,
         "batting_avg": null,
         "strike_rate": 125.0,
-        "bowling_avg": 34.66,
-        "economy": 9.45
+        "bowling_avg": 34.67,
+        "economy": 9.45,
+        "matches": 5,
+        "hs": "5*",
+        "bbi": "3/21"
       }
     },
     {
       "id": "npl-s-jora",
-      "name": "S Jora",
+      "name": "Sundeep Jora",
       "category": "B",
       "role": "BAT",
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
-        "runs": 120,
+        "runs": 235,
         "wickets": 1,
-        "batting_avg": 20.0,
-        "strike_rate": 104.34,
+        "batting_avg": 15.67,
+        "strike_rate": 107.31,
         "bowling_avg": 22.0,
-        "economy": 7.33
+        "economy": 7.33,
+        "matches": 17,
+        "hs": "28",
+        "bbi": "1/13"
       }
     },
     {
@@ -545,33 +568,39 @@
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
-        "runs": 132,
-        "wickets": 1,
-        "batting_avg": 18.85,
-        "strike_rate": 110.0,
-        "bowling_avg": 63.0,
-        "economy": 7.87
+        "runs": 242,
+        "wickets": 4,
+        "batting_avg": 22.0,
+        "strike_rate": 126.04,
+        "bowling_avg": 38.75,
+        "economy": 8.61,
+        "matches": 16,
+        "hs": "49*",
+        "bbi": "2/20"
       }
     },
     {
       "id": "npl-b-bhandari",
-      "name": "B Bhandari",
+      "name": "Binod Bhandari",
       "category": "B",
       "role": "WK",
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
-        "runs": 235,
+        "runs": 499,
         "wickets": 0,
-        "batting_avg": 29.37,
-        "strike_rate": 110.32,
+        "batting_avg": 31.19,
+        "strike_rate": 110.4,
         "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 18,
+        "hs": "69*",
+        "bbi": null
       }
     },
     {
       "id": "npl-a-yadav",
-      "name": "A Yadav",
+      "name": "Arniko Prasad Yadav",
       "category": "B",
       "role": "BAT",
       "base_price": 500000,
@@ -582,12 +611,15 @@
         "batting_avg": 4.0,
         "strike_rate": 50.0,
         "bowling_avg": 23.0,
-        "economy": 8.62
+        "economy": 8.62,
+        "matches": 5,
+        "hs": "11",
+        "bbi": "2/16"
       }
     },
     {
       "id": "npl-rp-magar",
-      "name": "RP Magar",
+      "name": "Rajesh Pulami Magar",
       "category": "B",
       "role": "BAT",
       "base_price": 500000,
@@ -598,7 +630,10 @@
         "batting_avg": 19.5,
         "strike_rate": 108.33,
         "bowling_avg": 22.0,
-        "economy": 11.0
+        "economy": 11.0,
+        "matches": 5,
+        "hs": "33*",
+        "bbi": "1/22"
       }
     },
     {
@@ -610,16 +645,19 @@
       "is_marquee": false,
       "stats": {
         "runs": 18,
-        "wickets": 1,
-        "batting_avg": 18.0,
-        "strike_rate": 94.73,
-        "bowling_avg": 111.0,
-        "economy": 7.48
+        "wickets": 6,
+        "batting_avg": 9.0,
+        "strike_rate": 75.0,
+        "bowling_avg": 35.17,
+        "economy": 7.58,
+        "matches": 10,
+        "hs": "11*",
+        "bbi": "2/20"
       }
     },
     {
       "id": "npl-ubs-thakuri",
-      "name": "UBS Thakuri",
+      "name": "Unish Bikram Singh Thakuri",
       "category": "B",
       "role": "BAT",
       "base_price": 500000,
@@ -628,89 +666,88 @@
         "runs": 12,
         "wickets": 2,
         "batting_avg": 6.0,
-        "strike_rate": 66.66,
+        "strike_rate": 66.67,
         "bowling_avg": 32.0,
-        "economy": 7.11
-      }
-    },
-    {
-      "id": "npl-ja-kolsawala",
-      "name": "JA Kolsawala",
-      "category": "B",
-      "role": "BAT",
-      "base_price": 500000,
-      "is_marquee": false,
-      "stats": {
-        "runs": 54,
-        "wickets": 0,
-        "batting_avg": 27.0,
-        "strike_rate": 125.58,
-        "bowling_avg": null,
-        "economy": null
+        "economy": 7.11,
+        "matches": 5,
+        "hs": "12",
+        "bbi": "1/17"
       }
     },
     {
       "id": "npl-ak-sah",
-      "name": "AK Sah",
+      "name": "Anil Kumar Sah",
       "category": "B",
       "role": "BAT",
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
-        "runs": 132,
-        "wickets": 0,
-        "batting_avg": 22.0,
-        "strike_rate": 118.91,
-        "bowling_avg": null,
-        "economy": null
+        "runs": 205,
+        "wickets": 4,
+        "batting_avg": 17.08,
+        "strike_rate": 110.22,
+        "bowling_avg": 33.75,
+        "economy": 7.11,
+        "matches": 13,
+        "hs": "62*",
+        "bbi": "1/8"
       }
     },
     {
       "id": "npl-tr-bhandari",
-      "name": "TR Bhandari",
+      "name": "Tilak Raj Bhandari",
       "category": "B",
-      "role": "BAT",
+      "role": "BOWL",
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
-        "runs": 3,
-        "wickets": 2,
+        "runs": 9,
+        "wickets": 9,
         "batting_avg": null,
-        "strike_rate": 60.0,
-        "bowling_avg": 11.5,
-        "economy": 5.75
+        "strike_rate": 69.23,
+        "bowling_avg": 18.89,
+        "economy": 5.48,
+        "matches": 9,
+        "hs": "6*",
+        "bbi": "3/15"
       }
     },
     {
       "id": "npl-s-maharjan",
-      "name": "S Maharjan",
+      "name": "Sumit Maharjan",
       "category": "B",
       "role": "BAT",
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
-        "runs": 87,
+        "runs": 119,
         "wickets": 0,
-        "batting_avg": 21.75,
-        "strike_rate": 91.57,
+        "batting_avg": 11.9,
+        "strike_rate": 88.81,
         "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 11,
+        "hs": "40*",
+        "bbi": null
       }
     },
     {
       "id": "npl-p-shrestha",
-      "name": "P Shrestha",
+      "name": "Pratik Shrestha",
       "category": "B",
       "role": "BAT",
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
-        "runs": 73,
+        "runs": 75,
         "wickets": 0,
-        "batting_avg": 18.25,
-        "strike_rate": 112.3,
+        "batting_avg": 15.0,
+        "strike_rate": 105.63,
         "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 6,
+        "hs": "39",
+        "bbi": null
       }
     },
     {
@@ -721,17 +758,20 @@
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
-        "runs": 19,
+        "runs": 76,
         "wickets": 1,
-        "batting_avg": 6.33,
-        "strike_rate": 76.0,
+        "batting_avg": 10.86,
+        "strike_rate": 91.57,
         "bowling_avg": 9.0,
-        "economy": 6.75
+        "economy": 6.75,
+        "matches": 10,
+        "hs": "42",
+        "bbi": "1/9"
       }
     },
     {
       "id": "npl-s-karki",
-      "name": "S Karki",
+      "name": "Santosh Karki",
       "category": "B",
       "role": "BAT",
       "base_price": 500000,
@@ -740,14 +780,17 @@
         "runs": 108,
         "wickets": 0,
         "batting_avg": 18.0,
-        "strike_rate": 97.29,
+        "strike_rate": 97.3,
         "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 8,
+        "hs": "28*",
+        "bbi": null
       }
     },
     {
       "id": "npl-nb-budayair",
-      "name": "NB Budayair",
+      "name": "Naresh Budayair",
       "category": "B",
       "role": "BAT",
       "base_price": 500000,
@@ -758,215 +801,200 @@
         "batting_avg": 14.0,
         "strike_rate": 127.27,
         "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 9,
+        "hs": "9*",
+        "bbi": null
       }
     },
     {
       "id": "npl-k-thagunna",
-      "name": "K Thagunna",
+      "name": "Kiran Thagunna",
       "category": "B",
       "role": "BAT",
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
-        "runs": 33,
-        "wickets": 0,
-        "batting_avg": 16.5,
-        "strike_rate": 110.0,
-        "bowling_avg": null,
-        "economy": null
-      }
-    },
-    {
-      "id": "npl-nb-sarki",
-      "name": "NB Sarki",
-      "category": "B",
-      "role": "BAT",
-      "base_price": 500000,
-      "is_marquee": false,
-      "stats": {
-        "runs": 22,
-        "wickets": 0,
-        "batting_avg": null,
-        "strike_rate": 183.33,
-        "bowling_avg": null,
-        "economy": 9.0
+        "runs": 57,
+        "wickets": 3,
+        "batting_avg": 11.4,
+        "strike_rate": 95.0,
+        "bowling_avg": 20.33,
+        "economy": 7.62,
+        "matches": 10,
+        "hs": "32",
+        "bbi": "1/15"
       }
     },
     {
       "id": "npl-a-gharti",
-      "name": "A Gharti",
+      "name": "Arjun Gharti",
       "category": "B",
       "role": "BAT",
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
-        "runs": 79,
+        "runs": 96,
         "wickets": 0,
-        "batting_avg": 13.16,
-        "strike_rate": 109.72,
+        "batting_avg": 12.0,
+        "strike_rate": 96.97,
         "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 13,
+        "hs": "33",
+        "bbi": null
       }
     },
     {
       "id": "npl-b-sharki",
-      "name": "B Sharki",
+      "name": "Bhim Sharki",
       "category": "B",
       "role": "BAT",
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
-        "runs": 78,
+        "runs": 168,
         "wickets": 0,
-        "batting_avg": 11.14,
-        "strike_rate": 79.59,
+        "batting_avg": 15.27,
+        "strike_rate": 107.69,
         "bowling_avg": null,
-        "economy": 6.0
+        "economy": null,
+        "matches": 12,
+        "hs": "55",
+        "bbi": null
       }
     },
     {
       "id": "npl-subash-bhandari",
       "name": "Subash Bhandari",
       "category": "B",
-      "role": "BAT",
+      "role": "BOWL",
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
         "runs": 6,
-        "wickets": 1,
+        "wickets": 6,
         "batting_avg": 6.0,
-        "strike_rate": 60.0,
-        "bowling_avg": 31.0,
-        "economy": 7.44
+        "strike_rate": 46.15,
+        "bowling_avg": 12.5,
+        "economy": 6.16,
+        "matches": 6,
+        "hs": "6",
+        "bbi": "3/14"
       }
     },
     {
       "id": "npl-n-joshi",
-      "name": "N Joshi",
+      "name": "Narayan Joshi",
       "category": "B",
       "role": "BAT",
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
-        "runs": 38,
+        "runs": 86,
         "wickets": 0,
-        "batting_avg": 12.66,
-        "strike_rate": 115.15,
+        "batting_avg": 10.75,
+        "strike_rate": 107.5,
         "bowling_avg": null,
-        "economy": 15.5
+        "economy": null,
+        "matches": 13,
+        "hs": "30",
+        "bbi": null
       }
     },
     {
       "id": "npl-s-kansakar",
-      "name": "S Kansakar",
+      "name": "Shubh Kansakar",
       "category": "B",
       "role": "BAT",
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
-        "runs": 71,
+        "runs": 86,
         "wickets": 0,
-        "batting_avg": 14.2,
-        "strike_rate": 93.42,
+        "batting_avg": 10.75,
+        "strike_rate": 91.49,
         "bowling_avg": null,
-        "economy": null
-      }
-    },
-    {
-      "id": "npl-d-bohara",
-      "name": "D Bohara",
-      "category": "B",
-      "role": "BAT",
-      "base_price": 500000,
-      "is_marquee": false,
-      "stats": {
-        "runs": 60,
-        "wickets": 0,
-        "batting_avg": 12.0,
-        "strike_rate": 107.14,
-        "bowling_avg": null,
-        "economy": null
-      }
-    },
-    {
-      "id": "npl-s-vesawkar",
-      "name": "S Vesawkar",
-      "category": "B",
-      "role": "BAT",
-      "base_price": 500000,
-      "is_marquee": false,
-      "stats": {
-        "runs": 38,
-        "wickets": 1,
-        "batting_avg": null,
-        "strike_rate": 82.6,
-        "bowling_avg": 53.0,
-        "economy": 8.83
+        "economy": null,
+        "matches": 14,
+        "hs": "26",
+        "bbi": null
       }
     },
     {
       "id": "npl-d-khanal",
-      "name": "D Khanal",
+      "name": "Dev Khanal",
       "category": "C",
       "role": "BAT",
       "base_price": 200000,
       "is_marquee": false,
       "stats": {
-        "runs": 116,
+        "runs": 243,
         "wickets": 0,
-        "batting_avg": 12.88,
-        "strike_rate": 82.85,
+        "batting_avg": 16.2,
+        "strike_rate": 93.1,
         "bowling_avg": null,
-        "economy": 11.0
+        "economy": null,
+        "matches": 16,
+        "hs": "53",
+        "bbi": null
       }
     },
     {
       "id": "npl-a-saud",
-      "name": "A Saud",
+      "name": "Arjun Saud",
       "category": "C",
       "role": "WK",
       "base_price": 200000,
       "is_marquee": false,
       "stats": {
-        "runs": 68,
+        "runs": 155,
         "wickets": 0,
-        "batting_avg": 11.33,
-        "strike_rate": 95.77,
+        "batting_avg": 15.5,
+        "strike_rate": 109.93,
         "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 13,
+        "hs": "52",
+        "bbi": null
       }
     },
     {
       "id": "npl-r-kumar",
-      "name": "R Kumar",
+      "name": "Ranjeet Kumar",
       "category": "C",
-      "role": "BAT",
+      "role": "BOWL",
       "base_price": 200000,
       "is_marquee": false,
       "stats": {
-        "runs": 0,
-        "wickets": 2,
-        "batting_avg": null,
-        "strike_rate": null,
-        "bowling_avg": 60.0,
-        "economy": 8.57
+        "runs": 1,
+        "wickets": 10,
+        "batting_avg": 1.0,
+        "strike_rate": 50.0,
+        "bowling_avg": 23.6,
+        "economy": 6.94,
+        "matches": 10,
+        "hs": "1*",
+        "bbi": "5/21"
       }
     },
     {
       "id": "npl-d-adhikari",
-      "name": "D Adhikari",
+      "name": "Dinesh Adhikari",
       "category": "C",
       "role": "BAT",
       "base_price": 200000,
       "is_marquee": false,
       "stats": {
-        "runs": 14,
+        "runs": 61,
         "wickets": 0,
-        "batting_avg": 14.0,
-        "strike_rate": 87.5,
+        "batting_avg": 15.25,
+        "strike_rate": 156.41,
         "bowling_avg": null,
-        "economy": 15.5
+        "economy": null,
+        "matches": 6,
+        "hs": "42",
+        "bbi": null
       }
     },
     {
@@ -977,33 +1005,39 @@
       "base_price": 200000,
       "is_marquee": false,
       "stats": {
-        "runs": 16,
-        "wickets": 0,
-        "batting_avg": 16.0,
-        "strike_rate": 76.19,
-        "bowling_avg": null,
-        "economy": null
+        "runs": 100,
+        "wickets": 2,
+        "batting_avg": 20.0,
+        "strike_rate": 86.96,
+        "bowling_avg": 9.5,
+        "economy": 6.33,
+        "matches": 9,
+        "hs": "34*",
+        "bbi": "2/3"
       }
     },
     {
       "id": "npl-s-rana",
-      "name": "S Rana",
+      "name": "Shankar Rana",
       "category": "C",
       "role": "BAT",
       "base_price": 200000,
       "is_marquee": false,
       "stats": {
-        "runs": 41,
+        "runs": 48,
         "wickets": 0,
-        "batting_avg": 13.66,
-        "strike_rate": 80.39,
+        "batting_avg": 12.0,
+        "strike_rate": 73.85,
         "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 6,
+        "hs": "16*",
+        "bbi": null
       }
     },
     {
       "id": "npl-b-rawal",
-      "name": "B Rawal",
+      "name": "Bipin Rawal",
       "category": "C",
       "role": "BAT",
       "base_price": 200000,
@@ -1012,30 +1046,36 @@
         "runs": 54,
         "wickets": 0,
         "batting_avg": 10.8,
-        "strike_rate": 84.37,
+        "strike_rate": 84.38,
         "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 8,
+        "hs": "18",
+        "bbi": null
       }
     },
     {
       "id": "npl-d-nath",
-      "name": "D Nath",
+      "name": "Dilip Nath",
       "category": "C",
-      "role": "BAT",
+      "role": "WK",
       "base_price": 200000,
       "is_marquee": false,
       "stats": {
-        "runs": 46,
+        "runs": 168,
         "wickets": 0,
-        "batting_avg": 9.2,
-        "strike_rate": 90.19,
+        "batting_avg": 12.92,
+        "strike_rate": 99.41,
         "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 16,
+        "hs": "31",
+        "bbi": null
       }
     },
     {
       "id": "npl-b-khatri",
-      "name": "B Khatri",
+      "name": "Basant Khatri",
       "category": "C",
       "role": "BAT",
       "base_price": 200000,
@@ -1046,44 +1086,53 @@
         "batting_avg": null,
         "strike_rate": 133.33,
         "bowling_avg": null,
-        "economy": 12.0
+        "economy": null,
+        "matches": 2,
+        "hs": "4*",
+        "bbi": null
       }
     },
     {
       "id": "npl-h-dhami",
-      "name": "H Dhami",
+      "name": "Hemant Dhami",
       "category": "C",
-      "role": "BAT",
+      "role": "BOWL",
       "base_price": 200000,
       "is_marquee": false,
       "stats": {
-        "runs": 9,
-        "wickets": 0,
-        "batting_avg": 9.0,
-        "strike_rate": 81.81,
-        "bowling_avg": null,
-        "economy": null
+        "runs": 20,
+        "wickets": 9,
+        "batting_avg": 20.0,
+        "strike_rate": 71.43,
+        "bowling_avg": 15.56,
+        "economy": 8.24,
+        "matches": 9,
+        "hs": "9",
+        "bbi": "2/9"
       }
     },
     {
       "id": "npl-a-tripathi",
-      "name": "A Tripathi",
+      "name": "Aakash Tripathi",
       "category": "C",
       "role": "BAT",
       "base_price": 200000,
       "is_marquee": false,
       "stats": {
-        "runs": 19,
+        "runs": 137,
         "wickets": 0,
-        "batting_avg": 9.5,
-        "strike_rate": 63.33,
+        "batting_avg": 13.7,
+        "strike_rate": 81.55,
         "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 11,
+        "hs": "39",
+        "bbi": null
       }
     },
     {
       "id": "npl-a-ghiraiya",
-      "name": "A Ghiraiya",
+      "name": "Aashutosh Ghiraiya",
       "category": "C",
       "role": "BAT",
       "base_price": 200000,
@@ -1092,30 +1141,17 @@
         "runs": 44,
         "wickets": 0,
         "batting_avg": 7.33,
-        "strike_rate": 62.85,
+        "strike_rate": 62.86,
         "bowling_avg": null,
-        "economy": null
-      }
-    },
-    {
-      "id": "npl-z-malik",
-      "name": "Z Malik",
-      "category": "C",
-      "role": "BAT",
-      "base_price": 200000,
-      "is_marquee": false,
-      "stats": {
-        "runs": 14,
-        "wickets": 0,
-        "batting_avg": 7.0,
-        "strike_rate": 58.33,
-        "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 6,
+        "hs": "16",
+        "bbi": null
       }
     },
     {
       "id": "npl-ap-gomel",
-      "name": "AP Gomel",
+      "name": "Aakarshit Gomel",
       "category": "C",
       "role": "BAT",
       "base_price": 200000,
@@ -1126,30 +1162,17 @@
         "batting_avg": 8.0,
         "strike_rate": 53.33,
         "bowling_avg": null,
-        "economy": 13.0
-      }
-    },
-    {
-      "id": "npl-ubt-chand",
-      "name": "UBT Chand",
-      "category": "C",
-      "role": "BAT",
-      "base_price": 200000,
-      "is_marquee": false,
-      "stats": {
-        "runs": 18,
-        "wickets": 0,
-        "batting_avg": 4.5,
-        "strike_rate": 62.06,
-        "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 1,
+        "hs": "8",
+        "bbi": null
       }
     },
     {
       "id": "npl-sm-dhakal",
-      "name": "SM Dhakal",
+      "name": "Mausam Dhakal",
       "category": "C",
-      "role": "BAT",
+      "role": "BOWL",
       "base_price": 200000,
       "is_marquee": false,
       "stats": {
@@ -1158,28 +1181,34 @@
         "batting_avg": null,
         "strike_rate": null,
         "bowling_avg": 25.0,
-        "economy": 11.53
+        "economy": 11.54,
+        "matches": 1,
+        "hs": null,
+        "bbi": "1/25"
       }
     },
     {
       "id": "npl-n-bhatta",
-      "name": "N Bhatta",
+      "name": "Naren Bhatta",
       "category": "C",
       "role": "BAT",
       "base_price": 200000,
       "is_marquee": false,
       "stats": {
-        "runs": 11,
+        "runs": 60,
         "wickets": 0,
-        "batting_avg": 5.5,
-        "strike_rate": 40.74,
+        "batting_avg": 10.0,
+        "strike_rate": 67.42,
         "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 9,
+        "hs": "24",
+        "bbi": null
       }
     },
     {
       "id": "npl-jk-mukhiya",
-      "name": "JK Mukhiya",
+      "name": "Jitendra Kumar Mukhiya",
       "category": "C",
       "role": "BAT",
       "base_price": 200000,
@@ -1187,10 +1216,13 @@
       "stats": {
         "runs": 0,
         "wickets": 0,
-        "batting_avg": null,
-        "strike_rate": null,
+        "batting_avg": 0.0,
+        "strike_rate": 0.0,
         "bowling_avg": null,
-        "economy": 6.0
+        "economy": null,
+        "matches": 1,
+        "hs": "0",
+        "bbi": null
       }
     },
     {
@@ -1201,17 +1233,20 @@
       "base_price": 200000,
       "is_marquee": false,
       "stats": {
-        "runs": 1,
-        "wickets": 0,
-        "batting_avg": 1.0,
-        "strike_rate": 33.33,
-        "bowling_avg": null,
-        "economy": 10.57
+        "runs": 6,
+        "wickets": 3,
+        "batting_avg": 2.0,
+        "strike_rate": 75.0,
+        "bowling_avg": 52.33,
+        "economy": 11.21,
+        "matches": 9,
+        "hs": "4",
+        "bbi": "2/44"
       }
     },
     {
       "id": "npl-a-shrestha",
-      "name": "A Shrestha",
+      "name": "Amit Shrestha",
       "category": "C",
       "role": "BAT",
       "base_price": 200000,
@@ -1222,14 +1257,17 @@
         "batting_avg": 1.0,
         "strike_rate": 20.0,
         "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 1,
+        "hs": "1",
+        "bbi": null
       }
     },
     {
       "id": "npl-b-karki",
-      "name": "B Karki",
+      "name": "Bhuban Karki",
       "category": "C",
-      "role": "BAT",
+      "role": "BOWL",
       "base_price": 200000,
       "is_marquee": false,
       "stats": {
@@ -1238,12 +1276,15 @@
         "batting_avg": null,
         "strike_rate": null,
         "bowling_avg": null,
-        "economy": 7.8
+        "economy": null,
+        "matches": 0,
+        "hs": null,
+        "bbi": null
       }
     },
     {
       "id": "npl-s-aryal",
-      "name": "S Aryal",
+      "name": "Sudip Aryal",
       "category": "C",
       "role": "BAT",
       "base_price": 200000,
@@ -1251,15 +1292,18 @@
       "stats": {
         "runs": 0,
         "wickets": 0,
-        "batting_avg": null,
+        "batting_avg": 0.0,
         "strike_rate": null,
         "bowling_avg": null,
-        "economy": 9.5
+        "economy": null,
+        "matches": 1,
+        "hs": "0",
+        "bbi": null
       }
     },
     {
       "id": "npl-tb-thapa",
-      "name": "TB Thapa",
+      "name": "Tul Bahadur Thapa Magar",
       "category": "C",
       "role": "BAT",
       "base_price": 200000,
@@ -1270,12 +1314,15 @@
         "batting_avg": null,
         "strike_rate": null,
         "bowling_avg": null,
-        "economy": 9.5
+        "economy": null,
+        "matches": 0,
+        "hs": null,
+        "bbi": null
       }
     },
     {
       "id": "npl-r-rijal",
-      "name": "R Rijal",
+      "name": "Raju Rijal",
       "category": "C",
       "role": "BAT",
       "base_price": 200000,
@@ -1286,23 +1333,29 @@
         "batting_avg": null,
         "strike_rate": null,
         "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 0,
+        "hs": null,
+        "bbi": null
       }
     },
     {
       "id": "npl-tr-das",
-      "name": "TR Das",
+      "name": "Trit Raj Das",
       "category": "C",
       "role": "BAT",
       "base_price": 200000,
       "is_marquee": false,
       "stats": {
-        "runs": 0,
+        "runs": 39,
         "wickets": 0,
-        "batting_avg": null,
-        "strike_rate": null,
+        "batting_avg": 7.8,
+        "strike_rate": 82.98,
         "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 7,
+        "hs": "29",
+        "bbi": null
       }
     },
     {
@@ -1315,10 +1368,70 @@
       "stats": {
         "runs": 0,
         "wickets": 0,
-        "batting_avg": null,
-        "strike_rate": null,
+        "batting_avg": 0.0,
+        "strike_rate": 0.0,
         "bowling_avg": null,
-        "economy": null
+        "economy": null,
+        "matches": 2,
+        "hs": "0",
+        "bbi": null
+      }
+    },
+    {
+      "id": "npl-aarif-sheikh",
+      "name": "Aarif Sheikh",
+      "category": "A",
+      "role": "WK",
+      "base_price": 1000000,
+      "is_marquee": false,
+      "stats": {
+        "runs": 255,
+        "wickets": 0,
+        "batting_avg": 21.25,
+        "strike_rate": 112.33,
+        "bowling_avg": null,
+        "economy": null,
+        "matches": 18,
+        "hs": "45*",
+        "bbi": null
+      }
+    },
+    {
+      "id": "npl-ks-airee",
+      "name": "Kamal Singh Airee",
+      "category": "B",
+      "role": "AR",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": {
+        "runs": 17,
+        "wickets": 5,
+        "batting_avg": 8.5,
+        "strike_rate": 106.25,
+        "bowling_avg": 33.0,
+        "economy": 9.9,
+        "matches": 7,
+        "hs": "9",
+        "bbi": "2/19"
+      }
+    },
+    {
+      "id": "npl-arjun-kumal",
+      "name": "Arjun Kumal",
+      "category": "B",
+      "role": "BAT",
+      "base_price": 500000,
+      "is_marquee": false,
+      "stats": {
+        "runs": 43,
+        "wickets": 0,
+        "batting_avg": null,
+        "strike_rate": 81.13,
+        "bowling_avg": null,
+        "economy": null,
+        "matches": 1,
+        "hs": "43*",
+        "bbi": null
       }
     }
   ]

@@ -171,21 +171,112 @@ function hasQuota(
   return true;
 }
 
-function statRows(player: Player): { label: string; value: string | number }[] {
-  const rows: { label: string; value: string | number }[] = [];
-  if (player.stats.runs > 0)
-    rows.push({ label: "RUNS", value: player.stats.runs });
-  if (player.stats.wickets > 0)
-    rows.push({ label: "WKTS", value: player.stats.wickets });
-  if (player.stats.batting_avg !== null)
-    rows.push({ label: "AVG", value: player.stats.batting_avg.toFixed(1) });
-  if (player.stats.strike_rate !== null)
-    rows.push({ label: "SR", value: player.stats.strike_rate.toFixed(1) });
-  if (player.stats.bowling_avg !== null)
-    rows.push({ label: "BWL AVG", value: player.stats.bowling_avg.toFixed(1) });
-  if (player.stats.economy !== null)
-    rows.push({ label: "ECON", value: player.stats.economy.toFixed(2) });
-  return rows.slice(0, 3);
+function parseBBIWickets(bbi: string | null): number {
+  if (!bbi) return 0;
+  const n = parseInt(bbi.split("/")[0], 10);
+  return isNaN(n) ? 0 : n;
+}
+
+function parseHS(hs: string | null): number {
+  if (!hs) return 0;
+  const n = parseInt(hs.replace("*", ""), 10);
+  return isNaN(n) ? 0 : n;
+}
+
+// statRows returns exactly 5 items in layout order: [top1, top2, HERO, bottom1, bottom2]
+function statRows(player: Player): { label: string; value: string }[] {
+  const s = player.stats;
+  const dec = (v: number | null): string =>
+    v === null || v === 0 ? "—" : v.toFixed(1);
+  const int = (v: number): string => v === 0 ? "—" : String(v);
+
+  switch (player.role) {
+    case "BAT":
+    case "WK":
+      // top: MATCHES · AVG   hero: RUNS   bottom: SR · HS
+      return [
+        { label: "MATCHES", value: String(s.matches) },
+        { label: "AVG",     value: dec(s.batting_avg) },
+        { label: "RUNS",    value: String(s.runs) },
+        { label: "SR",      value: dec(s.strike_rate) },
+        { label: "HS",      value: s.hs ?? "—" },
+      ];
+    case "BOWL":
+      // top: MATCHES · ECON   hero: WKTS   bottom: AVG · BBI
+      return [
+        { label: "MATCHES", value: String(s.matches) },
+        { label: "ECON",    value: dec(s.economy) },
+        { label: "WKTS",    value: int(s.wickets) },
+        { label: "AVG",     value: dec(s.bowling_avg) },
+        { label: "BBI",     value: s.bbi ?? "—" },
+      ];
+    case "AR": {
+      const sr        = s.strike_rate;
+      const econ      = s.economy;
+      const hsParsed  = parseHS(s.hs);
+      const bbiWkts   = parseBBIWickets(s.bbi);
+
+      // Both notable → top: MATCHES · WKTS   hero: RUNS   bottom: HS · BBI
+      if (hsParsed >= 50 && bbiWkts >= 4) {
+        return [
+          { label: "MATCHES", value: String(s.matches) },
+          { label: "WKTS",    value: int(s.wickets) },
+          { label: "RUNS",    value: String(s.runs) },
+          { label: "HS",      value: s.hs ?? "—" },
+          { label: "BBI",     value: s.bbi ?? "—" },
+        ];
+      }
+
+      // flex4 (top-right): SR vs ECON
+      const srGood   = sr !== null && sr > 120;
+      const econGood = econ !== null && econ < 7.5;
+      let flex4Label: string;
+      let flex4Value: string;
+      if (sr !== null && sr > 140) {
+        flex4Label = "SR";   flex4Value = dec(sr);
+      } else if (srGood && !econGood) {
+        flex4Label = "SR";   flex4Value = dec(sr);
+      } else if (econGood && !srGood) {
+        flex4Label = "ECON"; flex4Value = dec(econ);
+      } else {
+        const pickSR = Math.random() > 0.5;
+        flex4Label = pickSR ? "SR" : "ECON";
+        flex4Value = pickSR ? dec(sr) : dec(econ);
+      }
+
+      // flex5 (bottom-right): HS vs BBI
+      let flex5Label: string;
+      let flex5Value: string;
+      if (hsParsed >= 50) {
+        flex5Label = "HS";  flex5Value = s.hs ?? "—";
+      } else if (bbiWkts >= 4) {
+        flex5Label = "BBI"; flex5Value = s.bbi ?? "—";
+      } else if (hsParsed > 40) {
+        flex5Label = "HS";  flex5Value = s.hs ?? "—";
+      } else {
+        const pickHS = Math.random() > 0.5;
+        flex5Label = pickHS ? "HS"  : "BBI";
+        flex5Value = pickHS ? (s.hs ?? "—") : (s.bbi ?? "—");
+      }
+
+      // top: MATCHES · flex4   hero: RUNS   bottom: WKTS · flex5
+      return [
+        { label: "MATCHES",   value: String(s.matches) },
+        { label: flex4Label,  value: flex4Value },
+        { label: "RUNS",      value: String(s.runs) },
+        { label: "WKTS",      value: int(s.wickets) },
+        { label: flex5Label,  value: flex5Value },
+      ];
+    }
+    default:
+      return [
+        { label: "MATCHES", value: String(s.matches) },
+        { label: "AVG",     value: dec(s.batting_avg) },
+        { label: "RUNS",    value: String(s.runs) },
+        { label: "WKTS",    value: int(s.wickets) },
+        { label: "BBI",     value: s.bbi ?? "—" },
+      ];
+  }
 }
 
 // ─── Root export (Suspense for params) ───────────────────────────────────────
@@ -1031,44 +1122,57 @@ function AuctionPage() {
                   </div>
                 </div>
 
-                {/* Stats row */}
+                {/* Stats: side columns + overlapping center hero */}
                 {(() => {
                   const rows = statRows(currentPlayer);
-                  if (rows.length === 0) return null;
+                  if (rows.length < 5) return null;
+                  const [t1, t2, hero, b1, b2] = rows;
+                  const sideCell = (s: { label: string; value: string }) => (
+                    <div key={s.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "8px 0" }}>
+                      <div style={{ fontFamily: "Rajdhani", fontWeight: 700, fontSize: 22, color: "var(--text)" }}>
+                        {s.value}
+                      </div>
+                      <div style={{ fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.6, marginTop: 2 }}>
+                        {s.label}
+                      </div>
+                    </div>
+                  );
                   return (
-                    <div
-                      style={{
-                        borderTop: "1px solid var(--border)",
-                        display: "grid",
-                        gridTemplateColumns: `repeat(${rows.length}, 1fr)`,
-                        padding: "10px 14px",
-                        gap: 4,
-                      }}
-                    >
-                      {rows.map((s) => (
-                        <div key={s.label} style={{ textAlign: "center" }}>
-                          <div
-                            style={{
-                              fontFamily: "Rajdhani",
-                              fontWeight: 700,
-                              fontSize: 18,
-                              color: catCfg?.color,
-                            }}
-                          >
-                            {s.value}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 9,
-                              color: "var(--muted)",
-                              textTransform: "uppercase",
-                              letterSpacing: 0.5,
-                            }}
-                          >
-                            {s.label}
-                          </div>
+                    <div style={{ borderTop: "1px solid var(--border)", display: "flex", alignItems: "stretch", padding: "22px 12px", gap: 8 }}>
+                      {/* Left column */}
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 0 }}>
+                        {sideCell(t1)}
+                        <div style={{ height: 1, background: "var(--border)", margin: "0 8px" }} />
+                        {sideCell(b1)}
+                      </div>
+
+                      {/* Center hero — taller, overlaps via negative margin */}
+                      <div style={{
+                        flex: "0 0 38%",
+                        margin: "-20px 0",
+                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                        background: `${catCfg?.color}15`,
+                        border: `1.5px solid ${catCfg?.color}55`,
+                        borderRadius: 10,
+                        boxShadow: `0 4px 18px ${catCfg?.color}30`,
+                        zIndex: 1,
+                        position: "relative",
+                        padding: "10px 0",
+                      }}>
+                        <div style={{ fontFamily: "Rajdhani", fontWeight: 800, fontSize: 40, lineHeight: 1, color: catCfg?.color }}>
+                          {hero.value}
                         </div>
-                      ))}
+                        <div style={{ fontSize: 9, color: catCfg?.color, opacity: 0.7, textTransform: "uppercase", letterSpacing: 1.5, marginTop: 5 }}>
+                          {hero.label}
+                        </div>
+                      </div>
+
+                      {/* Right column */}
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 0 }}>
+                        {sideCell(t2)}
+                        <div style={{ height: 1, background: "var(--border)", margin: "0 8px" }} />
+                        {sideCell(b2)}
+                      </div>
                     </div>
                   );
                 })()}

@@ -26,12 +26,15 @@ export type SeatType = 'HUMAN' | 'BOT' | 'EMPTY';
 // ─── Player ──────────────────────────────────────────────────────────────────
 
 export interface PlayerStats {
+  matches: number;
   runs: number;
   wickets: number;
   batting_avg: number | null;
   strike_rate: number | null;
   bowling_avg: number | null;
   economy: number | null;
+  hs: string | null;
+  bbi: string | null;
 }
 
 export interface Player {

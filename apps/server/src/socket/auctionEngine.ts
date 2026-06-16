@@ -102,8 +102,9 @@ function parsePayload<T>(data: T | string): T {
 
 type DbPlayer = {
   id: string; name: string; basePrice: number; quality: number; category: string; role: string;
-  season: number; isMarquee: boolean; runs: number; wickets: number;
+  season: number; isMarquee: boolean; matches: number; runs: number; wickets: number;
   battingAvg: number | null; strikeRate: number | null; bowlingAvg: number | null; economy: number | null;
+  hs: string | null; bbi: string | null;
 };
 
 function dbPlayerToPlayer(p: DbPlayer): Player {
@@ -116,12 +117,15 @@ function dbPlayerToPlayer(p: DbPlayer): Player {
     season: p.season,
     is_marquee: p.isMarquee,
     stats: {
+      matches: p.matches,
       runs: p.runs,
       wickets: p.wickets,
       batting_avg: p.battingAvg,
       strike_rate: p.strikeRate,
       bowling_avg: p.bowlingAvg,
       economy: p.economy,
+      hs: p.hs,
+      bbi: p.bbi,
     },
   };
 }
@@ -165,12 +169,15 @@ function formatSeatFromDb(seat: {
       basePrice: number;
       season: number;
       isMarquee: boolean;
+      matches: number;
       runs: number;
       wickets: number;
       battingAvg: number | null;
       strikeRate: number | null;
       bowlingAvg: number | null;
       economy: number | null;
+      hs: string | null;
+      bbi: string | null;
     };
     slotType: string;
     pricePaid: number;
@@ -188,12 +195,15 @@ function formatSeatFromDb(seat: {
       season: slot.player.season,
       is_marquee: slot.player.isMarquee,
       stats: {
+        matches: slot.player.matches,
         runs: slot.player.runs,
         wickets: slot.player.wickets,
         batting_avg: slot.player.battingAvg,
         strike_rate: slot.player.strikeRate,
         bowling_avg: slot.player.bowlingAvg,
         economy: slot.player.economy,
+        hs: slot.player.hs,
+        bbi: slot.player.bbi,
       },
     },
     slotType: slot.slotType as SlotType,
@@ -621,12 +631,15 @@ async function runMarqueeDraw(
         season: player.season,
         is_marquee: player.isMarquee,
         stats: {
+          matches: player.matches,
           runs: player.runs,
           wickets: player.wickets,
           batting_avg: player.battingAvg,
           strike_rate: player.strikeRate,
           bowling_avg: player.bowlingAvg,
           economy: player.economy,
+          hs: player.hs,
+          bbi: player.bbi,
         },
       },
       slotType: "MARQUEE",
