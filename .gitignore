@@ -37,3 +37,6 @@ settings.local.json
 
 # Git worktrees
 .worktrees/
+.agents/
+skills-lock.json
+.claude/

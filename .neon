@@ -1,0 +1,10 @@
+{
+  "_init": {
+    "features": [
+      "database",
+      "auth"
+    ]
+  },
+  "orgId": "org-floral-brook-36471424",
+  "projectId": "late-tooth-76951808"
+}
