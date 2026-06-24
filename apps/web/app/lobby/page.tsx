@@ -5,6 +5,30 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import type { Lobby, LobbySeat } from "@npl-auction/types";
 import socket from "../../lib/socket";
+import TutorialOverlay, { type TourStep } from "../auction/[lobbyId]/TutorialOverlay";
+
+const LOBBY_TOUR_STEPS: TourStep[] = [
+  {
+    targetId: "tour-seat-grid",
+    title: "Your Franchise",
+    body: "You're one of 8 NPL franchises. Empty seats are filled by AI bot managers — each with a distinct personality (aggressive, conservative, budget sniper…). Every team starts with the same NPR 90L purse.",
+  },
+  {
+    targetId: "tour-auction-format",
+    title: "Auction Phases",
+    body: "Bidding runs in order: a marquee draw assigns each team a star player for free, then three rounds of bidding (Cat A → B → C). Any player nobody buys gets a second chance in the Unsold Round.",
+  },
+  {
+    targetId: "tour-cat-phases",
+    title: "Categories & Lucky Draw",
+    body: "Cat A players go up to रू15L, B up to रू10L, C up to रू5L. If two or more teams bid max price for the same player, a lucky draw picks the winner at random — nobody can outbid their way out.",
+  },
+  {
+    targetId: "tour-info-strip",
+    title: "Squad Requirements",
+    body: "You must finish with exactly 3 Cat A, 4 Cat B, and 3 Cat C auction players. The game blocks bids that would leave you unable to complete your roster at base price — budget carefully from the start.",
+  },
+];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -131,6 +155,10 @@ function LobbyPage() {
     MarqueeAssignment[]
   >([]);
 
+  // Tour state
+  const [showTour, setShowTour] = useState(false);
+  const [tourDismissed, setTourDismissed] = useState(false);
+
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Socket lifecycle ───────────────────────────────────────────────────────
@@ -197,6 +225,17 @@ function LobbyPage() {
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
   }, []);
+
+  // ── Tour auto-trigger ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user) return;
+    const hasSeen = user.unsafeMetadata?.hasSeenLobbyTour === true;
+    if (hasSeen) { setTourDismissed(true); return; }
+    if (!tourDismissed) {
+      const t = setTimeout(() => setShowTour(true), 600);
+      return () => clearTimeout(t);
+    }
+  }, [user]); // intentionally excludes tourDismissed to avoid loop
 
   // ── Marquee draw screen ────────────────────────────────────────────────────
 
@@ -328,6 +367,7 @@ function LobbyPage() {
           {/* Seat grid */}
           {lobby ? (
             <div
+              id="tour-seat-grid"
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(4, 1fr)",
@@ -350,6 +390,7 @@ function LobbyPage() {
 
           {/* Info strip */}
           <div
+            id="tour-info-strip"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(3, 1fr)",
@@ -371,8 +412,18 @@ function LobbyPage() {
           isHost={!lobby?.hostUserId || lobby.hostUserId === user?.id}
           testMode={testMode}
           onToggleTestMode={() => setTestMode((v) => !v)}
+          showTourButton={tourDismissed && !showTour}
+          onOpenTour={() => { setTourDismissed(false); setShowTour(true); }}
         />
       </div>
+
+      {showTour && (
+        <TutorialOverlay
+          steps={LOBBY_TOUR_STEPS}
+          metadataKey="hasSeenLobbyTour"
+          onDismiss={() => { setShowTour(false); setTourDismissed(true); }}
+        />
+      )}
     </div>
   );
 }
@@ -665,6 +716,8 @@ function Sidebar({
   isHost,
   testMode,
   onToggleTestMode,
+  showTourButton,
+  onOpenTour,
 }: {
   starting: boolean;
   countdown: number | null;
@@ -672,6 +725,8 @@ function Sidebar({
   isHost: boolean;
   testMode: boolean;
   onToggleTestMode: () => void;
+  showTourButton?: boolean;
+  onOpenTour?: () => void;
 }) {
   return (
     <div
@@ -686,6 +741,7 @@ function Sidebar({
     >
       {/* Auction format */}
       <div
+        id="tour-auction-format"
         style={{
           padding: 20,
           borderBottom: "1px solid var(--border)",
@@ -694,16 +750,48 @@ function Sidebar({
       >
         <div
           style={{
-            fontSize: 11,
-            color: "var(--muted)",
-            letterSpacing: 1,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
             marginBottom: 12,
           }}
         >
-          AUCTION FORMAT
+          <div
+            style={{
+              fontSize: 11,
+              color: "var(--muted)",
+              letterSpacing: 1,
+            }}
+          >
+            AUCTION FORMAT
+          </div>
+          {showTourButton && (
+            <button
+              onClick={onOpenTour}
+              title="How to Play"
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: "50%",
+                background: "var(--s3)",
+                border: "1px solid var(--border2)",
+                color: "var(--muted2)",
+                fontSize: 12,
+                fontFamily: "Rajdhani",
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              ?
+            </button>
+          )}
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div id="tour-cat-phases" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {AUCTION_FORMAT.map((item, i) => (
             <div
               key={i}

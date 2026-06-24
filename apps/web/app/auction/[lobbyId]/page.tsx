@@ -12,6 +12,30 @@ import type {
   PlayerRole,
 } from "@npl-auction/types";
 import socket from "../../../lib/socket";
+import TutorialOverlay, { type TourStep } from "./TutorialOverlay";
+
+const AUCTION_TOUR_STEPS: TourStep[] = [
+  {
+    targetId: "tour-player-card",
+    title: "The Player Card",
+    body: "Category (A/B/C) sets the price band. The colored header shows base price — the opening bid — and max price — the ceiling before a lucky draw kicks in.",
+  },
+  {
+    targetId: "tour-bid-panel",
+    title: "Bidding & Timer",
+    body: "Each bid raises the price by at least रू25K. The bar drains in real time — if nobody bids before zero, the player goes unsold and returns in the second round.",
+  },
+  {
+    targetId: "tour-bid-actions",
+    title: "Lucky Draw",
+    body: "If 2+ teams bid max price, a lucky draw decides the winner — nobody can outbid their way out. Click ENTER LUCKY DRAW to throw your hat in. The tour pauses if a draw starts.",
+  },
+  {
+    targetId: "tour-squad-panel",
+    title: "Your Squad",
+    body: "Track quota progress and purse here. The server blocks bids that would leave you unable to fill remaining slots at base price — the bid button greys out when you're overextended.",
+  },
+];
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -371,6 +395,10 @@ function AuctionPage() {
   const [auctionComplete, setAuctionComplete] = useState(false);
   const [finalSeats, setFinalSeats] = useState<LobbySeat[] | null>(null);
 
+  // Tour state
+  const [showTour, setShowTour] = useState(false);
+  const [tourDismissed, setTourDismissed] = useState(false);
+
   // Sold/unsold counts
   const [soldCount, setSoldCount] = useState(0);
 
@@ -701,6 +729,17 @@ function AuctionPage() {
     !(atMaxPrice && isUserLeading)
   );
 
+  // ── Tour auto-trigger ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user) return;
+    const hasSeen = user.unsafeMetadata?.hasSeenAuctionTour === true;
+    if (hasSeen) { setTourDismissed(true); return; }
+    if (!tourDismissed) {
+      const t = setTimeout(() => setShowTour(true), 800);
+      return () => clearTimeout(t);
+    }
+  }, [user]); // intentionally excludes tourDismissed to avoid loop
+
   function handleBid(amount: number) {
     if (!mySeat || !currentPlayer) return;
     if (!hasQuota(mySeat, currentPlayer.category, catQuotas)) return;
@@ -834,6 +873,30 @@ function AuctionPage() {
             gap: 10,
           }}
         >
+          {tourDismissed && !showTour && (
+            <button
+              onClick={() => { setTourDismissed(false); setShowTour(true); }}
+              title="How to Play"
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: "50%",
+                background: "var(--s3)",
+                border: "1px solid var(--border2)",
+                color: "var(--muted2)",
+                fontSize: 13,
+                fontFamily: "Rajdhani",
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              ?
+            </button>
+          )}
           <FranchiseCrest
             franchiseName={mySeat?.franchiseName ?? ""}
             size={28}
@@ -1050,6 +1113,7 @@ function AuctionPage() {
             >
               {/* Player card */}
               <div
+                id="tour-player-card"
                 style={{
                   background: "var(--s1)",
                   border: `1px solid ${catCfg?.color}40`,
@@ -1180,6 +1244,7 @@ function AuctionPage() {
 
               {/* Bid panel */}
               <div
+                id="tour-bid-panel"
                 style={{
                   width: "100%",
                   background: "var(--s1)",
@@ -1333,6 +1398,7 @@ function AuctionPage() {
                   </div>
                 ) : (
                   <div
+                    id="tour-bid-actions"
                     style={{ display: "flex", flexDirection: "column", gap: 8 }}
                   >
                     {/* Increment buttons */}
@@ -1608,6 +1674,7 @@ function AuctionPage() {
 
         {/* RIGHT: My Squad (240px) */}
         <div
+          id="tour-squad-panel"
           style={{
             width: 240,
             flexShrink: 0,
@@ -1970,6 +2037,17 @@ function AuctionPage() {
           seats={seats}
           winner={luckyWinner}
           onClose={handleLuckyDrawClose}
+        />
+      )}
+
+      {/* In-auction How to Play tour */}
+      {showTour && (
+        <TutorialOverlay
+          steps={AUCTION_TOUR_STEPS}
+          metadataKey="hasSeenAuctionTour"
+          lobbyId={lobbyId}
+          onDismiss={() => { setShowTour(false); setTourDismissed(true); }}
+          initiallyPaused={luckyActive}
         />
       )}
     </div>
