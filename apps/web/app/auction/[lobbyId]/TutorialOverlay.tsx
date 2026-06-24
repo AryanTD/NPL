@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useUser } from "@clerk/nextjs";
 import socket from "../../../lib/socket";
 
 // ─── Step type ────────────────────────────────────────────────────────────────
@@ -93,7 +92,6 @@ export default function TutorialOverlay({
   lobbyId,
   initiallyPaused = false,
 }: TutorialOverlayProps) {
-  const { user } = useUser();
   const [phase, setPhase] = useState<TourPhase>(
     initiallyPaused ? "paused" : "active"
   );
@@ -186,18 +184,16 @@ export default function TutorialOverlay({
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  async function handleDismiss() {
+  function handleDismiss() {
     // Server resume is handled by the mount-effect cleanup — no need to emit here.
-    try {
-      await user?.update({
-        unsafeMetadata: {
-          ...(user.unsafeMetadata ?? {}),
-          [metadataKey]: true,
-        },
-      });
-    } catch {
-      // non-critical
-    }
+    // Persist to localStorage immediately (works for guests too)
+    localStorage.setItem(metadataKey, "true");
+    // Background persist to DB for signed-in users (401 for guests is silently ignored)
+    fetch("/api/user/tour", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: metadataKey }),
+    }).catch(() => {});
     onDismiss();
   }
   handleDismissRef.current = handleDismiss;

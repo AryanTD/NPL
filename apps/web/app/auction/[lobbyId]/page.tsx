@@ -2,7 +2,7 @@
 
 import { memo, Suspense, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useSession } from "next-auth/react";
 import type {
   BidEvent,
   Lobby,
@@ -353,7 +353,12 @@ interface CurrentBidInfo {
 function AuctionPage() {
   const params = useParams();
   const sp = useSearchParams();
-  const { user } = useUser();
+  const { data: session } = useSession();
+  const userId =
+    session?.user?.id ??
+    (typeof window !== "undefined"
+      ? (localStorage.getItem("npl_guest_id") ?? "")
+      : "");
 
   const lobbyId = params.lobbyId as string;
   const seatId = sp.get("seatId") ?? "";
@@ -432,12 +437,12 @@ function AuctionPage() {
   // ── Socket lifecycle ──────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!lobbyId || !seatId || !user?.id) return;
+    if (!lobbyId || !seatId || !userId) return;
 
     socket.connect();
 
     socket.on("connect", () => {
-      socket.emit("lobby:join", { lobbyId, userId: user.id, seatId });
+      socket.emit("lobby:join", { lobbyId, userId, seatId });
     });
 
     socket.on("lobby:state", (lobby: Lobby) => {
@@ -663,7 +668,7 @@ function AuctionPage() {
       socket.off("lobby:auction_resumed");
       socket.disconnect();
     };
-  }, [lobbyId, seatId, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [lobbyId, seatId, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Derived ──────────────────────────────────────────────────────────────
 
@@ -731,14 +736,15 @@ function AuctionPage() {
 
   // ── Tour auto-trigger ────────────────────────────────────────────────────
   useEffect(() => {
-    if (!user) return;
-    const hasSeen = user.unsafeMetadata?.hasSeenAuctionTour === true;
+    if (!userId) return;
+    const hasSeenLocal = localStorage.getItem("hasSeenAuctionTour") === "true";
+    const hasSeen = hasSeenLocal || session?.user?.hasSeenAuctionTour === true;
     if (hasSeen) { setTourDismissed(true); return; }
     if (!tourDismissed) {
       const t = setTimeout(() => setShowTour(true), 800);
       return () => clearTimeout(t);
     }
-  }, [user]); // intentionally excludes tourDismissed to avoid loop
+  }, [userId]); // intentionally excludes tourDismissed to avoid loop
 
   function handleBid(amount: number) {
     if (!mySeat || !currentPlayer) return;
