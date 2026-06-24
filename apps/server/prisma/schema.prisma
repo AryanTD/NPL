@@ -121,7 +121,7 @@ model Lobby {
   code        String      @unique // 6-char join code
   status      LobbyStatus @default(WAITING)
   season      Int         // which player pool to use
-  hostUserId  String?     // Clerk userId of the player who created the lobby
+  hostUserId  String?     // Auth.js User.id (or guest_ UUID) of the player who created the lobby
 
   seats         LobbySeat[]
   auctionQueues AuctionQueue[]
@@ -257,4 +257,61 @@ model SquadSlot {
   @@unique([lobbyId, playerId])
   @@index([lobbyId, franchiseId])
   @@index([lobbySeatId])
+}
+
+// ─── Auth.js models ───────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+
+  username           String?
+  hasSeenLobbyTour   Boolean @default(false)
+  hasSeenAuctionTour Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
 }
