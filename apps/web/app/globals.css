@@ -92,6 +92,33 @@ body {
   animation: marquee-reveal 0.5s ease both;
 }
 
+/* ─── Ticker ─────────────────────────────────────────────────────────────────── */
+
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-strip {
+  overflow: hidden;
+  white-space: nowrap;
+  width: 100%;
+  max-width: 520px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 0;
+}
+
+.ticker-content {
+  display: inline-block;
+  animation: ticker-scroll 20s linear infinite;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--gold);
+}
+
 /* ─── Tour tooltip arrows ────────────────────────────────────────────────────── */
 
 .tour-arrow { position: absolute; width: 0; height: 0; }

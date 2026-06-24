@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useUser, SignInButton } from "@clerk/nextjs";
+import { useSession, signIn } from "next-auth/react";
 
 // ─── Franchise data ───────────────────────────────────────────────────────────
 
@@ -68,7 +68,19 @@ const FRANCHISES = [
 const SERVER_URL =
   process.env.NEXT_PUBLIC_SERVER_URL ?? "http://localhost:3001";
 
-const SESSION_KEY = "npl_session";
+const SESSION_KEY    = "npl_session";
+const GUEST_ID_KEY   = "npl_guest_id";
+const GUEST_NAME_KEY = "npl_guest_name";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getOrCreateGuestId(): string {
+  const existing = localStorage.getItem(GUEST_ID_KEY);
+  if (existing) return existing;
+  const id = `guest_${crypto.randomUUID()}`;
+  localStorage.setItem(GUEST_ID_KEY, id);
+  return id;
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -83,19 +95,72 @@ interface ActiveSession {
 
 export default function LandingPage() {
   const router = useRouter();
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { data: session, status } = useSession();
 
-  const [view, setView] = useState<View>("default");
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const isLoaded    = status !== "loading";
+  const isSignedIn  = status === "authenticated";
+
+  const [view, setView]           = useState<View>("default");
+  const [name, setName]           = useState("");
+  const [nameLoaded, setNameLoaded] = useState(false);
+  const [code, setCode]           = useState("");
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState<string | null>(null);
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
+  const [isGuest, setIsGuest]     = useState(false);
+  const [totalGamesPlayed, setTotalGamesPlayed] = useState<number | null>(null);
 
-  // ── Check for an existing active session on mount ───────────────────────────
+  // ── Restore guest state from localStorage ─────────────────────────────────
 
   useEffect(() => {
-    if (!user) return;
+    if (localStorage.getItem(GUEST_ID_KEY)) setIsGuest(true);
+  }, []);
+
+  // ── Load persistent display name ───────────────────────────────────────────
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (isSignedIn && session?.user) {
+      const saved = session.user.username;
+      if (saved) {
+        setName(saved);
+      } else if (session.user.name) {
+        setName(session.user.name.split(" ")[0]);
+      }
+    } else {
+      const saved = localStorage.getItem(GUEST_NAME_KEY);
+      if (saved) setName(saved);
+    }
+    setNameLoaded(true);
+  }, [isLoaded, isSignedIn, session]);
+
+  // ── Fetch games-played ticker ──────────────────────────────────────────────
+
+  useEffect(() => {
+    fetch(`${SERVER_URL}/lobby/stats`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { totalGamesPlayed: number } | null) => {
+        if (d && typeof d.totalGamesPlayed === "number") {
+          setTotalGamesPlayed(d.totalGamesPlayed);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // ── Derive effective userId ────────────────────────────────────────────────
+
+  function resolveUserId(): string | null {
+    if (isSignedIn && session?.user?.id) return session.user.id;
+    if (isGuest) return getOrCreateGuestId();
+    return null;
+  }
+
+  // ── Check for an existing active session on mount ─────────────────────────
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    const userId = resolveUserId();
+    if (!userId) return;
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return;
     try {
@@ -113,12 +178,40 @@ export default function LandingPage() {
     } catch {
       localStorage.removeItem(SESSION_KEY);
     }
-  }, [user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, isSignedIn, isGuest]);
+
+  // ── Name persistence handlers ──────────────────────────────────────────────
+
+  function handleNameChange(value: string) {
+    const v = value.slice(0, 24);
+    setName(v);
+    if (!isSignedIn) {
+      localStorage.setItem(GUEST_NAME_KEY, v.trim());
+    }
+  }
+
+  function handleNameBlur() {
+    if (!isSignedIn || !name.trim()) return;
+    fetch("/api/user/username", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: name.trim() }),
+    }).catch(() => {});
+  }
+
+  // ── Guest handler ──────────────────────────────────────────────────────────
+
+  function handleContinueAsGuest() {
+    getOrCreateGuestId();
+    setIsGuest(true);
+  }
 
   // ── API helpers ─────────────────────────────────────────────────────────────
 
   async function createLobby(franchiseShortName?: string) {
-    if (!user || !name.trim()) return;
+    const userId = resolveUserId();
+    if (!userId || !name.trim()) return;
     setLoading(true);
     setError(null);
     try {
@@ -126,7 +219,7 @@ export default function LandingPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: user.id,
+          userId,
           displayName: name.trim(),
           season: 2024,
           ...(franchiseShortName ? { franchiseShortName } : {}),
@@ -153,7 +246,8 @@ export default function LandingPage() {
   }
 
   async function joinLobby() {
-    if (!user || code.length !== 6) return;
+    const userId = resolveUserId();
+    if (!userId || code.length !== 6) return;
     setLoading(true);
     setError(null);
     try {
@@ -163,8 +257,8 @@ export default function LandingPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId: user.id,
-            displayName: name.trim() || (user.firstName ?? "Player"),
+            userId,
+            displayName: name.trim() || "Player",
           }),
         },
       );
@@ -202,17 +296,19 @@ export default function LandingPage() {
   function handleDismissRejoin() {
     localStorage.removeItem(SESSION_KEY);
     setActiveSession(null);
-    // Release the server-side seat so the user can create/join a new game
-    if (user) {
+    const userId = resolveUserId();
+    if (userId) {
       fetch(`${SERVER_URL}/lobby/leave`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id }),
+        body: JSON.stringify({ userId }),
       }).catch(() => {});
     }
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
+
+  const showDefaultCard = isSignedIn || isGuest;
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-6 py-16">
@@ -220,7 +316,7 @@ export default function LandingPage() {
       <div className="grid-texture absolute inset-0" />
 
       {/* Logo lockup */}
-      <div className="relative flex flex-col items-center gap-3 mb-10 animate-slide-up">
+      <div className="relative flex flex-col items-center gap-3 mb-6 animate-slide-up">
         {/* Nepal flag color bars */}
         <div className="flex items-end gap-[3px] mb-1">
           <div
@@ -280,6 +376,19 @@ export default function LandingPage() {
         </p>
       </div>
 
+      {/* Ticker */}
+      {totalGamesPlayed !== null && totalGamesPlayed > 0 && (
+        <div className="ticker-strip" style={{ marginBottom: 20 }}>
+          <span className="ticker-content">
+            {Array.from({ length: 6 }, (_, i) => (
+              <span key={i} style={{ marginRight: 56 }}>
+                {totalGamesPlayed.toLocaleString()} AUCTIONS PLAYED &nbsp;·&nbsp;
+              </span>
+            ))}
+          </span>
+        </div>
+      )}
+
       {/* Auth card */}
       <div
         className="relative animate-slide-up w-full"
@@ -298,12 +407,14 @@ export default function LandingPage() {
           >
             Loading…
           </div>
-        ) : !isSignedIn ? (
-          <SignedOutView />
+        ) : !showDefaultCard ? (
+          <SignedOutView onContinueAsGuest={handleContinueAsGuest} />
         ) : view === "default" ? (
           <DefaultView
             name={name}
-            setName={setName}
+            nameLoaded={nameLoaded}
+            onNameChange={handleNameChange}
+            onNameBlur={handleNameBlur}
             error={error}
             loading={loading}
             activeSession={activeSession}
@@ -351,15 +462,36 @@ export default function LandingPage() {
 
 // ─── Signed-out view ──────────────────────────────────────────────────────────
 
-function SignedOutView() {
+function SignedOutView({ onContinueAsGuest }: { onContinueAsGuest: () => void }) {
   return (
-    <div style={{ textAlign: "center" }}>
-      <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 20 }}>
-        Sign in to create or join an NPL Auction lobby.
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ textAlign: "center" }}>
+        <p style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.7, margin: 0 }}>
+          Sign in to save your stats and compete on the leaderboard, or jump
+          straight in as a guest.
+        </p>
+      </div>
+
+      <button
+        onClick={() => signIn("google", { callbackUrl: "/" })}
+        style={btnPrimary}
+      >
+        SIGN IN WITH GOOGLE
+      </button>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+        <span style={{ fontSize: 12, color: "var(--muted)" }}>or</span>
+        <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+      </div>
+
+      <button onClick={onContinueAsGuest} style={btnSecondary}>
+        CONTINUE AS GUEST
+      </button>
+
+      <p style={{ fontSize: 11, color: "var(--muted)", textAlign: "center", margin: 0 }}>
+        Guest progress is saved locally and not tied to an account.
       </p>
-      <SignInButton mode="modal">
-        <button style={btnPrimary}>SIGN IN</button>
-      </SignInButton>
     </div>
   );
 }
@@ -374,7 +506,9 @@ const STATUS_LABEL: Record<string, string> = {
 
 function DefaultView({
   name,
-  setName,
+  nameLoaded,
+  onNameChange,
+  onNameBlur,
   error,
   loading,
   activeSession,
@@ -385,7 +519,9 @@ function DefaultView({
   onQuickPlay,
 }: {
   name: string;
-  setName: (v: string) => void;
+  nameLoaded: boolean;
+  onNameChange: (v: string) => void;
+  onNameBlur: () => void;
   error: string | null;
   loading: boolean;
   activeSession: ActiveSession | null;
@@ -439,7 +575,6 @@ function DefaultView({
               </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {/* Status chip */}
               <span
                 style={{
                   fontSize: 10,
@@ -453,7 +588,6 @@ function DefaultView({
               >
                 {statusLabel}
               </span>
-              {/* Room code */}
               <span
                 style={{
                   fontFamily: "Rajdhani, sans-serif",
@@ -518,11 +652,13 @@ function DefaultView({
         <label style={labelStyle}>YOUR NAME</label>
         <input
           type="text"
-          placeholder="Display name"
+          placeholder={nameLoaded ? "Display name" : "Loading…"}
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => onNameChange(e.target.value)}
+          onBlur={onNameBlur}
           maxLength={24}
-          style={inputStyle}
+          disabled={!nameLoaded}
+          style={{ ...inputStyle, opacity: nameLoaded ? 1 : 0.5 }}
         />
       </div>
 
@@ -646,7 +782,7 @@ function FranchiseButton({
 }: {
   franchise: (typeof FRANCHISES)[number];
   disabled: boolean;
-  onClick: () => void;  // caller already binds the shortName
+  onClick: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
 

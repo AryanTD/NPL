@@ -16,7 +16,7 @@ This is a real product targeting real users — Nepali cricket fans.
 - **Frontend**: Next.js 14 (App Router) + TypeScript + Tailwind CSS — in `apps/web/`
 - **Backend**: Node.js + Express + Socket.io — in `apps/server/`
 - **Database**: PostgreSQL + Prisma ORM (in `apps/server/prisma/`)
-- **Auth**: Clerk
+- **Auth**: Auth.js v5 (next-auth@5.0.0-beta.31) — Google OAuth, JWT sessions
 - **AI Bots**: Anthropic Claude API (claude-sonnet-4-6)
 - **Hosting**: Vercel (web) + Railway (server) + Neon (PostgreSQL, free tier)
 - **Monorepo**: npm workspaces, shared types in `packages/types/`
@@ -28,25 +28,31 @@ This is a real product targeting real users — Nepali cricket fans.
 ### Done
 - `packages/types/index.ts` — all shared types + Socket.io event contracts
 - `apps/server/src/index.ts` — Express + Socket.io bootstrap, CORS, graceful shutdown
-- `apps/server/prisma/schema.prisma` — full schema (8 models, all enums)
+- `apps/server/prisma/schema.prisma` — full schema (12 models, all enums); Auth.js models (User, Account, Session, VerificationToken) added alongside game models
 - `apps/server/prisma/seed.ts` — bulk-insert franchises + players via `createMany`; quality formula calibrated for single-tournament stats (batting_avg ref=25, wickets ref=15)
 - `data/players/npl-2024.json` — **82 real NPL 2024 players** (8 marquee + 74 non-marquee); sourced from Kaggle dataset, overseas players excluded; `npl-2025.json` is no longer used
 - `data/scripts/clean_players.py` — Python script that built npl-2024.json from the Kaggle CSVs; re-run to regenerate if raw data changes
-- DB migrations applied through `20260616162003_add_player_hs_bbi`, DB seeded with real players on Neon
+- DB migrations applied through `add_authjs_models` (latest), DB seeded with real players on Neon
 - Quality range in DB: 45–89; per-category floor applied in seed.ts (A≥65, B≥55, C≥45); marquee quality is manually set in npl-2024.json and preserved as-is
 - Player stats include `hs` (highest score, e.g. "34*") and `bbi` (best bowling innings, e.g. "4/16") as nullable strings
 - `src/lib/prisma.ts` — singleton Prisma client
-- `src/routes/lobby.ts` — `POST /lobby/create`, `POST /lobby/join/:code`, `GET /lobby/:id`
+- `src/routes/lobby.ts` — `POST /lobby/create`, `POST /lobby/join/:code`, `POST /lobby/leave`, `GET /lobby/stats`, `GET /lobby/:id`
 - `src/bots/botPersonalities.ts` — all 5 personality configs
 - `src/bots/claudeBot.ts` — mock heuristic bot (real Claude API deferred)
 - `src/bots/botManager.ts` — think delay + `AbortSignal` cancellation
 - `src/socket/auctionEngine.ts` — full auction engine (state machine, timer, bid validation, lucky draw, bots, phase transitions) + all Task 5b optimizations applied
 - `packages/types/index.ts` — `lobby:join` + `lobby:start` added to `ClientToServerEvents`
-- `apps/web/` — Next.js 14 scaffold (Tailwind, App Router, Clerk v5, socket.io-client, framer-motion)
-- `apps/web/app/globals.css` — design tokens (13 CSS vars), Google Fonts, keyframes + animation classes
-- `apps/web/app/layout.tsx` — `<ClerkProvider>` root layout + Google Fonts `<link>` tags
+- `apps/web/` — Next.js 14 scaffold (Tailwind, App Router, Auth.js v5, socket.io-client, framer-motion)
+- `apps/web/auth.ts` — Auth.js v5 config (Google provider, JWT strategy, custom session fields: `id`, `username`, `hasSeenLobbyTour`, `hasSeenAuctionTour`)
+- `apps/web/lib/prisma.ts` — singleton Prisma client for web (shares the server-generated `@prisma/client`)
+- `apps/web/app/providers.tsx` — `<SessionProvider>` client wrapper used in layout
+- `apps/web/app/globals.css` — design tokens (13 CSS vars), Google Fonts, keyframes + animation classes (incl. ticker scroll)
+- `apps/web/app/layout.tsx` — `<Providers>` root layout + Google Fonts `<link>` tags
 - `apps/web/lib/socket.ts` — singleton typed `socket.io-client` export
-- `apps/web/app/page.tsx` — landing page (logo lockup, Clerk gate, 3-state card: default/create/join)
+- `apps/web/app/page.tsx` — landing page: Google sign-in + guest mode, games-played ticker, persistent username, 3-state card (default/create/join)
+- `apps/web/app/api/auth/[...nextauth]/route.ts` — Auth.js route handler
+- `apps/web/app/api/user/tour/route.ts` — `PATCH` to mark lobby/auction tour as seen in DB
+- `apps/web/app/api/user/username/route.ts` — `PATCH` to persist display name to `User.username`
 - `apps/web/app/lobby/page.tsx` — lobby waiting room (socket lifecycle, 8 seat cards, auction format sidebar, START AUCTION with 3s countdown, marquee draw screen)
 - `apps/web/app/auction/[lobbyId]/page.tsx` — auction room (player card, timer, bid controls, queue panel, squad panel, teams bar, lucky draw overlay); includes:
   - Lucky draw: `hasEnteredLuckyDraw` state locks button; `luckyActiveRef` + `pendingRevealRef` fix stale-closure winner reveal; 2.8s overlay auto-close
@@ -88,18 +94,26 @@ NPL/
     │   └── prisma/
     │       ├── schema.prisma
     │       └── seed.ts
-    └── web/                  ← Next.js 14 (App Router, Tailwind, Clerk, socket.io-client)
+    └── web/                  ← Next.js 14 (App Router, Tailwind, Auth.js v5, socket.io-client)
+        ├── auth.ts           ← Auth.js v5 config (Google OAuth, JWT, custom session fields)
         ├── app/
-        │   ├── globals.css   ← design tokens, fonts, keyframes
-        │   ├── layout.tsx    ← ClerkProvider root layout + Google Fonts
-        │   ├── page.tsx      ← landing page (create/join/quick-play)
+        │   ├── globals.css   ← design tokens, fonts, keyframes (incl. ticker animation)
+        │   ├── layout.tsx    ← Providers (SessionProvider) root layout + Google Fonts
+        │   ├── providers.tsx ← SessionProvider client wrapper
+        │   ├── page.tsx      ← landing page (sign-in/guest, ticker, persistent name, create/join)
+        │   ├── api/
+        │   │   ├── auth/[...nextauth]/route.ts ← Auth.js route handler
+        │   │   └── user/
+        │   │       ├── tour/route.ts      ← PATCH tour seen flag to DB
+        │   │       └── username/route.ts  ← PATCH display name to DB
         │   ├── lobby/
         │   │   └── page.tsx  ← lobby waiting room (socket, seat grid, start, marquee draw)
         │   └── auction/
         │       └── [lobbyId]/
         │           └── page.tsx ← auction room (player card, timer, bid controls, queue, squad, teams bar, lucky draw)
         └── lib/
-            └── socket.ts     ← singleton typed socket.io-client
+            ├── socket.ts     ← singleton typed socket.io-client
+            └── prisma.ts     ← singleton Prisma client (uses shared @prisma/client)
 ```
 
 ---
@@ -197,6 +211,10 @@ Bots run entirely server-side — the client never sees bot logic or Claude API 
 | `Bid` | lobbyId, seatId, playerId, franchiseId, amount |
 | `AuctionResult` | lobbyId, playerId (unique), franchiseId, finalPrice, wasLuckyDraw |
 | `SquadSlot` | lobbyId, franchiseId, playerId, slotType (MARQUEE/AUCTION/OVERSEAS/ICONIC), pricePaid |
+| `User` | id (cuid), name, email, image, username?, hasSeenLobbyTour, hasSeenAuctionTour — Auth.js |
+| `Account` | userId, provider, providerAccountId — OAuth token storage (Auth.js) |
+| `Session` | sessionToken, userId, expires — unused in JWT mode but required by adapter |
+| `VerificationToken` | identifier, token, expires — unused with Google OAuth only |
 
 ---
 
@@ -267,8 +285,11 @@ PORT=3001
 
 ```
 NEXT_PUBLIC_SERVER_URL=http://localhost:3001
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
-CLERK_SECRET_KEY=sk_...
+AUTH_SECRET=<random string — generate with: npx auth secret>
+AUTH_GOOGLE_ID=<Google OAuth client ID>
+AUTH_GOOGLE_SECRET=<Google OAuth client secret>
+DATABASE_URL=postgresql://...@...neon.tech/neondb?sslmode=require   # same pooled URL as server
+DIRECT_URL=postgresql://...@...neon.tech/neondb?sslmode=require      # same direct URL as server
 ```
 
 ---
@@ -286,6 +307,12 @@ CLERK_SECRET_KEY=sk_...
 - **start script is `dist/src/index.js`** — not `dist/index.js`, because rootDir is `.`
 - **Neon DB requires `directUrl`** — `schema.prisma` uses `DATABASE_URL` (pooled) for queries and `DIRECT_URL` (unpooled) for migrations; both must be set in `.env`
 - **Server must be started manually** — `npx ts-node --project tsconfig.json src/index.ts` from `apps/server/`; nodemon orphan issue not yet fixed
+- **Auth: Auth.js v5, JWT sessions, Google OAuth only** — no Clerk. `userId` on `LobbySeat`/`Lobby` is either an Auth.js cuid (signed-in) or `guest_${UUID}` (guest); server treats it as an opaque string
+- **Guest identity** — `guest_${crypto.randomUUID()}` stored in `localStorage.npl_guest_id`; guest display name in `localStorage.npl_guest_name`; no DB record for guests
+- **One Prisma schema** — Auth.js models live in `apps/server/prisma/schema.prisma` alongside game models; both server and web import from the same `@prisma/client`; always run `prisma generate` / `prisma migrate` from `apps/server/`
+- **Auth.js type augmentation** — must augment `@auth/core/types` (not `next-auth`) because `useSession()` from `next-auth/react` imports `Session` from `@auth/core/types` directly; augmentation lives in `apps/web/auth.ts`
+- **Tutorial metadata** — stored in `localStorage` immediately on dismiss (works for guests); also PATCH'd to `User.hasSeenLobbyTour` / `User.hasSeenAuctionTour` in DB for signed-in users (fire-and-forget, 401 for guests is silently ignored)
+- **Persistent username** — stored in `User.username` in DB for signed-in users; `localStorage.npl_guest_name` for guests; pre-populated on landing page via session or localStorage
 
 ---
 
@@ -299,3 +326,6 @@ CLERK_SECRET_KEY=sk_...
 - Don't add `node_modules/` to git — covered by `.gitignore`
 - Don't run `prisma migrate` without a valid `DATABASE_URL` in `.env`
 - Don't hardcode `season: 2025` anywhere — only season 2024 data exists; using 2025 causes empty player queries and auction crashes
+- Don't add a separate `apps/web/prisma/schema.prisma` — the server schema is the single source of truth; running `prisma generate` in `apps/web` will overwrite the server's generated client
+- Don't augment `next-auth` module for session types — augment `@auth/core/types` instead (see Architecture Decisions above)
+- Don't reference Clerk anywhere — it has been fully removed; `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` are no longer used
