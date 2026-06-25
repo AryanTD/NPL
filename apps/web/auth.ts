@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import Resend from "next-auth/providers/resend";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import type { DefaultSession } from "@auth/core/types";
@@ -33,7 +34,7 @@ declare module "@auth/core/jwt" {
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
-  providers: [Google],
+  providers: [Google, Resend({ from: "onboarding@resend.dev" })],
   callbacks: {
     jwt({ token, user }) {
       if (user) {

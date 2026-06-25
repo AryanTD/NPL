@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession, signIn } from "next-auth/react";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 // ─── Franchise data ───────────────────────────────────────────────────────────
 
@@ -68,8 +68,8 @@ const FRANCHISES = [
 const SERVER_URL =
   process.env.NEXT_PUBLIC_SERVER_URL ?? "http://localhost:3001";
 
-const SESSION_KEY    = "npl_session";
-const GUEST_ID_KEY   = "npl_guest_id";
+const SESSION_KEY = "npl_session";
+const GUEST_ID_KEY = "npl_guest_id";
 const GUEST_NAME_KEY = "npl_guest_name";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -97,17 +97,19 @@ export default function LandingPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
 
-  const isLoaded    = status !== "loading";
-  const isSignedIn  = status === "authenticated";
+  const isLoaded = status !== "loading";
+  const isSignedIn = status === "authenticated";
 
-  const [view, setView]           = useState<View>("default");
-  const [name, setName]           = useState("");
+  const [view, setView] = useState<View>("default");
+  const [name, setName] = useState("");
   const [nameLoaded, setNameLoaded] = useState(false);
-  const [code, setCode]           = useState("");
-  const [loading, setLoading]     = useState(false);
-  const [error, setError]         = useState<string | null>(null);
-  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
-  const [isGuest, setIsGuest]     = useState(false);
+  const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(
+    null,
+  );
+  const [isGuest, setIsGuest] = useState(false);
   const [totalGamesPlayed, setTotalGamesPlayed] = useState<number | null>(null);
 
   // ── Restore guest state from localStorage ─────────────────────────────────
@@ -122,11 +124,7 @@ export default function LandingPage() {
     if (!isLoaded) return;
     if (isSignedIn && session?.user) {
       const saved = session.user.username;
-      if (saved) {
-        setName(saved);
-      } else if (session.user.name) {
-        setName(session.user.name.split(" ")[0]);
-      }
+      if (saved) setName(saved);
     } else {
       const saved = localStorage.getItem(GUEST_NAME_KEY);
       if (saved) setName(saved);
@@ -178,7 +176,7 @@ export default function LandingPage() {
     } catch {
       localStorage.removeItem(SESSION_KEY);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn, isGuest]);
 
   // ── Name persistence handlers ──────────────────────────────────────────────
@@ -237,7 +235,14 @@ export default function LandingPage() {
         throw new Error(body.error ?? "Failed to create lobby");
       }
       const data = await res.json();
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ lobbyId: data.lobbyId, seatId: data.seatId, code: data.code }));
+      localStorage.setItem(
+        SESSION_KEY,
+        JSON.stringify({
+          lobbyId: data.lobbyId,
+          seatId: data.seatId,
+          code: data.code,
+        }),
+      );
       router.push(`/lobby?lobbyId=${data.lobbyId}&seatId=${data.seatId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -274,7 +279,14 @@ export default function LandingPage() {
         throw new Error(body.error ?? "Failed to join lobby");
       }
       const data = await res.json();
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ lobbyId: data.lobbyId, seatId: data.seatId, code: data.code }));
+      localStorage.setItem(
+        SESSION_KEY,
+        JSON.stringify({
+          lobbyId: data.lobbyId,
+          seatId: data.seatId,
+          code: data.code,
+        }),
+      );
       router.push(`/lobby?lobbyId=${data.lobbyId}&seatId=${data.seatId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -382,7 +394,8 @@ export default function LandingPage() {
           <span className="ticker-content">
             {Array.from({ length: 6 }, (_, i) => (
               <span key={i} style={{ marginRight: 56 }}>
-                {totalGamesPlayed.toLocaleString()} AUCTIONS PLAYED &nbsp;·&nbsp;
+                {totalGamesPlayed.toLocaleString()} AUCTIONS PLAYED
+                &nbsp;·&nbsp;
               </span>
             ))}
           </span>
@@ -409,10 +422,14 @@ export default function LandingPage() {
           </div>
         ) : !showDefaultCard ? (
           <SignedOutView onContinueAsGuest={handleContinueAsGuest} />
+        ) : nameLoaded && !name.trim() && view === "default" ? (
+          <NameSetupView
+            onNameChange={handleNameChange}
+            onNameBlur={handleNameBlur}
+          />
         ) : view === "default" ? (
           <DefaultView
             name={name}
-            nameLoaded={nameLoaded}
             onNameChange={handleNameChange}
             onNameBlur={handleNameBlur}
             error={error}
@@ -429,6 +446,7 @@ export default function LandingPage() {
               setView("join");
             }}
             onQuickPlay={() => createLobby()}
+            isSignedIn={isSignedIn}
           />
         ) : view === "create" ? (
           <CreateView
@@ -462,11 +480,46 @@ export default function LandingPage() {
 
 // ─── Signed-out view ──────────────────────────────────────────────────────────
 
-function SignedOutView({ onContinueAsGuest }: { onContinueAsGuest: () => void }) {
+function SignedOutView({
+  onContinueAsGuest,
+}: {
+  onContinueAsGuest: () => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  async function handleMagicLink(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setEmailLoading(true);
+    setEmailError(null);
+    const result = await signIn("resend", {
+      email: email.trim(),
+      redirect: false,
+      callbackUrl: "/",
+    });
+    if (result?.error) {
+      setEmailError("Failed to send link. Check server logs.");
+      setEmailLoading(false);
+    } else {
+      setEmailSent(true);
+      setEmailLoading(false);
+    }
+  }
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ textAlign: "center" }}>
-        <p style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.7, margin: 0 }}>
+        <p
+          style={{
+            fontSize: 14,
+            color: "var(--muted)",
+            lineHeight: 1.7,
+            margin: 0,
+          }}
+        >
           Sign in to save your stats and compete on the leaderboard, or jump
           straight in as a guest.
         </p>
@@ -479,6 +532,43 @@ function SignedOutView({ onContinueAsGuest }: { onContinueAsGuest: () => void })
         SIGN IN WITH GOOGLE
       </button>
 
+      {emailSent ? (
+        <p
+          style={{
+            fontSize: 13,
+            color: "var(--gold)",
+            textAlign: "center",
+            margin: 0,
+          }}
+        >
+          Check your inbox — magic link sent to {email}
+        </p>
+      ) : (
+        <form
+          onSubmit={handleMagicLink}
+          style={{ display: "flex", flexDirection: "column", gap: 10 }}
+        >
+          <input
+            type="email"
+            placeholder="your@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            style={inputStyle}
+          />
+          <button
+            type="submit"
+            disabled={emailLoading || !email.trim()}
+            style={{
+              ...btnSecondary,
+              opacity: emailLoading || !email.trim() ? 0.5 : 1,
+            }}
+          >
+            {emailLoading ? "SENDING…" : "SEND MAGIC LINK"}
+          </button>
+        </form>
+      )}
+
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
         <span style={{ fontSize: 12, color: "var(--muted)" }}>or</span>
@@ -489,10 +579,67 @@ function SignedOutView({ onContinueAsGuest }: { onContinueAsGuest: () => void })
         CONTINUE AS GUEST
       </button>
 
-      <p style={{ fontSize: 11, color: "var(--muted)", textAlign: "center", margin: 0 }}>
+      <p
+        style={{
+          fontSize: 11,
+          color: "var(--muted)",
+          textAlign: "center",
+          margin: 0,
+        }}
+      >
         Guest progress is saved locally and not tied to an account.
       </p>
     </div>
+  );
+}
+
+// ─── Name setup view ──────────────────────────────────────────────────────────
+
+function NameSetupView({
+  onNameChange,
+  onNameBlur,
+}: {
+  onNameChange: (v: string) => void;
+  onNameBlur: () => void;
+}) {
+  const [value, setValue] = useState("");
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!value.trim()) return;
+    onNameChange(value.trim());
+    onNameBlur();
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ textAlign: "center" }}>
+        <p style={{ fontFamily: "Rajdhani, sans-serif", fontWeight: 700, fontSize: 22, color: "var(--text)", letterSpacing: 1, margin: "0 0 6px" }}>
+          WHAT SHOULD WE CALL YOU?
+        </p>
+        <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+          This name shows up in the auction room.
+        </p>
+      </div>
+
+      <input
+        type="text"
+        placeholder="Display name"
+        value={value}
+        onChange={(e) => setValue(e.target.value.slice(0, 24))}
+        maxLength={24}
+        autoFocus
+        style={inputStyle}
+      />
+
+      <button
+        type="submit"
+        disabled={!value.trim()}
+        style={{ ...btnPrimary, opacity: !value.trim() ? 0.45 : 1 }}
+      >
+        LET'S GO
+      </button>
+    </form>
   );
 }
 
@@ -506,7 +653,6 @@ const STATUS_LABEL: Record<string, string> = {
 
 function DefaultView({
   name,
-  nameLoaded,
   onNameChange,
   onNameBlur,
   error,
@@ -517,9 +663,9 @@ function DefaultView({
   onCreate,
   onJoin,
   onQuickPlay,
+  isSignedIn,
 }: {
   name: string;
-  nameLoaded: boolean;
   onNameChange: (v: string) => void;
   onNameBlur: () => void;
   error: string | null;
@@ -530,9 +676,12 @@ function DefaultView({
   onCreate: () => void;
   onJoin: () => void;
   onQuickPlay: () => void;
+  isSignedIn: boolean;
 }) {
+  const [isEditingName, setIsEditingName] = useState(false);
   if (activeSession) {
-    const statusLabel = STATUS_LABEL[activeSession.status] ?? activeSession.status;
+    const statusLabel =
+      STATUS_LABEL[activeSession.status] ?? activeSession.status;
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {/* Active game banner */}
@@ -647,19 +796,50 @@ function DefaultView({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* Name input */}
-      <div>
-        <label style={labelStyle}>YOUR NAME</label>
-        <input
-          type="text"
-          placeholder={nameLoaded ? "Display name" : "Loading…"}
-          value={name}
-          onChange={(e) => onNameChange(e.target.value)}
-          onBlur={onNameBlur}
-          maxLength={24}
-          disabled={!nameLoaded}
-          style={{ ...inputStyle, opacity: nameLoaded ? 1 : 0.5 }}
-        />
+      {/* Name display / edit */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        {isEditingName ? (
+          <>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => onNameChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { onNameBlur(); setIsEditingName(false); }
+                if (e.key === "Escape") setIsEditingName(false);
+              }}
+              maxLength={24}
+              autoFocus
+              style={{ ...inputStyle, flex: 1, marginRight: 10 }}
+            />
+            <button
+              onClick={() => { onNameBlur(); setIsEditingName(false); }}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--gold)", padding: 4, flexShrink: 0 }}
+              title="Save"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </button>
+          </>
+        ) : (
+          <>
+            <div>
+              <p style={{ fontSize: 11, color: "var(--muted)", letterSpacing: 1, margin: "0 0 2px", fontWeight: 600 }}>YOUR NAME</p>
+              <p style={{ fontSize: 18, fontFamily: "Rajdhani, sans-serif", fontWeight: 700, color: "var(--text)", margin: 0, letterSpacing: 0.5 }}>{name}</p>
+            </div>
+            <button
+              onClick={() => setIsEditingName(true)}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: 4, flexShrink: 0 }}
+              title="Edit name"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+            </button>
+          </>
+        )}
       </div>
 
       {error && (
@@ -705,6 +885,24 @@ function DefaultView({
       >
         Quick Play (vs bots only)
       </button>
+
+      {isSignedIn && (
+        <button
+          onClick={() => signOut({ callbackUrl: "/" })}
+          style={{
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            fontSize: 12,
+            color: "var(--muted)",
+            textAlign: "center",
+            padding: "2px 0",
+            textDecoration: "underline",
+          }}
+        >
+          Sign out
+        </button>
+      )}
     </div>
   );
 }
@@ -899,15 +1097,6 @@ function JoinView({
 }
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: 11,
-  color: "var(--muted)",
-  letterSpacing: 0.5,
-  marginBottom: 6,
-  fontWeight: 500,
-};
 
 const inputStyle: React.CSSProperties = {
   width: "100%",

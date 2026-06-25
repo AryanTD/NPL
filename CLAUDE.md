@@ -16,7 +16,7 @@ This is a real product targeting real users — Nepali cricket fans.
 - **Frontend**: Next.js 14 (App Router) + TypeScript + Tailwind CSS — in `apps/web/`
 - **Backend**: Node.js + Express + Socket.io — in `apps/server/`
 - **Database**: PostgreSQL + Prisma ORM (in `apps/server/prisma/`)
-- **Auth**: Auth.js v5 (next-auth@5.0.0-beta.31) — Google OAuth, JWT sessions
+- **Auth**: Auth.js v5 (next-auth@5.0.0-beta.31) — Google OAuth, Email Magic Link (Resend), JWT sessions
 - **AI Bots**: Anthropic Claude API (claude-sonnet-4-6)
 - **Hosting**: Vercel (web) + Railway (server) + Neon (PostgreSQL, free tier)
 - **Monorepo**: npm workspaces, shared types in `packages/types/`
@@ -43,13 +43,13 @@ This is a real product targeting real users — Nepali cricket fans.
 - `src/socket/auctionEngine.ts` — full auction engine (state machine, timer, bid validation, lucky draw, bots, phase transitions) + all Task 5b optimizations applied
 - `packages/types/index.ts` — `lobby:join` + `lobby:start` added to `ClientToServerEvents`
 - `apps/web/` — Next.js 14 scaffold (Tailwind, App Router, Auth.js v5, socket.io-client, framer-motion)
-- `apps/web/auth.ts` — Auth.js v5 config (Google provider, JWT strategy, custom session fields: `id`, `username`, `hasSeenLobbyTour`, `hasSeenAuctionTour`)
+- `apps/web/auth.ts` — Auth.js v5 config (Google + Resend providers, JWT strategy, custom session fields: `id`, `username`, `hasSeenLobbyTour`, `hasSeenAuctionTour`)
 - `apps/web/lib/prisma.ts` — singleton Prisma client for web (shares the server-generated `@prisma/client`)
 - `apps/web/app/providers.tsx` — `<SessionProvider>` client wrapper used in layout
 - `apps/web/app/globals.css` — design tokens (13 CSS vars), Google Fonts, keyframes + animation classes (incl. ticker scroll)
 - `apps/web/app/layout.tsx` — `<Providers>` root layout + Google Fonts `<link>` tags
 - `apps/web/lib/socket.ts` — singleton typed `socket.io-client` export
-- `apps/web/app/page.tsx` — landing page: Google sign-in + guest mode, games-played ticker, persistent username, 3-state card (default/create/join)
+- `apps/web/app/page.tsx` — landing page: Google/magic-link sign-in + guest mode, sign-out button (signed-in only), games-played ticker, persistent username, 3-state card (default/create/join); first-login name setup screen (NameSetupView); pencil/check inline name editing in DefaultView
 - `apps/web/app/api/auth/[...nextauth]/route.ts` — Auth.js route handler
 - `apps/web/app/api/user/tour/route.ts` — `PATCH` to mark lobby/auction tour as seen in DB
 - `apps/web/app/api/user/username/route.ts` — `PATCH` to persist display name to `User.username`
@@ -95,7 +95,7 @@ NPL/
     │       ├── schema.prisma
     │       └── seed.ts
     └── web/                  ← Next.js 14 (App Router, Tailwind, Auth.js v5, socket.io-client)
-        ├── auth.ts           ← Auth.js v5 config (Google OAuth, JWT, custom session fields)
+        ├── auth.ts           ← Auth.js v5 config (Google + Resend, JWT, custom session fields)
         ├── app/
         │   ├── globals.css   ← design tokens, fonts, keyframes (incl. ticker animation)
         │   ├── layout.tsx    ← Providers (SessionProvider) root layout + Google Fonts
@@ -214,7 +214,7 @@ Bots run entirely server-side — the client never sees bot logic or Claude API 
 | `User` | id (cuid), name, email, image, username?, hasSeenLobbyTour, hasSeenAuctionTour — Auth.js |
 | `Account` | userId, provider, providerAccountId — OAuth token storage (Auth.js) |
 | `Session` | sessionToken, userId, expires — unused in JWT mode but required by adapter |
-| `VerificationToken` | identifier, token, expires — unused with Google OAuth only |
+| `VerificationToken` | identifier, token, expires — used by Email Magic Link (Resend) provider |
 
 ---
 
@@ -264,8 +264,21 @@ cd apps/server
 npx prisma migrate dev   # create/run migrations
 npx prisma db seed       # seed franchises + players
 npx prisma studio        # visual DB browser
-npx prisma generate      # regenerate client after schema change
+npx prisma generate      # regenerate client after schema change (always run from apps/server, never apps/web)
 ```
+
+### Resetting tutorials (for testing)
+
+Tours are stored in two places — clear both to force the overlay to reappear:
+
+1. **Browser (all users)** — run in DevTools console:
+   ```javascript
+   localStorage.removeItem("hasSeenLobbyTour")
+   localStorage.removeItem("hasSeenAuctionTour")
+   ```
+   Then refresh. This works for both guests and signed-in users (localStorage is checked first).
+
+2. **Database (signed-in users only)** — open Prisma Studio (`npx prisma studio` from `apps/server`), find the User row, and set `hasSeenLobbyTour` and `hasSeenAuctionTour` back to `false`. Without this step, the DB flag will re-seed localStorage on the next sign-in.
 
 ---
 
@@ -288,6 +301,7 @@ NEXT_PUBLIC_SERVER_URL=http://localhost:3001
 AUTH_SECRET=<random string — generate with: npx auth secret>
 AUTH_GOOGLE_ID=<Google OAuth client ID>
 AUTH_GOOGLE_SECRET=<Google OAuth client secret>
+AUTH_RESEND_KEY=re_...   # from resend.com — free tier: 100 emails/day
 DATABASE_URL=postgresql://...@...neon.tech/neondb?sslmode=require   # same pooled URL as server
 DIRECT_URL=postgresql://...@...neon.tech/neondb?sslmode=require      # same direct URL as server
 ```
@@ -307,7 +321,7 @@ DIRECT_URL=postgresql://...@...neon.tech/neondb?sslmode=require      # same dire
 - **start script is `dist/src/index.js`** — not `dist/index.js`, because rootDir is `.`
 - **Neon DB requires `directUrl`** — `schema.prisma` uses `DATABASE_URL` (pooled) for queries and `DIRECT_URL` (unpooled) for migrations; both must be set in `.env`
 - **Server must be started manually** — `npx ts-node --project tsconfig.json src/index.ts` from `apps/server/`; nodemon orphan issue not yet fixed
-- **Auth: Auth.js v5, JWT sessions, Google OAuth only** — no Clerk. `userId` on `LobbySeat`/`Lobby` is either an Auth.js cuid (signed-in) or `guest_${UUID}` (guest); server treats it as an opaque string
+- **Auth: Auth.js v5, JWT sessions, Google + Resend (magic link)** — no Clerk. `userId` on `LobbySeat`/`Lobby` is either an Auth.js cuid (signed-in) or `guest_${UUID}` (guest); server treats it as an opaque string. Resend requires `AUTH_RESEND_KEY` and uses the `VerificationToken` model for one-time tokens
 - **Guest identity** — `guest_${crypto.randomUUID()}` stored in `localStorage.npl_guest_id`; guest display name in `localStorage.npl_guest_name`; no DB record for guests
 - **One Prisma schema** — Auth.js models live in `apps/server/prisma/schema.prisma` alongside game models; both server and web import from the same `@prisma/client`; always run `prisma generate` / `prisma migrate` from `apps/server/`
 - **Auth.js type augmentation** — must augment `@auth/core/types` (not `next-auth`) because `useSession()` from `next-auth/react` imports `Session` from `@auth/core/types` directly; augmentation lives in `apps/web/auth.ts`
