@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useSession } from "next-auth/react";
 import type { Lobby, LobbySeat } from "@npl-auction/types";
 import socket from "../../lib/socket";
 import TutorialOverlay, { type TourStep } from "../auction/[lobbyId]/TutorialOverlay";
@@ -140,7 +140,12 @@ function LoadingScreen() {
 function LobbyPage() {
   const router = useRouter();
   const params = useSearchParams();
-  const { user } = useUser();
+  const { data: session } = useSession();
+  const userId =
+    session?.user?.id ??
+    (typeof window !== "undefined"
+      ? (localStorage.getItem("npl_guest_id") ?? "")
+      : "");
 
   const lobbyId = params.get("lobbyId") ?? "";
   const seatId = params.get("seatId") ?? "";
@@ -164,12 +169,12 @@ function LobbyPage() {
   // ── Socket lifecycle ───────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!lobbyId || !seatId || !user?.id) return;
+    if (!lobbyId || !seatId || !userId) return;
 
     socket.connect();
 
     socket.on("connect", () => {
-      socket.emit("lobby:join", { lobbyId, userId: user.id, seatId });
+      socket.emit("lobby:join", { lobbyId, userId, seatId });
     });
 
     socket.on("lobby:state", (data) => {
@@ -195,7 +200,7 @@ function LobbyPage() {
       socket.off("lobby:marquee_assigned");
       socket.disconnect();
     };
-  }, [lobbyId, seatId, user?.id, router]);
+  }, [lobbyId, seatId, userId, router]);
 
   // ── Start auction ──────────────────────────────────────────────────────────
 
@@ -228,14 +233,15 @@ function LobbyPage() {
 
   // ── Tour auto-trigger ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (!user) return;
-    const hasSeen = user.unsafeMetadata?.hasSeenLobbyTour === true;
+    if (!userId) return;
+    const hasSeenLocal = localStorage.getItem("hasSeenLobbyTour") === "true";
+    const hasSeen = hasSeenLocal || session?.user?.hasSeenLobbyTour === true;
     if (hasSeen) { setTourDismissed(true); return; }
     if (!tourDismissed) {
       const t = setTimeout(() => setShowTour(true), 600);
       return () => clearTimeout(t);
     }
-  }, [user]); // intentionally excludes tourDismissed to avoid loop
+  }, [userId]); // intentionally excludes tourDismissed to avoid loop
 
   // ── Marquee draw screen ────────────────────────────────────────────────────
 
@@ -409,7 +415,7 @@ function LobbyPage() {
           starting={starting}
           countdown={countdown}
           onStart={handleStart}
-          isHost={!lobby?.hostUserId || lobby.hostUserId === user?.id}
+          isHost={!lobby?.hostUserId || lobby.hostUserId === userId}
           testMode={testMode}
           onToggleTestMode={() => setTestMode((v) => !v)}
           showTourButton={tourDismissed && !showTour}

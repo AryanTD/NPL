@@ -284,6 +284,19 @@ router.post('/leave', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// ─── GET /lobby/stats ─────────────────────────────────────────────────────────
+
+router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const totalGamesPlayed = await prisma.lobby.count({
+      where: { status: 'COMPLETE' },
+    });
+    res.json({ totalGamesPlayed });
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
 // ─── GET /lobby/:id ───────────────────────────────────────────────────────────
 
 router.get('/:id', async (req: Request, res: Response): Promise<void> => {

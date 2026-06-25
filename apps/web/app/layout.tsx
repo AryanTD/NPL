@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ClerkProvider } from '@clerk/nextjs';
+import { Providers } from './providers';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <Providers>
       <html lang="en">
         <head>
           <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -25,6 +25,6 @@ export default function RootLayout({
         </head>
         <body className="antialiased">{children}</body>
       </html>
-    </ClerkProvider>
+    </Providers>
   );
 }
