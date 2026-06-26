@@ -96,6 +96,21 @@ function fisherYates<T>(arr: T[]): T[] {
   return a;
 }
 
+function computeQueueSummary(queue: QueueEntry[]): import("../bots/botDecision").QueueSummary {
+  const summary: import("../bots/botDecision").QueueSummary = { remainingByRole: {} }
+  for (const entry of queue) {
+    const role = entry.playerInfo.role
+    const existing = summary.remainingByRole[role]
+    if (!existing) {
+      summary.remainingByRole[role] = { count: 1, bestQuality: entry.playerInfo.quality }
+    } else {
+      existing.count++
+      existing.bestQuality = Math.max(existing.bestQuality, entry.playerInfo.quality)
+    }
+  }
+  return summary
+}
+
 function parsePayload<T>(data: T | string): T {
   return typeof data === "string" ? JSON.parse(data) : data;
 }
@@ -580,6 +595,8 @@ async function startAuction(
       cCount: 0,
       categoryOverspend: {},
       abortController: null,
+      mood: { state: 'NEUTRAL', playersLeft: 2 + Math.floor(Math.random() * 3) },
+      bidAttemptedThisRound: false,
     });
   }
 
@@ -718,11 +735,13 @@ async function revealNextPlayer(io: IoServer, lobbyId: string): Promise<void> {
   io.to(lobbyId).emit("lobby:queue_update", { upcoming });
 
   const isUnsoldRound = state.phase === "UNSOLD_ROUND";
+  const categoryPlayersRemaining = state.phaseQueueCache.length;
+  const queueSummary = computeQueueSummary(state.phaseQueueCache);
   const onBotBid = (bidSeatId: string, amount: number) => {
     const fakeBidSocket = { emit: () => {} } as unknown as IoSocket;
     handleBid(io, fakeBidSocket, lobbyId, bidSeatId, amount);
   };
-  revealPlayerToBots(io, lobbyId, entry.playerInfo, state.humanSeatIds, state.botSessions, isUnsoldRound, state.quota, onBotBid);
+  revealPlayerToBots(io, lobbyId, entry.playerInfo, state.humanSeatIds, state.botSessions, isUnsoldRound, state.quota, categoryPlayersRemaining, queueSummary, onBotBid);
 }
 
 // ─── startPlayerTimer ─────────────────────────────────────────────────────────
@@ -832,6 +851,9 @@ function handleResume(io: IoServer, socket: IoSocket, lobbyId: string): void {
     handleBid(io, fakeBidSocket, lobbyId, bidSeatId, amount);
   };
 
+  const resumeQueueRemaining = state.phaseQueueCache?.length ?? 0
+  const resumeQueueSummary = computeQueueSummary(state.phaseQueueCache ?? [])
+
   if (state.currentBid) {
     onBidPlaced(
       io, lobbyId,
@@ -840,6 +862,7 @@ function handleResume(io: IoServer, socket: IoSocket, lobbyId: string): void {
       state.currentBid.seatId,
       state.humanSeatIds, state.botSessions,
       isUnsoldRound, state.quota,
+      resumeQueueRemaining, resumeQueueSummary,
       onBotBid,
     );
   } else {
@@ -848,6 +871,7 @@ function handleResume(io: IoServer, socket: IoSocket, lobbyId: string): void {
       state.currentPlayerDb,
       state.humanSeatIds, state.botSessions,
       isUnsoldRound, state.quota,
+      resumeQueueRemaining, resumeQueueSummary,
       onBotBid,
     );
   }
@@ -979,6 +1003,8 @@ function handleBid(
       state.botSessions,
       isUnsoldRound,
       state.quota,
+      state.phaseQueueCache?.length ?? 0,
+      computeQueueSummary(state.phaseQueueCache ?? []),
       onBotBid,
     );
   }
@@ -1126,7 +1152,7 @@ async function sellPlayer(
     category: player.category as import("@prisma/client").PlayerCategory,
     role: player.role as PlayerRole,
     finalPrice,
-  }, state.quota);
+  }, state.quota, state.phaseQueueCache?.length ?? 0, state.phase === "UNSOLD_ROUND");
   state.currentPlayerDb = null;
 
   state.currentPlayer = null;

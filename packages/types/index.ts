@@ -9,7 +9,8 @@ export type BotPersonality =
   | 'CONSERVATIVE'
   | 'ROLE_HUNTER'
   | 'BUDGET_SNIPER'
-  | 'BALANCED';
+  | 'BALANCED'
+  | 'STAR_CHASER';
 
 export type LobbyStatus = 'WAITING' | 'MARQUEE_DRAW' | 'AUCTION' | 'COMPLETE';
 

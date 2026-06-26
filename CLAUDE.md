@@ -18,7 +18,7 @@ This is a real product targeting real users — Nepali cricket fans.
 - **Database**: PostgreSQL + Prisma ORM (in `apps/server/prisma/`)
 - **Auth**: Auth.js v5 (next-auth@5.0.0-beta.31) — Google OAuth, Email Magic Link (Resend), JWT sessions
 - **AI Bots**: Anthropic Claude API (claude-sonnet-4-6)
-- **Hosting**: Vercel (web) + Railway (server) + Neon (PostgreSQL, free tier)
+- **Hosting**: Vercel (web) + Render (server) + Neon (PostgreSQL, free tier)
 - **Monorepo**: npm workspaces, shared types in `packages/types/`
 
 ---

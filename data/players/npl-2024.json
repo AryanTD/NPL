@@ -221,9 +221,9 @@
     {
       "id": "npl-bp-sharma",
       "name": "Bipin Prasad Sharma",
-      "category": "A",
+      "category": "B",
       "role": "BOWL",
-      "base_price": 1000000,
+      "base_price": 500000,
       "is_marquee": false,
       "stats": {
         "runs": 0,
@@ -278,9 +278,9 @@
     {
       "id": "npl-bipin-khatri",
       "name": "Bipin Khatri",
-      "category": "A",
+      "category": "B",
       "role": "BOWL",
-      "base_price": 1000000,
+      "base_price": 500000,
       "is_marquee": false,
       "stats": {
         "runs": 7,
@@ -297,9 +297,9 @@
     {
       "id": "npl-d-kandel",
       "name": "Dipesh Kandel",
-      "category": "A",
+      "category": "B",
       "role": "BOWL",
-      "base_price": 1000000,
+      "base_price": 500000,
       "is_marquee": false,
       "stats": {
         "runs": 18,
@@ -354,9 +354,9 @@
     {
       "id": "npl-n-saud",
       "name": "Naren Saud",
-      "category": "A",
+      "category": "B",
       "role": "BOWL",
-      "base_price": 1000000,
+      "base_price": 500000,
       "is_marquee": false,
       "stats": {
         "runs": 24,
@@ -411,9 +411,9 @@
     {
       "id": "npl-as-routela",
       "name": "Amar Singh Routela",
-      "category": "A",
+      "category": "B",
       "role": "AR",
-      "base_price": 1000000,
+      "base_price": 500000,
       "is_marquee": false,
       "stats": {
         "runs": 98,
@@ -506,9 +506,9 @@
     {
       "id": "npl-lokesh-bam",
       "name": "Lokesh Bam",
-      "category": "B",
-      "role": "BAT",
-      "base_price": 500000,
+      "category": "A",
+      "role": "WK",
+      "base_price": 1000000,
       "is_marquee": false,
       "stats": {
         "runs": 301,
@@ -544,9 +544,9 @@
     {
       "id": "npl-s-jora",
       "name": "Sundeep Jora",
-      "category": "B",
+      "category": "A",
       "role": "BAT",
-      "base_price": 500000,
+      "base_price": 1000000,
       "is_marquee": false,
       "stats": {
         "runs": 235,
@@ -563,9 +563,9 @@
     {
       "id": "npl-gulsan-jha",
       "name": "Gulsan Jha",
-      "category": "B",
-      "role": "BAT",
-      "base_price": 500000,
+      "category": "A",
+      "role": "AR",
+      "base_price": 1000000,
       "is_marquee": false,
       "stats": {
         "runs": 242,
@@ -640,7 +640,7 @@
       "id": "npl-surya-tamang",
       "name": "Surya Tamang",
       "category": "B",
-      "role": "BAT",
+      "role": "AR",
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
@@ -659,7 +659,7 @@
       "id": "npl-ubs-thakuri",
       "name": "Unish Bikram Singh Thakuri",
       "category": "B",
-      "role": "BAT",
+      "role": "AR",
       "base_price": 500000,
       "is_marquee": false,
       "stats": {
@@ -677,9 +677,9 @@
     {
       "id": "npl-ak-sah",
       "name": "Anil Kumar Sah",
-      "category": "B",
-      "role": "BAT",
-      "base_price": 500000,
+      "category": "A",
+      "role": "AR",
+      "base_price": 1000000,
       "is_marquee": false,
       "stats": {
         "runs": 205,
@@ -924,9 +924,9 @@
     {
       "id": "npl-d-khanal",
       "name": "Dev Khanal",
-      "category": "C",
+      "category": "B",
       "role": "BAT",
-      "base_price": 200000,
+      "base_price": 500000,
       "is_marquee": false,
       "stats": {
         "runs": 243,
@@ -1210,7 +1210,7 @@
       "id": "npl-jk-mukhiya",
       "name": "Jitendra Kumar Mukhiya",
       "category": "C",
-      "role": "BAT",
+      "role": "BOWL",
       "base_price": 200000,
       "is_marquee": false,
       "stats": {
@@ -1228,9 +1228,9 @@
     {
       "id": "npl-aakash-chand",
       "name": "Aakash Chand",
-      "category": "C",
-      "role": "BAT",
-      "base_price": 200000,
+      "category": "B",
+      "role": "BOWL",
+      "base_price": 500000,
       "is_marquee": false,
       "stats": {
         "runs": 6,
@@ -1381,7 +1381,7 @@
       "id": "npl-aarif-sheikh",
       "name": "Aarif Sheikh",
       "category": "A",
-      "role": "WK",
+      "role": "BAT",
       "base_price": 1000000,
       "is_marquee": false,
       "stats": {
