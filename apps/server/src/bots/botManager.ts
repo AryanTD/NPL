@@ -25,6 +25,7 @@ export interface BotSession {
   abortController: AbortController | null
   mood: { state: BotMoodState; playersLeft: number }
   bidAttemptedThisRound: boolean
+  isBluffingThisPlayer: boolean
 }
 
 export interface PlayerInfo {
@@ -36,6 +37,7 @@ export interface PlayerInfo {
 }
 
 const TOTAL_PURSE = 9_000_000
+const SPENDING_FLOOR = 6_500_000
 
 function rollMood(): BotMoodState {
   const r = Math.random()
@@ -65,6 +67,8 @@ function scheduleBot(
   quota: { A: number; B: number; C: number },
   categoryPlayersRemaining: number,
   queueSummary: QueueSummary,
+  starTargetIds: Set<string>,
+  eliteTargetIds: Set<string>,
   onBid: (seatId: string, amount: number) => void,
 ): void {
   session.abortController?.abort()
@@ -85,6 +89,10 @@ function scheduleBot(
     categoryPlayersRemaining,
     mood: session.mood.state,
     queueSummary,
+    starTargetIds,
+    eliteTargetIds,
+    spendingFloor: SPENDING_FLOOR,
+    isConservativeBluff: session.isBluffingThisPlayer,
   })
 
   if (decision.action !== 'BID' || decision.amount == null) {
@@ -134,12 +142,20 @@ export function revealPlayerToBots(
   isUnsoldRound: boolean,
   quota: { A: number; B: number; C: number },
   categoryPlayersRemaining: number,
+  categoryPlayersShown: number,
   queueSummary: QueueSummary,
+  starTargetIds: Set<string>,
+  eliteTargetIds: Set<string>,
   onBid: (seatId: string, amount: number) => void,
 ): void {
   for (const session of sessions.values()) {
     session.bidAttemptedThisRound = false
-    scheduleBot(io, lobbyId, session, player, 0, null, false, isUnsoldRound, quota, categoryPlayersRemaining, queueSummary, onBid)
+    session.isBluffingThisPlayer =
+      session.personality.type === 'CONSERVATIVE' &&
+      !isUnsoldRound &&
+      categoryPlayersShown < 10 &&
+      Math.random() < 0.30
+    scheduleBot(io, lobbyId, session, player, 0, null, false, isUnsoldRound, quota, categoryPlayersRemaining, queueSummary, starTargetIds, eliteTargetIds, onBid)
   }
 }
 
@@ -155,12 +171,14 @@ export function onBidPlaced(
   quota: { A: number; B: number; C: number },
   categoryPlayersRemaining: number,
   queueSummary: QueueSummary,
+  starTargetIds: Set<string>,
+  eliteTargetIds: Set<string>,
   onBid: (seatId: string, amount: number) => void,
 ): void {
   const isHumanWinner = humanSeatIds.has(currentWinnerId)
   for (const session of sessions.values()) {
     if (session.seatId === currentWinnerId) continue
-    scheduleBot(io, lobbyId, session, player, currentBid, currentWinnerId, isHumanWinner, isUnsoldRound, quota, categoryPlayersRemaining, queueSummary, onBid)
+    scheduleBot(io, lobbyId, session, player, currentBid, currentWinnerId, isHumanWinner, isUnsoldRound, quota, categoryPlayersRemaining, queueSummary, starTargetIds, eliteTargetIds, onBid)
   }
 }
 

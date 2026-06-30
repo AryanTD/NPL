@@ -50,6 +50,7 @@ const UNSOLD_TIMER_SECONDS = 5;
 const UNSOLD_CAP_PER_CAT = 2;
 const LUCKY_DRAW_MS = 3_000;
 const MARQUEE_GAP_MS = 500;
+const SPENDING_FLOOR = 6_500_000; // 6.5M NPR minimum each team must spend
 
 const PHASE_ORDER: AuctionState["phase"][] = [
   "MARQUEE_DRAW",
@@ -74,9 +75,11 @@ interface LiveAuctionState extends AuctionState {
   phaseQueueCache: QueueEntry[] | null;
   seatsMap: Map<string, LobbySeat>;
   humanSeatIds: Set<string>;
+  eliteTargetIds: Set<string>;
   currentPlayerDb: PlayerInfo | null;
   quota: { A: number; B: number; C: number };
   isPaused: boolean;
+  phaseInitialLength: number | null;
 }
 
 const auctionStates = new Map<string, LiveAuctionState>();
@@ -94,6 +97,32 @@ function fisherYates<T>(arr: T[]): T[] {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+// Returns the IDs of the top-N players in the same category as currentPlayer
+// from the remaining queue + the current player itself. Used by STAR_CHASER.
+function computeStarTargets(currentPlayer: PlayerInfo, queue: QueueEntry[], n = 5): Set<string> {
+  const candidates = [
+    currentPlayer,
+    ...queue.filter(e => e.playerInfo.category === currentPlayer.category).map(e => e.playerInfo),
+  ]
+  candidates.sort((a, b) => b.quality - a.quality)
+  return new Set(candidates.slice(0, n).map(p => p.id))
+}
+
+// Returns IDs of the top-pct players per category from the full auction pool.
+// Computed once at auction start; used to give elite players a ceiling uplift.
+function computeEliteTargets(
+  byCategory: Record<'A' | 'B' | 'C', { id: string; quality: number }[]>,
+  pct = 0.2,
+): Set<string> {
+  const ids = new Set<string>()
+  for (const players of Object.values(byCategory)) {
+    const sorted = [...players].sort((a, b) => b.quality - a.quality)
+    const n = Math.max(1, Math.ceil(sorted.length * pct))
+    sorted.slice(0, n).forEach(p => ids.add(p.id))
+  }
+  return ids
 }
 
 function computeQueueSummary(queue: QueueEntry[]): import("../bots/botDecision").QueueSummary {
@@ -544,6 +573,7 @@ async function startAuction(
   const humanSeatIds = new Set(liveSeats.filter((s) => s.seatType === "HUMAN").map((s) => s.seatId));
 
   const quota = testMode ? { A: 1, B: 1, C: 1 } : { A: 3, B: 4, C: 3 };
+  const eliteTargetIds = computeEliteTargets(byCategory);
 
   const state: LiveAuctionState = {
     lobbyId,
@@ -561,9 +591,11 @@ async function startAuction(
     phaseQueueCache: null,
     seatsMap,
     humanSeatIds,
+    eliteTargetIds,
     currentPlayerDb: null,
     quota,
     isPaused: false,
+    phaseInitialLength: null,
   };
   auctionStates.set(lobbyId, state);
 
@@ -597,6 +629,7 @@ async function startAuction(
       abortController: null,
       mood: { state: 'NEUTRAL', playersLeft: 2 + Math.floor(Math.random() * 3) },
       bidAttemptedThisRound: false,
+      isBluffingThisPlayer: false,
     });
   }
 
@@ -703,6 +736,7 @@ async function revealNextPlayer(io: IoServer, lobbyId: string): Promise<void> {
       player: dbPlayerToPlayer(row.player),
       playerInfo: dbPlayerToPlayerInfo(row.player),
     }));
+    state.phaseInitialLength = state.phaseQueueCache.length;
   }
 
   // Shift next player from the in-memory queue
@@ -736,12 +770,14 @@ async function revealNextPlayer(io: IoServer, lobbyId: string): Promise<void> {
 
   const isUnsoldRound = state.phase === "UNSOLD_ROUND";
   const categoryPlayersRemaining = state.phaseQueueCache.length;
+  const categoryPlayersShown = (state.phaseInitialLength ?? 0) - categoryPlayersRemaining;
   const queueSummary = computeQueueSummary(state.phaseQueueCache);
   const onBotBid = (bidSeatId: string, amount: number) => {
     const fakeBidSocket = { emit: () => {} } as unknown as IoSocket;
     handleBid(io, fakeBidSocket, lobbyId, bidSeatId, amount);
   };
-  revealPlayerToBots(io, lobbyId, entry.playerInfo, state.humanSeatIds, state.botSessions, isUnsoldRound, state.quota, categoryPlayersRemaining, queueSummary, onBotBid);
+  const starTargets = computeStarTargets(entry.playerInfo, state.phaseQueueCache);
+  revealPlayerToBots(io, lobbyId, entry.playerInfo, state.humanSeatIds, state.botSessions, isUnsoldRound, state.quota, categoryPlayersRemaining, categoryPlayersShown, queueSummary, starTargets, state.eliteTargetIds, onBotBid);
 }
 
 // ─── startPlayerTimer ─────────────────────────────────────────────────────────
@@ -852,8 +888,10 @@ function handleResume(io: IoServer, socket: IoSocket, lobbyId: string): void {
   };
 
   const resumeQueueRemaining = state.phaseQueueCache?.length ?? 0
+  const resumePlayersShown = (state.phaseInitialLength ?? 0) - resumeQueueRemaining;
   const resumeQueueSummary = computeQueueSummary(state.phaseQueueCache ?? [])
 
+  const resumeStarTargets = computeStarTargets(state.currentPlayerDb, state.phaseQueueCache ?? []);
   if (state.currentBid) {
     onBidPlaced(
       io, lobbyId,
@@ -863,6 +901,8 @@ function handleResume(io: IoServer, socket: IoSocket, lobbyId: string): void {
       state.humanSeatIds, state.botSessions,
       isUnsoldRound, state.quota,
       resumeQueueRemaining, resumeQueueSummary,
+      resumeStarTargets,
+      state.eliteTargetIds,
       onBotBid,
     );
   } else {
@@ -871,7 +911,9 @@ function handleResume(io: IoServer, socket: IoSocket, lobbyId: string): void {
       state.currentPlayerDb,
       state.humanSeatIds, state.botSessions,
       isUnsoldRound, state.quota,
-      resumeQueueRemaining, resumeQueueSummary,
+      resumeQueueRemaining, resumePlayersShown, resumeQueueSummary,
+      resumeStarTargets,
+      state.eliteTargetIds,
       onBotBid,
     );
   }
@@ -993,6 +1035,7 @@ function handleBid(
     const fakeBidSocket = { emit: () => {} } as unknown as IoSocket;
     const onBotBid = (bidSeatId: string, amount: number) =>
       handleBid(io, fakeBidSocket, lobbyId, bidSeatId, Math.min(amount, MAX_PRICE[category]));
+    const bidStarTargets = computeStarTargets(state.currentPlayerDb, state.phaseQueueCache ?? []);
     onBidPlaced(
       io,
       lobbyId,
@@ -1005,6 +1048,8 @@ function handleBid(
       state.quota,
       state.phaseQueueCache?.length ?? 0,
       computeQueueSummary(state.phaseQueueCache ?? []),
+      bidStarTargets,
+      state.eliteTargetIds,
       onBotBid,
     );
   }
@@ -1203,6 +1248,7 @@ async function advancePhase(io: IoServer, lobbyId: string): Promise<void> {
   );
   state.phase = nextPhase;
   state.phaseQueueCache = null;
+  state.phaseInitialLength = null;
 
   if (nextPhase === "UNSOLD_ROUND") {
     await setupUnsoldRound(io, lobbyId);
@@ -1300,7 +1346,12 @@ async function completeAuction(io: IoServer, lobbyId: string): Promise<void> {
     data: { status: "COMPLETE" },
   });
 
-  io.to(lobbyId).emit("lobby:auction_complete", { seats: state.seats });
+  const floorPerSeat: Record<string, boolean> = {};
+  for (const seat of state.seats) {
+    const spent = 9_000_000 - seat.purseRemaining;
+    floorPerSeat[seat.seatId] = spent >= SPENDING_FLOOR;
+  }
+  io.to(lobbyId).emit("lobby:auction_complete", { seats: state.seats, floorPerSeat });
 
   auctionStates.delete(lobbyId);
   console.log(`[auction] complete lobbyId=${lobbyId}`);

@@ -58,6 +58,7 @@ enum BotPersonality {
   ROLE_HUNTER
   BUDGET_SNIPER
   BALANCED
+  STAR_CHASER
 }
 
 // ─── Player ──────────────────────────────────────────────────────────────────

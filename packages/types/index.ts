@@ -1,3 +1,7 @@
+// ─── Shared constants ─────────────────────────────────────────────────────────
+
+export const SPENDING_FLOOR = 6_500_000; // 6.5M NPR minimum spend per team
+
 // ─── Enums / Literals ────────────────────────────────────────────────────────
 
 export type PlayerCategory = 'A' | 'B' | 'C';
@@ -178,7 +182,7 @@ export interface ServerToClientEvents {
   'lobby:bot_thinking': (data: { seatId: string; franchiseName: string }) => void;
 
   /** All auction slots filled — show final squads */
-  'lobby:auction_complete': (data: { seats: LobbySeat[] }) => void;
+  'lobby:auction_complete': (data: { seats: LobbySeat[]; floorPerSeat: Record<string, boolean> }) => void;
 
   /** Server-side error */
   'lobby:error': (data: { message: string; code?: string }) => void;
