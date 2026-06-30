@@ -618,7 +618,9 @@ function SeatCard({ seat, isUser }: { seat: LobbySeat; isUser: boolean }) {
               <div
                 style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}
               >
-                Manager
+                {seat.seatType === "BOT" && seat.botPersonality
+                  ? seat.botPersonality
+                  : "Manager"}
               </div>
             )}
           </div>

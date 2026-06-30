@@ -11,6 +11,7 @@ import type {
   PlayerCategory,
   PlayerRole,
 } from "@npl-auction/types";
+import { SPENDING_FLOOR } from "@npl-auction/types";
 import socket from "../../../lib/socket";
 import TutorialOverlay, { type TourStep } from "./TutorialOverlay";
 
@@ -399,6 +400,7 @@ function AuctionPage() {
   // Complete state
   const [auctionComplete, setAuctionComplete] = useState(false);
   const [finalSeats, setFinalSeats] = useState<LobbySeat[] | null>(null);
+  const [floorPerSeat, setFloorPerSeat] = useState<Record<string, boolean>>({});
 
   // Tour state
   const [showTour, setShowTour] = useState(false);
@@ -632,9 +634,10 @@ function AuctionPage() {
 
     socket.on(
       "lobby:auction_complete",
-      ({ seats: done }: { seats: LobbySeat[] }) => {
+      ({ seats: done, floorPerSeat: fpm }: { seats: LobbySeat[]; floorPerSeat: Record<string, boolean> }) => {
         setAuctionComplete(true);
         setFinalSeats(done);
+        setFloorPerSeat(fpm);
         setCurrentPlayer(null);
         setCurrentBid(null);
         localStorage.removeItem("npl_session");
@@ -788,14 +791,14 @@ function AuctionPage() {
     const buffered = pendingRevealRef.current;
     pendingRevealRef.current = null;
     if (buffered) {
-      setTimeout(() => applyPlayerRevealed(buffered), 1_500);
+      setTimeout(() => applyPlayerRevealed(buffered), 0);
     }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (auctionComplete && finalSeats) {
-    return <AuctionCompleteScreen seats={finalSeats} mySeatId={seatId} />;
+    return <AuctionCompleteScreen seats={finalSeats} mySeatId={seatId} floorPerSeat={floorPerSeat} />;
   }
 
   return (
@@ -1765,6 +1768,55 @@ function AuctionPage() {
                 }}
               />
             </div>
+
+            {/* Spending floor indicator */}
+            {(() => {
+              const spent = BUDGET - (mySeat?.purseRemaining ?? BUDGET);
+              const metFloor = spent >= SPENDING_FLOOR;
+              const floorPct = Math.min(100, (spent / SPENDING_FLOOR) * 100);
+              return (
+                <div style={{ marginTop: 8 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: 3,
+                    }}
+                  >
+                    <span style={{ fontSize: 9, color: "var(--muted)" }}>
+                      SPEND FLOOR
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 600,
+                        color: metFloor ? "var(--green)" : "#f59e0b",
+                      }}
+                    >
+                      {metFloor ? "✓ MET" : `${fmtL(SPENDING_FLOOR - spent)} to go`}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      height: 2,
+                      background: "var(--border)",
+                      borderRadius: 2,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${floorPct}%`,
+                        background: metFloor ? "var(--green)" : "#f59e0b",
+                        borderRadius: 2,
+                        transition: "width .5s",
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Quota slots */}
@@ -2016,6 +2068,11 @@ function AuctionPage() {
                     {fmtL(seat.purseRemaining)}
                   </span>
                   <span>{playerCnt}P</span>
+                  {seat.seatType === "BOT" && seat.botPersonality && (
+                    <span style={{ color: "var(--muted2)", opacity: 0.7 }}>
+                      {seat.botPersonality.slice(0, 4)}
+                    </span>
+                  )}
                 </div>
               </div>
               {isLeading && (
@@ -2201,7 +2258,7 @@ function LuckyDrawOverlay({
         setRevealed(true);
         setTimeout(() => {
           if (!stopped) onClose();
-        }, 2_800);
+        }, 1_500);
         return;
       }
 
@@ -2408,13 +2465,16 @@ function LuckyDrawOverlay({
 function AuctionCompleteScreen({
   seats,
   mySeatId,
+  floorPerSeat,
 }: {
   seats: LobbySeat[];
   mySeatId: string;
+  floorPerSeat: Record<string, boolean>;
 }) {
   const mySeat = seats.find((s) => s.seatId === mySeatId);
   const m = mySeat ? meta(mySeat.franchiseName) : null;
   const spent = BUDGET - (mySeat?.purseRemaining ?? BUDGET);
+  const myFloorMet = mySeat ? (floorPerSeat[mySeat.seatId] ?? false) : false;
 
   return (
     <div
@@ -2462,10 +2522,21 @@ function AuctionCompleteScreen({
         </div>
         {mySeat && m && (
           <div
-            style={{ marginLeft: "auto", fontSize: 13, color: "var(--muted)" }}
+            style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--muted)" }}
           >
-            {mySeat.franchiseName} · spent {fmtNPR(spent)} ·{" "}
-            {fmtL(mySeat.purseRemaining)} left
+            {mySeat.franchiseName} · spent {fmtNPR(spent)} · {fmtL(mySeat.purseRemaining)} left
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: myFloorMet ? "var(--green)" : "#f59e0b",
+                background: myFloorMet ? "rgba(52,211,153,0.12)" : "rgba(245,158,11,0.12)",
+                padding: "2px 7px",
+                borderRadius: 4,
+              }}
+            >
+              {myFloorMet ? "✓ FLOOR MET" : "✗ FLOOR MISSED"}
+            </span>
           </div>
         )}
       </div>
@@ -2486,6 +2557,7 @@ function AuctionCompleteScreen({
               key={seat.seatId}
               seat={seat}
               isMe={seat.seatId === mySeatId}
+              metFloor={floorPerSeat[seat.seatId] ?? false}
             />
           ))}
         </div>
@@ -2494,7 +2566,7 @@ function AuctionCompleteScreen({
   );
 }
 
-function SquadCard({ seat, isMe }: { seat: LobbySeat; isMe: boolean }) {
+function SquadCard({ seat, isMe, metFloor }: { seat: LobbySeat; isMe: boolean; metFloor: boolean }) {
   const m = meta(seat.franchiseName);
   const marquee = seat.squad.find((s) => s.slotType === "MARQUEE");
   const auction = seat.squad.filter((s) => s.slotType === "AUCTION");
@@ -2534,6 +2606,15 @@ function SquadCard({ seat, isMe }: { seat: LobbySeat; isMe: boolean }) {
             YOU
           </span>
         )}
+        <span
+          style={{
+            fontSize: 9,
+            fontWeight: 700,
+            color: metFloor ? "var(--green)" : "#f59e0b",
+          }}
+        >
+          {metFloor ? "✓" : "✗"}
+        </span>
       </div>
       {marquee && (
         <div
