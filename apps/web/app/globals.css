@@ -92,6 +92,22 @@ body {
   animation: marquee-reveal 0.5s ease both;
 }
 
+/* ─── Plane banner ───────────────────────────────────────────────────────────── */
+
+@keyframes fly-banner {
+  0%   { transform: translateX(0); }
+  10%  { transform: translateX(-12vw); }
+  20%  { transform: translateX(-22vw); }
+  30%  { transform: translateX(-30vw); }
+  40%  { transform: translateX(-36vw); }
+  50%  { transform: translateX(-41vw); }
+  60%  { transform: translateX(-46vw); }
+  70%  { transform: translateX(-52vw); }
+  80%  { transform: translateX(-60vw); }
+  90%  { transform: translateX(-70vw); }
+  100% { transform: translateX(calc(-100vw - 100%)); }
+}
+
 /* ─── Ticker ─────────────────────────────────────────────────────────────────── */
 
 @keyframes ticker-scroll {

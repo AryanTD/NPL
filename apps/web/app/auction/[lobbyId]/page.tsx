@@ -213,7 +213,7 @@ function statRows(player: Player): { label: string; value: string }[] {
   const s = player.stats;
   const dec = (v: number | null): string =>
     v === null || v === 0 ? "—" : v.toFixed(1);
-  const int = (v: number): string => v === 0 ? "—" : String(v);
+  const int = (v: number): string => (v === 0 ? "—" : String(v));
 
   switch (player.role) {
     case "BAT":
@@ -221,48 +221,51 @@ function statRows(player: Player): { label: string; value: string }[] {
       // top: MATCHES · AVG   hero: RUNS   bottom: SR · HS
       return [
         { label: "MATCHES", value: String(s.matches) },
-        { label: "AVG",     value: dec(s.batting_avg) },
-        { label: "RUNS",    value: String(s.runs) },
-        { label: "SR",      value: dec(s.strike_rate) },
-        { label: "HS",      value: s.hs ?? "—" },
+        { label: "AVG", value: dec(s.batting_avg) },
+        { label: "RUNS", value: String(s.runs) },
+        { label: "SR", value: dec(s.strike_rate) },
+        { label: "HS", value: s.hs ?? "—" },
       ];
     case "BOWL":
       // top: MATCHES · ECON   hero: WKTS   bottom: AVG · BBI
       return [
         { label: "MATCHES", value: String(s.matches) },
-        { label: "ECON",    value: dec(s.economy) },
-        { label: "WKTS",    value: int(s.wickets) },
-        { label: "AVG",     value: dec(s.bowling_avg) },
-        { label: "BBI",     value: s.bbi ?? "—" },
+        { label: "ECON", value: dec(s.economy) },
+        { label: "WKTS", value: int(s.wickets) },
+        { label: "AVG", value: dec(s.bowling_avg) },
+        { label: "BBI", value: s.bbi ?? "—" },
       ];
     case "AR": {
-      const sr        = s.strike_rate;
-      const econ      = s.economy;
-      const hsParsed  = parseHS(s.hs);
-      const bbiWkts   = parseBBIWickets(s.bbi);
+      const sr = s.strike_rate;
+      const econ = s.economy;
+      const hsParsed = parseHS(s.hs);
+      const bbiWkts = parseBBIWickets(s.bbi);
 
       // Both notable → top: MATCHES · WKTS   hero: RUNS   bottom: HS · BBI
       if (hsParsed >= 50 && bbiWkts >= 4) {
         return [
           { label: "MATCHES", value: String(s.matches) },
-          { label: "WKTS",    value: int(s.wickets) },
-          { label: "RUNS",    value: String(s.runs) },
-          { label: "HS",      value: s.hs ?? "—" },
-          { label: "BBI",     value: s.bbi ?? "—" },
+          { label: "WKTS", value: int(s.wickets) },
+          { label: "RUNS", value: String(s.runs) },
+          { label: "HS", value: s.hs ?? "—" },
+          { label: "BBI", value: s.bbi ?? "—" },
         ];
       }
 
       // flex4 (top-right): SR vs ECON
-      const srGood   = sr !== null && sr > 120;
+      const srGood = sr !== null && sr > 120;
       const econGood = econ !== null && econ < 7.5;
       let flex4Label: string;
       let flex4Value: string;
       if (sr !== null && sr > 140) {
-        flex4Label = "SR";   flex4Value = dec(sr);
+        flex4Label = "SR";
+        flex4Value = dec(sr);
       } else if (srGood && !econGood) {
-        flex4Label = "SR";   flex4Value = dec(sr);
+        flex4Label = "SR";
+        flex4Value = dec(sr);
       } else if (econGood && !srGood) {
-        flex4Label = "ECON"; flex4Value = dec(econ);
+        flex4Label = "ECON";
+        flex4Value = dec(econ);
       } else {
         const pickSR = Math.random() > 0.5;
         flex4Label = pickSR ? "SR" : "ECON";
@@ -273,33 +276,36 @@ function statRows(player: Player): { label: string; value: string }[] {
       let flex5Label: string;
       let flex5Value: string;
       if (hsParsed >= 50) {
-        flex5Label = "HS";  flex5Value = s.hs ?? "—";
+        flex5Label = "HS";
+        flex5Value = s.hs ?? "—";
       } else if (bbiWkts >= 4) {
-        flex5Label = "BBI"; flex5Value = s.bbi ?? "—";
+        flex5Label = "BBI";
+        flex5Value = s.bbi ?? "—";
       } else if (hsParsed > 40) {
-        flex5Label = "HS";  flex5Value = s.hs ?? "—";
+        flex5Label = "HS";
+        flex5Value = s.hs ?? "—";
       } else {
         const pickHS = Math.random() > 0.5;
-        flex5Label = pickHS ? "HS"  : "BBI";
+        flex5Label = pickHS ? "HS" : "BBI";
         flex5Value = pickHS ? (s.hs ?? "—") : (s.bbi ?? "—");
       }
 
       // top: MATCHES · flex4   hero: RUNS   bottom: WKTS · flex5
       return [
-        { label: "MATCHES",   value: String(s.matches) },
-        { label: flex4Label,  value: flex4Value },
-        { label: "RUNS",      value: String(s.runs) },
-        { label: "WKTS",      value: int(s.wickets) },
-        { label: flex5Label,  value: flex5Value },
+        { label: "MATCHES", value: String(s.matches) },
+        { label: flex4Label, value: flex4Value },
+        { label: "RUNS", value: String(s.runs) },
+        { label: "WKTS", value: int(s.wickets) },
+        { label: flex5Label, value: flex5Value },
       ];
     }
     default:
       return [
         { label: "MATCHES", value: String(s.matches) },
-        { label: "AVG",     value: dec(s.batting_avg) },
-        { label: "RUNS",    value: String(s.runs) },
-        { label: "WKTS",    value: int(s.wickets) },
-        { label: "BBI",     value: s.bbi ?? "—" },
+        { label: "AVG", value: dec(s.batting_avg) },
+        { label: "RUNS", value: String(s.runs) },
+        { label: "WKTS", value: int(s.wickets) },
+        { label: "BBI", value: s.bbi ?? "—" },
       ];
   }
 }
@@ -382,7 +388,15 @@ function AuctionPage() {
   } | null>(null);
   const [playerKey, setPlayerKey] = useState(0); // for pop-in re-trigger
   const [bidPending, setBidPending] = useState(false);
-  const [bidNotifs, setBidNotifs] = useState<Array<{ id: number; shortName: string; amount: number; primary: string }>>([]);
+  const categoryRevealCount = useRef<Record<string, number>>({
+    A: 0,
+    B: 0,
+    C: 0,
+  });
+  const [showPlane, setShowPlane] = useState(false);
+  const [bidNotifs, setBidNotifs] = useState<
+    Array<{ id: number; shortName: string; amount: number; primary: string }>
+  >([]);
   const bidNotifCounter = useRef(0);
   const bidNotifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -411,7 +425,13 @@ function AuctionPage() {
 
   // Recent buys (last 5 sold players, shown in the left panel)
   const [recentBuys, setRecentBuys] = useState<
-    Array<{ playerName: string; franchiseName: string; shortName: string; finalPrice: number; category: PlayerCategory }>
+    Array<{
+      playerName: string;
+      franchiseName: string;
+      shortName: string;
+      finalPrice: number;
+      category: PlayerCategory;
+    }>
   >([]);
 
   // Upcoming queue
@@ -487,7 +507,17 @@ function AuctionPage() {
       });
       setBidPending(false);
       const notifId = ++bidNotifCounter.current;
-      setBidNotifs((prev) => [{ id: notifId, shortName: m.shortName, amount: event.amount, primary: m.primary }, ...prev].slice(0, 4));
+      setBidNotifs((prev) =>
+        [
+          {
+            id: notifId,
+            shortName: m.shortName,
+            amount: event.amount,
+            primary: m.primary,
+          },
+          ...prev,
+        ].slice(0, 4),
+      );
       if (bidNotifTimerRef.current) clearTimeout(bidNotifTimerRef.current);
       bidNotifTimerRef.current = setTimeout(() => setBidNotifs([]), 4_000);
       // Track teams that have reached max price (entered the lucky draw pool)
@@ -554,7 +584,16 @@ function AuctionPage() {
         setSoldCount((c) => c + 1);
         if (player) {
           setRecentBuys((prev) =>
-            [{ playerName: player.name, franchiseName, shortName: m.shortName, finalPrice, category: player.category }, ...prev].slice(0, 5)
+            [
+              {
+                playerName: player.name,
+                franchiseName,
+                shortName: m.shortName,
+                finalPrice,
+                category: player.category,
+              },
+              ...prev,
+            ].slice(0, 5),
           );
         }
 
@@ -607,8 +646,7 @@ function AuctionPage() {
         playerName: string;
         franchiseId: string;
         franchiseName: string;
-      }) => {
-      },
+      }) => {},
     );
 
     socket.on(
@@ -634,7 +672,13 @@ function AuctionPage() {
 
     socket.on(
       "lobby:auction_complete",
-      ({ seats: done, floorPerSeat: fpm }: { seats: LobbySeat[]; floorPerSeat: Record<string, boolean> }) => {
+      ({
+        seats: done,
+        floorPerSeat: fpm,
+      }: {
+        seats: LobbySeat[];
+        floorPerSeat: Record<string, boolean>;
+      }) => {
         setAuctionComplete(true);
         setFinalSeats(done);
         setFloorPerSeat(fpm);
@@ -644,11 +688,14 @@ function AuctionPage() {
       },
     );
 
-    socket.on("lobby:error", ({ message, code }: { message: string; code?: string }) => {
-      setBidPending(false);
-      setHasEnteredLuckyDraw(false);
-      if (code === "SESSION_LOST") return; // handled by redirect logic
-    });
+    socket.on(
+      "lobby:error",
+      ({ message, code }: { message: string; code?: string }) => {
+        setBidPending(false);
+        setHasEnteredLuckyDraw(false);
+        if (code === "SESSION_LOST") return; // handled by redirect logic
+      },
+    );
 
     socket.on("lobby:auction_paused", () => setIsPaused(true));
     socket.on("lobby:auction_resumed", () => setIsPaused(false));
@@ -742,7 +789,10 @@ function AuctionPage() {
     if (!userId) return;
     const hasSeenLocal = localStorage.getItem("hasSeenAuctionTour") === "true";
     const hasSeen = hasSeenLocal || session?.user?.hasSeenAuctionTour === true;
-    if (hasSeen) { setTourDismissed(true); return; }
+    if (hasSeen) {
+      setTourDismissed(true);
+      return;
+    }
     if (!tourDismissed) {
       const t = setTimeout(() => setShowTour(true), 800);
       return () => clearTimeout(t);
@@ -760,7 +810,10 @@ function AuctionPage() {
 
   function applyPlayerRevealed(player: Player) {
     setBidNotifs([]);
-    if (bidNotifTimerRef.current) { clearTimeout(bidNotifTimerRef.current); bidNotifTimerRef.current = null; }
+    if (bidNotifTimerRef.current) {
+      clearTimeout(bidNotifTimerRef.current);
+      bidNotifTimerRef.current = null;
+    }
     setCurrentPlayer(player);
     setCurrentBid(null);
     setTimerSeconds(TIMER_MAX);
@@ -774,6 +827,10 @@ function AuctionPage() {
     setHasEnteredLuckyDraw(false);
     setLuckyDrawEntrants([]);
     setPlayerKey((k) => k + 1);
+    const cat = player.category as string;
+    categoryRevealCount.current[cat] =
+      (categoryRevealCount.current[cat] ?? 0) + 1;
+    if (categoryRevealCount.current[cat] === 4) setShowPlane(true);
   }
 
   function handleLuckyDrawClose() {
@@ -798,7 +855,13 @@ function AuctionPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (auctionComplete && finalSeats) {
-    return <AuctionCompleteScreen seats={finalSeats} mySeatId={seatId} floorPerSeat={floorPerSeat} />;
+    return (
+      <AuctionCompleteScreen
+        seats={finalSeats}
+        mySeatId={seatId}
+        floorPerSeat={floorPerSeat}
+      />
+    );
   }
 
   return (
@@ -884,7 +947,10 @@ function AuctionPage() {
         >
           {tourDismissed && !showTour && (
             <button
-              onClick={() => { setTourDismissed(false); setShowTour(true); }}
+              onClick={() => {
+                setTourDismissed(false);
+                setShowTour(true);
+              }}
               title="How to Play"
               style={{
                 width: 26,
@@ -1030,7 +1096,9 @@ function AuctionPage() {
 
           {/* Recent buys */}
           {recentBuys.length > 0 && (
-            <div style={{ borderTop: "1px solid var(--border)", flexShrink: 0 }}>
+            <div
+              style={{ borderTop: "1px solid var(--border)", flexShrink: 0 }}
+            >
               <div
                 style={{
                   fontSize: 11,
@@ -1201,49 +1269,130 @@ function AuctionPage() {
                   if (rows.length < 5) return null;
                   const [t1, t2, hero, b1, b2] = rows;
                   const sideCell = (s: { label: string; value: string }) => (
-                    <div key={s.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "8px 0" }}>
-                      <div style={{ fontFamily: "Rajdhani", fontWeight: 700, fontSize: 22, color: "var(--text)" }}>
+                    <div
+                      key={s.label}
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "8px 0",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontFamily: "Rajdhani",
+                          fontWeight: 700,
+                          fontSize: 22,
+                          color: "var(--text)",
+                        }}
+                      >
                         {s.value}
                       </div>
-                      <div style={{ fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.6, marginTop: 2 }}>
+                      <div
+                        style={{
+                          fontSize: 9,
+                          color: "var(--muted)",
+                          textTransform: "uppercase",
+                          letterSpacing: 0.6,
+                          marginTop: 2,
+                        }}
+                      >
                         {s.label}
                       </div>
                     </div>
                   );
                   return (
-                    <div style={{ borderTop: "1px solid var(--border)", display: "flex", alignItems: "stretch", padding: "22px 12px", gap: 8 }}>
+                    <div
+                      style={{
+                        borderTop: "1px solid var(--border)",
+                        display: "flex",
+                        alignItems: "stretch",
+                        padding: "22px 12px",
+                        gap: 8,
+                      }}
+                    >
                       {/* Left column */}
-                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 0 }}>
+                      <div
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 0,
+                        }}
+                      >
                         {sideCell(t1)}
-                        <div style={{ height: 1, background: "var(--border)", margin: "0 8px" }} />
+                        <div
+                          style={{
+                            height: 1,
+                            background: "var(--border)",
+                            margin: "0 8px",
+                          }}
+                        />
                         {sideCell(b1)}
                       </div>
 
                       {/* Center hero — taller, overlaps via negative margin */}
-                      <div style={{
-                        flex: "0 0 38%",
-                        margin: "-20px 0",
-                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                        background: `${catCfg?.color}15`,
-                        border: `1.5px solid ${catCfg?.color}55`,
-                        borderRadius: 10,
-                        boxShadow: `0 4px 18px ${catCfg?.color}30`,
-                        zIndex: 1,
-                        position: "relative",
-                        padding: "10px 0",
-                      }}>
-                        <div style={{ fontFamily: "Rajdhani", fontWeight: 800, fontSize: 40, lineHeight: 1, color: catCfg?.color }}>
+                      <div
+                        style={{
+                          flex: "0 0 38%",
+                          margin: "-20px 0",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background: `${catCfg?.color}15`,
+                          border: `1.5px solid ${catCfg?.color}55`,
+                          borderRadius: 10,
+                          boxShadow: `0 4px 18px ${catCfg?.color}30`,
+                          zIndex: 1,
+                          position: "relative",
+                          padding: "10px 0",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontFamily: "Rajdhani",
+                            fontWeight: 800,
+                            fontSize: 40,
+                            lineHeight: 1,
+                            color: catCfg?.color,
+                          }}
+                        >
                           {hero.value}
                         </div>
-                        <div style={{ fontSize: 9, color: catCfg?.color, opacity: 0.7, textTransform: "uppercase", letterSpacing: 1.5, marginTop: 5 }}>
+                        <div
+                          style={{
+                            fontSize: 9,
+                            color: catCfg?.color,
+                            opacity: 0.7,
+                            textTransform: "uppercase",
+                            letterSpacing: 1.5,
+                            marginTop: 5,
+                          }}
+                        >
                           {hero.label}
                         </div>
                       </div>
 
                       {/* Right column */}
-                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 0 }}>
+                      <div
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 0,
+                        }}
+                      >
                         {sideCell(t2)}
-                        <div style={{ height: 1, background: "var(--border)", margin: "0 8px" }} />
+                        <div
+                          style={{
+                            height: 1,
+                            background: "var(--border)",
+                            margin: "0 8px",
+                          }}
+                        />
                         {sideCell(b2)}
                       </div>
                     </div>
@@ -1354,7 +1503,9 @@ function AuctionPage() {
                             : "none",
                       }}
                     >
-                      {isPaused ? "PAUSED" : `${String(timerSeconds).padStart(2, "0")}s`}
+                      {isPaused
+                        ? "PAUSED"
+                        : `${String(timerSeconds).padStart(2, "0")}s`}
                     </span>
                   </div>
                   <div
@@ -1377,10 +1528,6 @@ function AuctionPage() {
                     />
                   </div>
                 </div>
-
-
-
-
 
                 {/* Bid buttons */}
                 {isUserLeading ? (
@@ -1554,7 +1701,14 @@ function AuctionPage() {
 
               {/* Bid notification stack — outside the card, last 4, dimming by age */}
               {bidNotifs.length > 0 && (
-                <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
+                <div
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
+                  }}
+                >
                   {bidNotifs.map((notif, i) => (
                     <div
                       key={notif.id}
@@ -1793,7 +1947,9 @@ function AuctionPage() {
                         color: metFloor ? "var(--green)" : "#f59e0b",
                       }}
                     >
-                      {metFloor ? "✓ MET" : `${fmtL(SPENDING_FLOOR - spent)} to go`}
+                      {metFloor
+                        ? "✓ MET"
+                        : `${fmtL(SPENDING_FLOOR - spent)} to go`}
                     </span>
                   </div>
                   <div
@@ -1966,7 +2122,9 @@ function AuctionPage() {
             >
               <button
                 onClick={() =>
-                  socket.emit(isPaused ? "lobby:resume" : "lobby:pause", { lobbyId })
+                  socket.emit(isPaused ? "lobby:resume" : "lobby:pause", {
+                    lobbyId,
+                  })
                 }
                 disabled={luckyActive || !currentPlayer}
                 style={{
@@ -1980,7 +2138,8 @@ function AuctionPage() {
                   fontWeight: 700,
                   fontSize: 13,
                   letterSpacing: 1,
-                  cursor: luckyActive || !currentPlayer ? "not-allowed" : "pointer",
+                  cursor:
+                    luckyActive || !currentPlayer ? "not-allowed" : "pointer",
                   opacity: luckyActive || !currentPlayer ? 0.4 : 1,
                   transition: "all .2s",
                 }}
@@ -1989,7 +2148,6 @@ function AuctionPage() {
               </button>
             </div>
           )}
-
         </div>
       </div>
 
@@ -2092,6 +2250,42 @@ function AuctionPage() {
         })}
       </div>
 
+      {/* Flying plane banner — NPL stats notice, triggers on 4th player of each category */}
+      {showPlane && (
+        <div
+          style={{
+            position: "fixed",
+            top: 68,
+            right: 0,
+            zIndex: 9999,
+            pointerEvents: "none",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            whiteSpace: "nowrap",
+            animation: "fly-banner 20s linear forwards",
+          }}
+          onAnimationEnd={() => setShowPlane(false)}
+        >
+          <span style={{ fontSize: 26, display: "inline-block", transform: "rotate(-135deg)" }}>✈️</span>
+          <div
+            style={{
+              background: "rgba(15,15,20,0.88)",
+              color: "var(--fg)",
+              border: "1px solid var(--border)",
+              borderRadius: 4,
+              padding: "5px 14px",
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              backdropFilter: "blur(4px)",
+            }}
+          >
+            ✦ All player stats are from the NPL tournament only ✦
+          </div>
+        </div>
+      )}
+
       {/* Lucky draw overlay */}
       {luckyActive && currentPlayer && luckyContenders.length > 0 && (
         <LuckyDrawOverlay
@@ -2109,7 +2303,10 @@ function AuctionPage() {
           steps={AUCTION_TOUR_STEPS}
           metadataKey="hasSeenAuctionTour"
           lobbyId={lobbyId}
-          onDismiss={() => { setShowTour(false); setTourDismissed(true); }}
+          onDismiss={() => {
+            setShowTour(false);
+            setTourDismissed(true);
+          }}
           initiallyPaused={luckyActive}
         />
       )}
@@ -2522,15 +2719,25 @@ function AuctionCompleteScreen({
         </div>
         {mySeat && m && (
           <div
-            style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--muted)" }}
+            style={{
+              marginLeft: "auto",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              fontSize: 13,
+              color: "var(--muted)",
+            }}
           >
-            {mySeat.franchiseName} · spent {fmtNPR(spent)} · {fmtL(mySeat.purseRemaining)} left
+            {mySeat.franchiseName} · spent {fmtNPR(spent)} ·{" "}
+            {fmtL(mySeat.purseRemaining)} left
             <span
               style={{
                 fontSize: 11,
                 fontWeight: 700,
                 color: myFloorMet ? "var(--green)" : "#f59e0b",
-                background: myFloorMet ? "rgba(52,211,153,0.12)" : "rgba(245,158,11,0.12)",
+                background: myFloorMet
+                  ? "rgba(52,211,153,0.12)"
+                  : "rgba(245,158,11,0.12)",
                 padding: "2px 7px",
                 borderRadius: 4,
               }}
@@ -2566,7 +2773,15 @@ function AuctionCompleteScreen({
   );
 }
 
-function SquadCard({ seat, isMe, metFloor }: { seat: LobbySeat; isMe: boolean; metFloor: boolean }) {
+function SquadCard({
+  seat,
+  isMe,
+  metFloor,
+}: {
+  seat: LobbySeat;
+  isMe: boolean;
+  metFloor: boolean;
+}) {
   const m = meta(seat.franchiseName);
   const marquee = seat.squad.find((s) => s.slotType === "MARQUEE");
   const auction = seat.squad.filter((s) => s.slotType === "AUCTION");
