@@ -106,6 +106,7 @@ export default function LandingPage() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warmingUp, setWarmingUp] = useState(false);
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(
     null,
   );
@@ -212,41 +213,54 @@ export default function LandingPage() {
     if (!userId || !name.trim()) return;
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch(`${SERVER_URL}/lobby/create`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          displayName: name.trim(),
-          season: 2024,
-          ...(franchiseShortName ? { franchiseShortName } : {}),
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json();
-        if (res.status === 409 && body.activeGame) {
-          localStorage.setItem(SESSION_KEY, JSON.stringify(body.activeGame));
-          setActiveSession(body.activeGame);
-          setView("default");
-          setLoading(false);
-          return;
+    setWarmingUp(false);
+    const maxAttempts = 12;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const res = await fetch(`${SERVER_URL}/lobby/create`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            displayName: name.trim(),
+            season: 2024,
+            ...(franchiseShortName ? { franchiseShortName } : {}),
+          }),
+        });
+        setWarmingUp(false);
+        if (!res.ok) {
+          const body = await res.json();
+          if (res.status === 409 && body.activeGame) {
+            localStorage.setItem(SESSION_KEY, JSON.stringify(body.activeGame));
+            setActiveSession(body.activeGame);
+            setView("default");
+            setLoading(false);
+            return;
+          }
+          throw new Error(body.error ?? "Failed to create lobby");
         }
-        throw new Error(body.error ?? "Failed to create lobby");
+        const data = await res.json();
+        localStorage.setItem(
+          SESSION_KEY,
+          JSON.stringify({
+            lobbyId: data.lobbyId,
+            seatId: data.seatId,
+            code: data.code,
+          }),
+        );
+        router.push(`/lobby?lobbyId=${data.lobbyId}&seatId=${data.seatId}`);
+        return;
+      } catch (err) {
+        if (err instanceof TypeError && attempt < maxAttempts - 1) {
+          setWarmingUp(true);
+          await new Promise((r) => setTimeout(r, 3000));
+          continue;
+        }
+        setWarmingUp(false);
+        setError(err instanceof Error ? err.message : "Something went wrong");
+        setLoading(false);
+        return;
       }
-      const data = await res.json();
-      localStorage.setItem(
-        SESSION_KEY,
-        JSON.stringify({
-          lobbyId: data.lobbyId,
-          seatId: data.seatId,
-          code: data.code,
-        }),
-      );
-      router.push(`/lobby?lobbyId=${data.lobbyId}&seatId=${data.seatId}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-      setLoading(false);
     }
   }
 
@@ -255,42 +269,55 @@ export default function LandingPage() {
     if (!userId || code.length !== 6) return;
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch(
-        `${SERVER_URL}/lobby/join/${code.toUpperCase()}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId,
-            displayName: name.trim() || "Player",
-          }),
-        },
-      );
-      if (!res.ok) {
-        const body = await res.json();
-        if (res.status === 409 && body.activeGame) {
-          localStorage.setItem(SESSION_KEY, JSON.stringify(body.activeGame));
-          setActiveSession(body.activeGame);
-          setView("default");
-          setLoading(false);
-          return;
+    setWarmingUp(false);
+    const maxAttempts = 12;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const res = await fetch(
+          `${SERVER_URL}/lobby/join/${code.toUpperCase()}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId,
+              displayName: name.trim() || "Player",
+            }),
+          },
+        );
+        setWarmingUp(false);
+        if (!res.ok) {
+          const body = await res.json();
+          if (res.status === 409 && body.activeGame) {
+            localStorage.setItem(SESSION_KEY, JSON.stringify(body.activeGame));
+            setActiveSession(body.activeGame);
+            setView("default");
+            setLoading(false);
+            return;
+          }
+          throw new Error(body.error ?? "Failed to join lobby");
         }
-        throw new Error(body.error ?? "Failed to join lobby");
+        const data = await res.json();
+        localStorage.setItem(
+          SESSION_KEY,
+          JSON.stringify({
+            lobbyId: data.lobbyId,
+            seatId: data.seatId,
+            code: data.code,
+          }),
+        );
+        router.push(`/lobby?lobbyId=${data.lobbyId}&seatId=${data.seatId}`);
+        return;
+      } catch (err) {
+        if (err instanceof TypeError && attempt < maxAttempts - 1) {
+          setWarmingUp(true);
+          await new Promise((r) => setTimeout(r, 3000));
+          continue;
+        }
+        setWarmingUp(false);
+        setError(err instanceof Error ? err.message : "Something went wrong");
+        setLoading(false);
+        return;
       }
-      const data = await res.json();
-      localStorage.setItem(
-        SESSION_KEY,
-        JSON.stringify({
-          lobbyId: data.lobbyId,
-          seatId: data.seatId,
-          code: data.code,
-        }),
-      );
-      router.push(`/lobby?lobbyId=${data.lobbyId}&seatId=${data.seatId}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-      setLoading(false);
     }
   }
 
@@ -453,9 +480,11 @@ export default function LandingPage() {
             name={name}
             loading={loading}
             error={error}
+            warmingUp={warmingUp}
             onBack={() => {
               setView("default");
               setError(null);
+              setWarmingUp(false);
             }}
             onSelect={(shortName) => createLobby(shortName)}
           />
@@ -466,9 +495,11 @@ export default function LandingPage() {
             setCode={setCode}
             loading={loading}
             error={error}
+            warmingUp={warmingUp}
             onBack={() => {
               setView("default");
               setError(null);
+              setWarmingUp(false);
             }}
             onJoin={joinLobby}
           />
@@ -913,12 +944,14 @@ function CreateView({
   name,
   loading,
   error,
+  warmingUp,
   onBack,
   onSelect,
 }: {
   name: string;
   loading: boolean;
   error: string | null;
+  warmingUp: boolean;
   onBack: () => void;
   onSelect: (franchiseShortName: string) => void;
 }) {
@@ -948,7 +981,14 @@ function CreateView({
         </p>
       )}
 
-      {error && <p style={{ fontSize: 13, color: "var(--red)" }}>{error}</p>}
+      {warmingUp && (
+        <p className="animate-pulse-fade" style={{ fontSize: 13, color: "var(--gold)" }}>
+          Server is warming up, please wait…
+        </p>
+      )}
+      {!warmingUp && error && (
+        <p style={{ fontSize: 13, color: "var(--red)" }}>{error}</p>
+      )}
 
       {/* Franchise grid */}
       <div
@@ -1033,6 +1073,7 @@ function JoinView({
   setCode,
   loading,
   error,
+  warmingUp,
   onBack,
   onJoin,
 }: {
@@ -1041,6 +1082,7 @@ function JoinView({
   setCode: (v: string) => void;
   loading: boolean;
   error: string | null;
+  warmingUp: boolean;
   onBack: () => void;
   onJoin: () => void;
 }) {
@@ -1079,7 +1121,14 @@ function JoinView({
         </p>
       )}
 
-      {error && <p style={{ fontSize: 13, color: "var(--red)" }}>{error}</p>}
+      {warmingUp && (
+        <p className="animate-pulse-fade" style={{ fontSize: 13, color: "var(--gold)" }}>
+          Server is warming up, please wait…
+        </p>
+      )}
+      {!warmingUp && error && (
+        <p style={{ fontSize: 13, color: "var(--red)" }}>{error}</p>
+      )}
 
       {/* Join button */}
       <button
