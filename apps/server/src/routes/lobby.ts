@@ -7,20 +7,25 @@ const router = Router();
 
 const PURSE_START = 9_000_000; // NPR 90 lakhs
 
-const BOT_PERSONALITIES: BotPersonality[] = [
-  'AGGRESSIVE',
-  'CONSERVATIVE',
-  'ROLE_HUNTER',
-  'BUDGET_SNIPER',
-  'BALANCED',
+const ALL_PERSONALITIES: BotPersonality[] = [
+  'AGGRESSIVE', 'CONSERVATIVE', 'ROLE_HUNTER',
+  'BUDGET_SNIPER', 'BALANCED', 'STAR_CHASER',
 ];
 
 function randomCode(): string {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
-function randomPersonality(): BotPersonality {
-  return BOT_PERSONALITIES[Math.floor(Math.random() * BOT_PERSONALITIES.length)];
+// Fisher-Yates shuffle — guarantees every personality appears before any repeats
+function spreadPersonalities(botCount: number): BotPersonality[] {
+  const pool = [...ALL_PERSONALITIES];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const result: BotPersonality[] = [];
+  for (let i = 0; i < botCount; i++) result.push(pool[i % pool.length]);
+  return result;
 }
 
 // ─── Franchise cache ──────────────────────────────────────────────────────────
@@ -96,6 +101,10 @@ router.post('/create', async (req: Request, res: Response): Promise<void> => {
     })[];
   };
 
+  const botCount = franchises.length - 1; // all seats minus the creator
+  const botPersonalities = spreadPersonalities(botCount);
+  let botIdx = 0;
+
   for (;;) {
     const code = randomCode();
     try {
@@ -112,7 +121,7 @@ router.post('/create', async (req: Request, res: Response): Promise<void> => {
                 seatType:       isCreator ? SeatType.HUMAN : SeatType.BOT,
                 userId:         isCreator ? userId : null,
                 displayName:    isCreator ? displayName : null,
-                botPersonality: isCreator ? null : randomPersonality(),
+                botPersonality: isCreator ? null : botPersonalities[botIdx++],
                 purseRemaining: PURSE_START,
               };
             }),

@@ -1,3 +1,7 @@
+// ─── Shared constants ─────────────────────────────────────────────────────────
+
+export const SPENDING_FLOOR = 6_500_000; // 6.5M NPR minimum spend per team
+
 // ─── Enums / Literals ────────────────────────────────────────────────────────
 
 export type PlayerCategory = 'A' | 'B' | 'C';
@@ -9,7 +13,8 @@ export type BotPersonality =
   | 'CONSERVATIVE'
   | 'ROLE_HUNTER'
   | 'BUDGET_SNIPER'
-  | 'BALANCED';
+  | 'BALANCED'
+  | 'STAR_CHASER';
 
 export type LobbyStatus = 'WAITING' | 'MARQUEE_DRAW' | 'AUCTION' | 'COMPLETE';
 
@@ -18,6 +23,9 @@ export type AuctionPhase =
   | 'CATEGORY_A'
   | 'CATEGORY_B'
   | 'CATEGORY_C'
+  | 'CATEGORY_A_2'
+  | 'CATEGORY_B_2'
+  | 'CATEGORY_C_2'
   | 'UNSOLD_ROUND'
   | 'COMPLETE';
 
@@ -123,6 +131,20 @@ export interface AuctionState {
   luckyDrawContenders: string[];
 }
 
+// ─── Sets Preview ────────────────────────────────────────────────────────────
+
+export interface PlayerPreview {
+  id: string;
+  name: string;
+  role: PlayerRole;
+}
+
+export interface SetsPreviewData {
+  A: { group1: PlayerPreview[]; group2: PlayerPreview[] };
+  B: { group1: PlayerPreview[]; group2: PlayerPreview[] };
+  C: { group1: PlayerPreview[]; group2: PlayerPreview[] };
+}
+
 // ─── Bid Event ───────────────────────────────────────────────────────────────
 
 export interface BidEvent {
@@ -177,7 +199,7 @@ export interface ServerToClientEvents {
   'lobby:bot_thinking': (data: { seatId: string; franchiseName: string }) => void;
 
   /** All auction slots filled — show final squads */
-  'lobby:auction_complete': (data: { seats: LobbySeat[] }) => void;
+  'lobby:auction_complete': (data: { seats: LobbySeat[]; floorPerSeat: Record<string, boolean> }) => void;
 
   /** Server-side error */
   'lobby:error': (data: { message: string; code?: string }) => void;
@@ -198,6 +220,9 @@ export interface ServerToClientEvents {
 
   /** Auction resumed after pause (quickplay only) */
   'lobby:auction_resumed': (data: { isPaused: false }) => void;
+
+  /** Player group sets revealed before auction starts (5s preview) */
+  'lobby:sets_preview': (data: SetsPreviewData) => void;
 }
 
 /** Events the CLIENT emits to the SERVER */
