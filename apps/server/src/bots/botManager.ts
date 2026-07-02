@@ -6,8 +6,6 @@ import { BotPersonality, CATEGORY_BUDGET_SHARE } from './botPersonalities'
 
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>
 
-export type BotMoodState = 'HOT' | 'COLD' | 'NEUTRAL'
-
 export interface BotSession {
   seatId: string
   franchiseId: string
@@ -23,9 +21,9 @@ export interface BotSession {
   cCount: number
   categoryOverspend: Record<string, number>
   abortController: AbortController | null
-  mood: { state: BotMoodState; playersLeft: number }
   bidAttemptedThisRound: boolean
   isBluffingThisPlayer: boolean
+  floorSkipPhases: Set<string>
 }
 
 export interface PlayerInfo {
@@ -34,15 +32,12 @@ export interface PlayerInfo {
   quality: number
   role: PlayerRole
   category: PlayerCategory
+  economy: number | null
+  strikeRate: number | null
 }
 
 const TOTAL_PURSE = 9_000_000
 const SPENDING_FLOOR = 6_500_000
-
-function rollMood(): BotMoodState {
-  const r = Math.random()
-  return r < 0.30 ? 'HOT' : r < 0.60 ? 'COLD' : 'NEUTRAL'
-}
 
 function buildRoster(s: BotSession): RosterState {
   return {
@@ -64,6 +59,7 @@ function scheduleBot(
   currentWinnerId: string | null,
   isHumanWinner: boolean,
   isUnsoldRound: boolean,
+  currentPhase: string,
   quota: { A: number; B: number; C: number },
   categoryPlayersRemaining: number,
   queueSummary: QueueSummary,
@@ -87,12 +83,12 @@ function scheduleBot(
     isUnsoldRound,
     quota,
     categoryPlayersRemaining,
-    mood: session.mood.state,
     queueSummary,
     starTargetIds,
     eliteTargetIds,
     spendingFloor: SPENDING_FLOOR,
     isConservativeBluff: session.isBluffingThisPlayer,
+    skipFloorInThisPhase: session.floorSkipPhases.has(currentPhase),
   })
 
   if (decision.action !== 'BID' || decision.amount == null) {
@@ -140,6 +136,7 @@ export function revealPlayerToBots(
   humanSeatIds: Set<string>,
   sessions: Map<string, BotSession>,
   isUnsoldRound: boolean,
+  currentPhase: string,
   quota: { A: number; B: number; C: number },
   categoryPlayersRemaining: number,
   categoryPlayersShown: number,
@@ -155,7 +152,7 @@ export function revealPlayerToBots(
       !isUnsoldRound &&
       categoryPlayersShown < 10 &&
       Math.random() < 0.30
-    scheduleBot(io, lobbyId, session, player, 0, null, false, isUnsoldRound, quota, categoryPlayersRemaining, queueSummary, starTargetIds, eliteTargetIds, onBid)
+    scheduleBot(io, lobbyId, session, player, 0, null, false, isUnsoldRound, currentPhase, quota, categoryPlayersRemaining, queueSummary, starTargetIds, eliteTargetIds, onBid)
   }
 }
 
@@ -168,6 +165,7 @@ export function onBidPlaced(
   humanSeatIds: Set<string>,
   sessions: Map<string, BotSession>,
   isUnsoldRound: boolean,
+  currentPhase: string,
   quota: { A: number; B: number; C: number },
   categoryPlayersRemaining: number,
   queueSummary: QueueSummary,
@@ -178,7 +176,7 @@ export function onBidPlaced(
   const isHumanWinner = humanSeatIds.has(currentWinnerId)
   for (const session of sessions.values()) {
     if (session.seatId === currentWinnerId) continue
-    scheduleBot(io, lobbyId, session, player, currentBid, currentWinnerId, isHumanWinner, isUnsoldRound, quota, categoryPlayersRemaining, queueSummary, starTargetIds, eliteTargetIds, onBid)
+    scheduleBot(io, lobbyId, session, player, currentBid, currentWinnerId, isHumanWinner, isUnsoldRound, currentPhase, quota, categoryPlayersRemaining, queueSummary, starTargetIds, eliteTargetIds, onBid)
   }
 }
 
@@ -194,8 +192,6 @@ export function updateRosterOnSold(
   winningSeatId: string,
   player: { category: PlayerCategory; role: PlayerRole; finalPrice: number },
   quota: { A: number; B: number; C: number },
-  categoryPlayersRemaining: number,
-  isUnsoldRound: boolean,
 ): void {
   const winner = sessions.get(winningSeatId)
   if (winner) {
@@ -213,28 +209,4 @@ export function updateRosterOnSold(
     winner.categoryOverspend[player.category] = (winner.categoryOverspend[player.category] ?? 0) + (player.finalPrice - avgBudgetPerSlot)
   }
 
-  // Advance mood for every bot on every player resolved
-  for (const session of sessions.values()) {
-    const didWin = session.seatId === winningSeatId
-    session.mood.playersLeft--
-
-    if (session.mood.playersLeft <= 0) {
-      let next = rollMood()
-
-      // ROLE_HUNTER: lost a needed-role player → force HOT next streak
-      if (session.personality.type === 'ROLE_HUNTER' && !didWin) {
-        const neededBat  = session.batsmanCount < 3 && player.role === PlayerRole.BAT
-        const neededBowl = session.bowlerCount  < 3 && player.role === PlayerRole.BOWL
-        const wasPriority = neededBat || neededBowl || session.priorityRoles.includes(player.role)
-        if (wasPriority) next = 'HOT'
-      }
-
-      // BUDGET_SNIPER: category depleting or unsold round → force HOT
-      if (session.personality.type === 'BUDGET_SNIPER' && (categoryPlayersRemaining <= 3 || isUnsoldRound)) {
-        next = 'HOT'
-      }
-
-      session.mood = { state: next, playersLeft: 2 + Math.floor(Math.random() * 3) }
-    }
-  }
 }

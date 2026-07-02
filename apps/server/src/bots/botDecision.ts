@@ -2,6 +2,7 @@ import { PlayerRole, PlayerCategory } from "@prisma/client";
 import {
   BotPersonality,
   CATEGORY_BUDGET_SHARE,
+  CATEGORY_QUALITY_FLOOR,
   CATEGORY_SLOTS,
 } from "./botPersonalities";
 
@@ -30,6 +31,8 @@ export interface BotDecisionInput {
     quality: number;
     role: PlayerRole;
     category: PlayerCategory;
+    economy: number | null;
+    strikeRate: number | null;
   };
   currentBid: number;
   currentWinnerId: string | null;
@@ -42,12 +45,12 @@ export interface BotDecisionInput {
   isUnsoldRound: boolean;
   quota: { A: number; B: number; C: number };
   categoryPlayersRemaining: number;
-  mood: "HOT" | "COLD" | "NEUTRAL";
   queueSummary: QueueSummary;
   starTargetIds: Set<string>;
   eliteTargetIds: Set<string>;
   spendingFloor: number;
   isConservativeBluff: boolean;
+  skipFloorInThisPhase: boolean;
 }
 
 export interface BotDecisionOutput {
@@ -58,6 +61,7 @@ export interface BotDecisionOutput {
 }
 
 const TOTAL_PURSE = 9_000_000;
+const CATEGORY_MAX_PRICE: Record<string, number> = { A: 1_500_000, B: 1_000_000, C: 500_000 };
 
 export function decideBid(input: BotDecisionInput): BotDecisionOutput {
   const {
@@ -72,7 +76,6 @@ export function decideBid(input: BotDecisionInput): BotDecisionOutput {
     isUnsoldRound,
     quota,
     categoryPlayersRemaining,
-    mood,
     queueSummary,
   } = input;
 
@@ -116,6 +119,24 @@ export function decideBid(input: BotDecisionInput): BotDecisionOutput {
 
   // AGGRESSIVE randomly ignores ~1/3 of players — chaotic, not quality-driven
   if (personality.type === "AGGRESSIVE" && Math.random() < 0.33)
+    return instantPass;
+
+  // AGGRESSIVE skips floor-quality players (the absolute weakest in each tier)
+  // In the unsold round they'll pick them up if quota demands it
+  if (
+    personality.type === "AGGRESSIVE" &&
+    !isUnsoldRound &&
+    player.quality <= (CATEGORY_QUALITY_FLOOR[player.category] ?? 0)
+  )
+    return instantPass;
+
+  // BALANCED pre-selected one group per category to skip floor-quality players
+  if (
+    personality.type === "BALANCED" &&
+    !isUnsoldRound &&
+    input.skipFloorInThisPhase &&
+    player.quality <= (CATEGORY_QUALITY_FLOOR[player.category] ?? 0)
+  )
     return instantPass;
 
   // ── ROLE_HUNTER priority determination ───────────────────────────────────
@@ -185,17 +206,10 @@ export function decideBid(input: BotDecisionInput): BotDecisionOutput {
   // ── Step 4: Threshold ──────────────────────────────────────────────────────
   const desperationDelta = (slotsRemaining / totalSlots) * 0.25;
 
-  const moodDelta =
-    mood === "HOT"
-      ? personality.moodSensitivity
-      : mood === "COLD"
-        ? -personality.moodSensitivity
-        : 0;
-
   const hasBoughtInCategory = (categoryCount[player.category] ?? 0) > 0;
   let categoryDroughtDelta = 0;
-  if (!hasBoughtInCategory && categoryPlayersRemaining <= 5) {
-    const urgency = (5 - categoryPlayersRemaining + 1) / 5;
+  if (!hasBoughtInCategory && categoryPlayersRemaining <= 2) {
+    const urgency = (2 - categoryPlayersRemaining + 1) / 2;
     categoryDroughtDelta = urgency * 0.2;
   }
 
@@ -210,7 +224,6 @@ export function decideBid(input: BotDecisionInput): BotDecisionOutput {
   const threshold =
     effectiveFitThreshold -
     desperationDelta -
-    moodDelta -
     categoryDroughtDelta -
     eliteThresholdDelta -
     floorPressureDelta;
@@ -224,7 +237,7 @@ export function decideBid(input: BotDecisionInput): BotDecisionOutput {
     confidence =
       Math.abs(fitScore - threshold) / Math.max(Math.abs(threshold), 0.01);
     if (fitScore < threshold) {
-      const delayMs = clampDelay(personality, confidence);
+      const delayMs = pickDelay(personality);
       return { action: "PASS", delayMs, emitThinking: confidence < 0.4 };
     }
   } else {
@@ -303,7 +316,6 @@ export function decideBid(input: BotDecisionInput): BotDecisionOutput {
     }
   }
 
-  const moodCeilingMult = mood === "HOT" ? 1.1 : mood === "COLD" ? 0.9 : 1.0;
   const floorPressureCeilingMult =
     floorGap > 0 ? 1.0 + Math.min(0.15, (floorGap / input.spendingFloor) * 0.2) : 1.0;
   const mistakeFactor = 0.9 + Math.random() * 0.3;
@@ -322,7 +334,6 @@ export function decideBid(input: BotDecisionInput): BotDecisionOutput {
     eliteCeilingMult *
     holdoutMult *
     lastOfRoleBoost *
-    moodCeilingMult *
     floorPressureCeilingMult *
     mistakeFactor;
 
@@ -340,10 +351,19 @@ export function decideBid(input: BotDecisionInput): BotDecisionOutput {
     ceiling = Math.min(1_400_000, remainingPurse - reserveBuffer);
   }
 
+  // BUDGET_SNIPER: go all the way to max category price for standout athletes —
+  // elite economy (<6) or explosive strike rate (>150)
+  const isBudgetSniperStar =
+    personality.type === "BUDGET_SNIPER" &&
+    ((player.economy !== null && player.economy < 6) ||
+      (player.strikeRate !== null && player.strikeRate > 150));
+  if (isBudgetSniperStar) {
+    const maxPrice = CATEGORY_MAX_PRICE[player.category] ?? ceiling;
+    ceiling = Math.min(maxPrice, remainingPurse - reserveBuffer);
+  }
+
   if (currentBid >= ceiling) {
-    const delayMs = mustFill
-      ? personality.minDelay
-      : clampDelay(personality, confidence);
+    const delayMs = pickDelay(personality);
     return { action: "PASS", delayMs, emitThinking: false };
   }
 
@@ -363,17 +383,14 @@ export function decideBid(input: BotDecisionInput): BotDecisionOutput {
     return { action: "BID", amount: bidAmount, delayMs: 500 + Math.random() * 700, emitThinking: false };
   }
 
-  const delayMs = mustFill
-    ? personality.minDelay
-    : clampDelay(personality, confidence);
+  const delayMs = pickDelay(personality);
   const emitThinking = !mustFill && confidence < 0.4;
 
   return { action: "BID", amount: bidAmount, delayMs, emitThinking };
 }
 
-function clampDelay(personality: BotPersonality, confidence: number): number {
-  const raw =
-    personality.maxDelay -
-    confidence * (personality.maxDelay - personality.minDelay);
-  return Math.max(personality.minDelay, Math.min(personality.maxDelay, raw));
+function pickDelay(personality: BotPersonality): number {
+  const useFast = Math.random() < personality.fastChance;
+  const [lo, hi] = useFast ? personality.delayFast : personality.delaySlow;
+  return Math.round(lo + Math.random() * (hi - lo));
 }

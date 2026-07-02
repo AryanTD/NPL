@@ -11,9 +11,9 @@ export interface BotPersonality {
   fitThreshold: number; // base pickiness (0–1); higher = more selective
   ceilingMult: number; // scales max willingness to pay
   humanRivalMult: number; // ceiling boost when a human (not bot) is winning
-  moodSensitivity: number; // HOT/COLD delta applied to threshold
-  minDelay: number;
-  maxDelay: number;
+  delayFast: [number, number]; // [lo, hi] ms — quick bid mode
+  delaySlow: [number, number]; // [lo, hi] ms — calm/deliberate mode
+  fastChance: number;          // probability (0–1) of using fast mode
   normalIncrement: number;
   urgentIncrement: number;
 }
@@ -24,9 +24,9 @@ export const PERSONALITIES: Record<PersonalityType, BotPersonality> = {
     fitThreshold: 0.25,
     ceilingMult: 1.18,
     humanRivalMult: 1.15,
-    moodSensitivity: 0.08,
-    minDelay: 500,
-    maxDelay: 1200,
+    delayFast: [300, 900],
+    delaySlow: [2500, 4000],
+    fastChance: 0.85,
     normalIncrement: 50_000,
     urgentIncrement: 100_000,
   },
@@ -35,9 +35,9 @@ export const PERSONALITIES: Record<PersonalityType, BotPersonality> = {
     fitThreshold: 0.6,
     ceilingMult: 1.32,
     humanRivalMult: 1.03,
-    moodSensitivity: 0.05,
-    minDelay: 2000,
-    maxDelay: 3500,
+    delayFast: [2000, 3500],
+    delaySlow: [400, 1000],
+    fastChance: 0.15,
     normalIncrement: 25_000,
     urgentIncrement: 50_000,
   },
@@ -46,9 +46,9 @@ export const PERSONALITIES: Record<PersonalityType, BotPersonality> = {
     fitThreshold: 0.35,
     ceilingMult: 1.4,
     humanRivalMult: 1.1,
-    moodSensitivity: 0.1,
-    minDelay: 1500,
-    maxDelay: 2500,
+    delayFast: [1500, 2500],
+    delaySlow: [400, 900],
+    fastChance: 0.25,
     normalIncrement: 25_000,
     urgentIncrement: 100_000,
   },
@@ -57,9 +57,9 @@ export const PERSONALITIES: Record<PersonalityType, BotPersonality> = {
     fitThreshold: 0.28,
     ceilingMult: 0.65,
     humanRivalMult: 1.05,
-    moodSensitivity: 0.06,
-    minDelay: 2000,
-    maxDelay: 3500,
+    delayFast: [2500, 4500],
+    delaySlow: [500, 1000],
+    fastChance: 0.10,
     normalIncrement: 25_000,
     urgentIncrement: 25_000,
   },
@@ -68,9 +68,9 @@ export const PERSONALITIES: Record<PersonalityType, BotPersonality> = {
     fitThreshold: 0.45,
     ceilingMult: 1.1,
     humanRivalMult: 1.08,
-    moodSensitivity: 0.05,
-    minDelay: 1500,
-    maxDelay: 2500,
+    delayFast: [1200, 2500],
+    delaySlow: [400, 800],
+    fastChance: 0.30,
     normalIncrement: 25_000,
     urgentIncrement: 50_000,
   },
@@ -79,9 +79,9 @@ export const PERSONALITIES: Record<PersonalityType, BotPersonality> = {
     fitThreshold: 0.65,
     ceilingMult: 1.6,
     humanRivalMult: 1.12,
-    moodSensitivity: 0.09,
-    minDelay: 800,
-    maxDelay: 2000,
+    delayFast: [700, 1800],
+    delaySlow: [2500, 3500],
+    fastChance: 0.70,
     normalIncrement: 50_000,
     urgentIncrement: 100_000,
   },

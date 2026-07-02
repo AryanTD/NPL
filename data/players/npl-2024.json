@@ -8,7 +8,6 @@
       "role": "AR",
       "base_price": 1000000,
       "is_marquee": true,
-      "quality": 80,
       "stats": {
         "runs": 100,
         "wickets": 25,
@@ -28,7 +27,6 @@
       "role": "AR",
       "base_price": 1000000,
       "is_marquee": true,
-      "quality": 84,
       "stats": {
         "runs": 210,
         "wickets": 10,
@@ -48,7 +46,6 @@
       "role": "AR",
       "base_price": 1000000,
       "is_marquee": true,
-      "quality": 80,
       "stats": {
         "runs": 358,
         "wickets": 10,
@@ -68,7 +65,6 @@
       "role": "BOWL",
       "base_price": 1000000,
       "is_marquee": true,
-      "quality": 89,
       "stats": {
         "runs": 53,
         "wickets": 23,
@@ -88,7 +84,6 @@
       "role": "WK",
       "base_price": 1000000,
       "is_marquee": true,
-      "quality": 83,
       "stats": {
         "runs": 267,
         "wickets": 0,
@@ -108,7 +103,6 @@
       "role": "AR",
       "base_price": 1000000,
       "is_marquee": true,
-      "quality": 85,
       "stats": {
         "runs": 555,
         "wickets": 18,
@@ -128,7 +122,6 @@
       "role": "AR",
       "base_price": 1000000,
       "is_marquee": true,
-      "quality": 87,
       "stats": {
         "runs": 389,
         "wickets": 18,
@@ -148,7 +141,6 @@
       "role": "AR",
       "base_price": 1000000,
       "is_marquee": true,
-      "quality": 80,
       "stats": {
         "runs": 103,
         "wickets": 18,
@@ -468,9 +460,9 @@
     {
       "id": "npl-s-dhakal",
       "name": "Sagar Dhakal",
-      "category": "B",
+      "category": "A",
       "role": "BOWL",
-      "base_price": 500000,
+      "base_price": 1000000,
       "is_marquee": false,
       "stats": {
         "runs": 9,
@@ -924,9 +916,9 @@
     {
       "id": "npl-d-khanal",
       "name": "Dev Khanal",
-      "category": "B",
+      "category": "A",
       "role": "BAT",
-      "base_price": 500000,
+      "base_price": 1000000,
       "is_marquee": false,
       "stats": {
         "runs": 243,
@@ -943,9 +935,9 @@
     {
       "id": "npl-a-saud",
       "name": "Arjun Saud",
-      "category": "C",
+      "category": "A",
       "role": "WK",
-      "base_price": 200000,
+      "base_price": 1000000,
       "is_marquee": false,
       "stats": {
         "runs": 155,

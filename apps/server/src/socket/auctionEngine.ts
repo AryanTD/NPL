@@ -9,6 +9,7 @@ import type {
   LobbySeat,
   Player,
   PlayerCategory,
+  SetsPreviewData,
 } from "@npl-auction/types";
 import prisma from "../lib/prisma";
 import {
@@ -47,7 +48,6 @@ const TEST_PLAYERS_PER_CAT = 10;
 const BID_INCREMENT = 25_000;
 const TIMER_SECONDS = 10;
 const UNSOLD_TIMER_SECONDS = 5;
-const UNSOLD_CAP_PER_CAT = 2;
 const LUCKY_DRAW_MS = 3_000;
 const MARQUEE_GAP_MS = 500;
 const SPENDING_FLOOR = 6_500_000; // 6.5M NPR minimum each team must spend
@@ -57,9 +57,14 @@ const PHASE_ORDER: AuctionState["phase"][] = [
   "CATEGORY_A",
   "CATEGORY_B",
   "CATEGORY_C",
+  "CATEGORY_A_2",
+  "CATEGORY_B_2",
+  "CATEGORY_C_2",
   "UNSOLD_ROUND",
   "COMPLETE",
 ];
+
+const GROUP1_SIZES = { A: 11, B: 15, C: 17 } as const;
 
 // ─── In-memory state ──────────────────────────────────────────────────────────
 
@@ -80,6 +85,7 @@ interface LiveAuctionState extends AuctionState {
   quota: { A: number; B: number; C: number };
   isPaused: boolean;
   phaseInitialLength: number | null;
+  setsPreview: SetsPreviewData | null;
 }
 
 const auctionStates = new Map<string, LiveAuctionState>();
@@ -101,7 +107,7 @@ function fisherYates<T>(arr: T[]): T[] {
 
 // Returns the IDs of the top-N players in the same category as currentPlayer
 // from the remaining queue + the current player itself. Used by STAR_CHASER.
-function computeStarTargets(currentPlayer: PlayerInfo, queue: QueueEntry[], n = 5): Set<string> {
+function computeStarTargets(currentPlayer: PlayerInfo, queue: QueueEntry[], n = 2): Set<string> {
   const candidates = [
     currentPlayer,
     ...queue.filter(e => e.playerInfo.category === currentPlayer.category).map(e => e.playerInfo),
@@ -181,6 +187,8 @@ function dbPlayerToPlayerInfo(p: DbPlayer): PlayerInfo {
     quality: p.quality,
     role: p.role as PlayerRole,
     category: p.category as import("@prisma/client").PlayerCategory,
+    economy: p.economy,
+    strikeRate: p.strikeRate,
   };
 }
 
@@ -532,25 +540,54 @@ async function startAuction(
   };
 
   const queueData = [
-    ...byCategory.A.map((p, i) => ({
+    // Group 1
+    ...byCategory.A.slice(0, GROUP1_SIZES.A).map((p, i) => ({
       lobbyId,
       playerId: p.id,
       phase: AuctionPhase.CATEGORY_A,
       position: i,
     })),
-    ...byCategory.B.map((p, i) => ({
+    ...byCategory.B.slice(0, GROUP1_SIZES.B).map((p, i) => ({
       lobbyId,
       playerId: p.id,
       phase: AuctionPhase.CATEGORY_B,
       position: i,
     })),
-    ...byCategory.C.map((p, i) => ({
+    ...byCategory.C.slice(0, GROUP1_SIZES.C).map((p, i) => ({
       lobbyId,
       playerId: p.id,
       phase: AuctionPhase.CATEGORY_C,
       position: i,
     })),
+    // Group 2
+    ...byCategory.A.slice(GROUP1_SIZES.A).map((p, i) => ({
+      lobbyId,
+      playerId: p.id,
+      phase: AuctionPhase.CATEGORY_A_2,
+      position: i,
+    })),
+    ...byCategory.B.slice(GROUP1_SIZES.B).map((p, i) => ({
+      lobbyId,
+      playerId: p.id,
+      phase: AuctionPhase.CATEGORY_B_2,
+      position: i,
+    })),
+    ...byCategory.C.slice(GROUP1_SIZES.C).map((p, i) => ({
+      lobbyId,
+      playerId: p.id,
+      phase: AuctionPhase.CATEGORY_C_2,
+      position: i,
+    })),
   ];
+
+  // Build the sets preview payload now (used after marquee draw completes).
+  const toPreview = (arr: typeof byCategory.A) =>
+    arr.map((p) => ({ id: p.id, name: p.name, role: p.role }));
+  const setsPreview: SetsPreviewData = {
+    A: { group1: toPreview(byCategory.A.slice(0, GROUP1_SIZES.A)), group2: toPreview(byCategory.A.slice(GROUP1_SIZES.A)) },
+    B: { group1: toPreview(byCategory.B.slice(0, GROUP1_SIZES.B)), group2: toPreview(byCategory.B.slice(GROUP1_SIZES.B)) },
+    C: { group1: toPreview(byCategory.C.slice(0, GROUP1_SIZES.C)), group2: toPreview(byCategory.C.slice(GROUP1_SIZES.C)) },
+  };
 
   // Atomically claim WAITING → AUCTION using the interactive transaction form so we
   // can inspect the updateMany result before proceeding — prevents double-start races.
@@ -596,6 +633,7 @@ async function startAuction(
     quota,
     isPaused: false,
     phaseInitialLength: null,
+    setsPreview,
   };
   auctionStates.set(lobbyId, state);
 
@@ -612,6 +650,12 @@ async function startAuction(
             PlayerRole.WK,
           ]).slice(0, 2)
         : [];
+    const floorSkipPhases = new Set<string>();
+    if (personality.type === "BALANCED") {
+      floorSkipPhases.add(Math.random() < 0.5 ? "CATEGORY_A" : "CATEGORY_A_2");
+      floorSkipPhases.add(Math.random() < 0.5 ? "CATEGORY_B" : "CATEGORY_B_2");
+      floorSkipPhases.add(Math.random() < 0.5 ? "CATEGORY_C" : "CATEGORY_C_2");
+    }
     state.botSessions.set(seat.seatId, {
       seatId: seat.seatId,
       franchiseId: seat.franchiseId,
@@ -627,9 +671,9 @@ async function startAuction(
       cCount: 0,
       categoryOverspend: {},
       abortController: null,
-      mood: { state: 'NEUTRAL', playersLeft: 2 + Math.floor(Math.random() * 3) },
       bidAttemptedThisRound: false,
       isBluffingThisPlayer: false,
+      floorSkipPhases,
     });
   }
 
@@ -710,6 +754,13 @@ async function runMarqueeDraw(
     session.marqueeCount = 1;
   }
 
+  // Emit the player groups preview and hold 5s — clients show the sets screen
+  // between the marquee reveal and the first auction player.
+  if (state.setsPreview) {
+    io.to(lobbyId).emit("lobby:sets_preview", state.setsPreview);
+    await delay(5_000);
+  }
+
   state.phase = "CATEGORY_A";
   console.log(
     `[auction] marquee draw complete lobbyId=${lobbyId} — advancing to CATEGORY_A`,
@@ -777,7 +828,7 @@ async function revealNextPlayer(io: IoServer, lobbyId: string): Promise<void> {
     handleBid(io, fakeBidSocket, lobbyId, bidSeatId, amount);
   };
   const starTargets = computeStarTargets(entry.playerInfo, state.phaseQueueCache);
-  revealPlayerToBots(io, lobbyId, entry.playerInfo, state.humanSeatIds, state.botSessions, isUnsoldRound, state.quota, categoryPlayersRemaining, categoryPlayersShown, queueSummary, starTargets, state.eliteTargetIds, onBotBid);
+  revealPlayerToBots(io, lobbyId, entry.playerInfo, state.humanSeatIds, state.botSessions, isUnsoldRound, state.phase, state.quota, categoryPlayersRemaining, categoryPlayersShown, queueSummary, starTargets, state.eliteTargetIds, onBotBid);
 }
 
 // ─── startPlayerTimer ─────────────────────────────────────────────────────────
@@ -899,7 +950,7 @@ function handleResume(io: IoServer, socket: IoSocket, lobbyId: string): void {
       state.currentBid.amount,
       state.currentBid.seatId,
       state.humanSeatIds, state.botSessions,
-      isUnsoldRound, state.quota,
+      isUnsoldRound, state.phase, state.quota,
       resumeQueueRemaining, resumeQueueSummary,
       resumeStarTargets,
       state.eliteTargetIds,
@@ -910,7 +961,7 @@ function handleResume(io: IoServer, socket: IoSocket, lobbyId: string): void {
       io, lobbyId,
       state.currentPlayerDb,
       state.humanSeatIds, state.botSessions,
-      isUnsoldRound, state.quota,
+      isUnsoldRound, state.phase, state.quota,
       resumeQueueRemaining, resumePlayersShown, resumeQueueSummary,
       resumeStarTargets,
       state.eliteTargetIds,
@@ -1045,6 +1096,7 @@ function handleBid(
       state.humanSeatIds,
       state.botSessions,
       isUnsoldRound,
+      state.phase,
       state.quota,
       state.phaseQueueCache?.length ?? 0,
       computeQueueSummary(state.phaseQueueCache ?? []),
@@ -1197,7 +1249,7 @@ async function sellPlayer(
     category: player.category as import("@prisma/client").PlayerCategory,
     role: player.role as PlayerRole,
     finalPrice,
-  }, state.quota, state.phaseQueueCache?.length ?? 0, state.phase === "UNSOLD_ROUND");
+  }, state.quota);
   state.currentPlayerDb = null;
 
   state.currentPlayer = null;
@@ -1282,36 +1334,39 @@ async function setupUnsoldRound(io: IoServer, lobbyId: string): Promise<void> {
     return;
   }
 
-  // Cap to UNSOLD_CAP_PER_CAT per category so the round stays short.
-  // Prefer players that teams still need (sort needy categories first).
-  const seatsNeedingA = state.seats.filter((s) => s.categoryCount.A < state.quota.A).length;
-  const seatsNeedingB = state.seats.filter((s) => s.categoryCount.B < state.quota.B).length;
-  const seatsNeedingC = state.seats.filter((s) => s.categoryCount.C < state.quota.C).length;
+  // Pre-compute per-seat role counts from in-memory squad
+  const seatBatCount = new Map<string, number>();
+  const seatBowlCount = new Map<string, number>();
+  for (const seat of state.seats) {
+    seatBatCount.set(seat.seatId, seat.squad.filter((s) => s.player.role === "BAT").length);
+    seatBowlCount.set(seat.seatId, seat.squad.filter((s) => s.player.role === "BOWL").length);
+  }
 
-  const catCounts: Record<string, number> = { A: 0, B: 0, C: 0 };
-  const catNeeded: Record<string, number> = { A: seatsNeedingA, B: seatsNeedingB, C: seatsNeedingC };
-
-  // Sort: needy categories first so they fill their cap before non-needy ones
-  const sorted = [...unsoldRows].sort((a, b) => {
-    const needA = catNeeded[a.player.category] > 0 ? 0 : 1;
-    const needB = catNeeded[b.player.category] > 0 ? 0 : 1;
-    return needA - needB;
-  });
-
-  const capped = sorted.filter((row) => {
+  // Only include players that at least one seat can still acquire:
+  // category quota not full AND role quota not full
+  const eligible = unsoldRows.filter((row) => {
     const cat = row.player.category as "A" | "B" | "C";
-    if (catCounts[cat] >= UNSOLD_CAP_PER_CAT) return false;
-    catCounts[cat]++;
-    return true;
+    const role = row.player.role as PlayerRole;
+    return state.seats.some((seat) => {
+      if (seat.categoryCount[cat] >= state.quota[cat]) return false;
+      if (role === PlayerRole.BAT && (seatBatCount.get(seat.seatId) ?? 0) >= 6) return false;
+      if (role === PlayerRole.BOWL && (seatBowlCount.get(seat.seatId) ?? 0) >= 4) return false;
+      return true;
+    });
   });
+
+  if (eligible.length === 0) {
+    state.phase = "COMPLETE";
+    await completeAuction(io, lobbyId);
+    return;
+  }
 
   // Single SQL UPDATE with per-row CASE values — avoids N separate round-trips.
-  // (Prisma's updateMany can't set different values per row, so raw SQL is needed.)
   const caseWhenClauses = Prisma.join(
-    capped.map((row, i) => Prisma.sql`WHEN ${row.id} THEN ${i}`),
+    eligible.map((row, i) => Prisma.sql`WHEN ${row.id} THEN ${i}`),
     " ",
   );
-  const inList = Prisma.join(capped.map((r) => Prisma.sql`${r.id}`));
+  const inList = Prisma.join(eligible.map((r) => Prisma.sql`${r.id}`));
   await prisma.$executeRaw`
     UPDATE "AuctionQueue"
     SET phase = 'UNSOLD_ROUND'::"AuctionPhase",
@@ -1323,9 +1378,7 @@ async function setupUnsoldRound(io: IoServer, lobbyId: string): Promise<void> {
   // Clear in-memory unsold pool
   state.unsoldPool = [];
 
-  console.log(
-    `[auction] unsold round queued ${capped.length} players (capped ${UNSOLD_CAP_PER_CAT}/cat) lobbyId=${lobbyId}`,
-  );
+  console.log(`[auction] unsold round queued ${eligible.length} players lobbyId=${lobbyId}`);
   await revealNextPlayer(io, lobbyId);
 }
 

@@ -8,6 +8,7 @@ const prisma = new PrismaClient();
 
 const FRANCHISES = [
   {
+    id: "franchise-ktm",
     name: "Kathmandu Gorkhas",
     shortName: "KTM",
     city: "Kathmandu",
@@ -15,6 +16,7 @@ const FRANCHISES = [
     colorSecondary: "#C9A84C",
   },
   {
+    id: "franchise-pkr",
     name: "Pokhara Avengers",
     shortName: "PKR",
     city: "Pokhara",
@@ -22,6 +24,7 @@ const FRANCHISES = [
     colorSecondary: "#FFFFFF",
   },
   {
+    id: "franchise-cht",
     name: "Chitwan Rhinos",
     shortName: "CHT",
     city: "Chitwan",
@@ -29,6 +32,7 @@ const FRANCHISES = [
     colorSecondary: "#F4D03F",
   },
   {
+    id: "franchise-brt",
     name: "Biratnagar Kings",
     shortName: "BRT",
     city: "Biratnagar",
@@ -36,6 +40,7 @@ const FRANCHISES = [
     colorSecondary: "#F9E79F",
   },
   {
+    id: "franchise-jnk",
     name: "Janakpur Bolts",
     shortName: "JNK",
     city: "Janakpur",
@@ -43,6 +48,7 @@ const FRANCHISES = [
     colorSecondary: "#F39C12",
   },
   {
+    id: "franchise-lmb",
     name: "Lumbini Lions",
     shortName: "LMB",
     city: "Lumbini",
@@ -50,6 +56,7 @@ const FRANCHISES = [
     colorSecondary: "#FAD7A0",
   },
   {
+    id: "franchise-sdr",
     name: "Sudurpaschim Royals",
     shortName: "SDR",
     city: "Sudurpaschim",
@@ -57,6 +64,7 @@ const FRANCHISES = [
     colorSecondary: "#A9DFBF",
   },
   {
+    id: "franchise-krn",
     name: "Karnali Yaks",
     shortName: "KRN",
     city: "Karnali",
@@ -86,7 +94,6 @@ interface PlayerJSON {
   role: string;
   base_price: number;
   is_marquee: boolean;
-  quality?: number;
   stats: PlayerStats;
 }
 
@@ -148,9 +155,11 @@ function calcQuality(stats: PlayerStats, role: string): number {
     );
   }
 
-  // Credibility discount for small sample sizes: scales 0.6→1.0 over 0→16 matches.
-  const credibility = Math.min(1.0, 0.6 + ((stats.matches ?? 0) / 16) * 0.4);
-  const adjusted = raw * credibility;
+  // Matches as a direct quality signal (20% weight): selector confidence that a player
+  // belongs in the playing XI. A full NPL season = 16 matches.
+  const REF_MATCHES = 16;
+  const matchScore = Math.min(100, ((stats.matches ?? 0) / REF_MATCHES) * 100);
+  const adjusted = raw * 0.8 + matchScore * 0.2;
 
   // Gamma lift: raw 30→41, raw 50→60, raw 70→77, raw 90→92
   const lifted = adjusted > 0 ? 100 * Math.pow(adjusted / 100, LIFT_GAMMA) : 0;
@@ -167,10 +176,7 @@ function toRow(p: PlayerJSON, season: number) {
     basePrice: p.base_price,
     season,
     isMarquee: p.is_marquee,
-    quality:
-      p.is_marquee && p.quality != null
-        ? p.quality
-        : Math.max(calcQuality(p.stats, p.role), CAT_FLOOR[p.category] ?? 25),
+    quality: Math.max(calcQuality(p.stats, p.role), CAT_FLOOR[p.category] ?? 25),
     matches: p.stats.matches,
     runs: p.stats.runs,
     wickets: p.stats.wickets,
@@ -199,8 +205,13 @@ async function main(): Promise<void> {
   await prisma.player.deleteMany();
   await prisma.franchise.deleteMany();
 
-  // 2. Seed franchises — single bulk insert
-  await prisma.franchise.createMany({ data: [...FRANCHISES] });
+  // 2. Seed franchises — upsert so stable IDs are preserved across re-seeds,
+  //    which prevents the in-memory franchise cache in lobby.ts from going stale.
+  await Promise.all(
+    FRANCHISES.map((f) =>
+      prisma.franchise.upsert({ where: { id: f.id }, update: f, create: f }),
+    ),
+  );
   console.log(`Seeded ${FRANCHISES.length} franchises`);
 
   // 3. Locate data file (process.cwd() = apps/server when run via `prisma db seed`)

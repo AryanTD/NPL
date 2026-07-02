@@ -23,6 +23,9 @@ export type AuctionPhase =
   | 'CATEGORY_A'
   | 'CATEGORY_B'
   | 'CATEGORY_C'
+  | 'CATEGORY_A_2'
+  | 'CATEGORY_B_2'
+  | 'CATEGORY_C_2'
   | 'UNSOLD_ROUND'
   | 'COMPLETE';
 
@@ -128,6 +131,20 @@ export interface AuctionState {
   luckyDrawContenders: string[];
 }
 
+// ─── Sets Preview ────────────────────────────────────────────────────────────
+
+export interface PlayerPreview {
+  id: string;
+  name: string;
+  role: PlayerRole;
+}
+
+export interface SetsPreviewData {
+  A: { group1: PlayerPreview[]; group2: PlayerPreview[] };
+  B: { group1: PlayerPreview[]; group2: PlayerPreview[] };
+  C: { group1: PlayerPreview[]; group2: PlayerPreview[] };
+}
+
 // ─── Bid Event ───────────────────────────────────────────────────────────────
 
 export interface BidEvent {
@@ -203,6 +220,9 @@ export interface ServerToClientEvents {
 
   /** Auction resumed after pause (quickplay only) */
   'lobby:auction_resumed': (data: { isPaused: false }) => void;
+
+  /** Player group sets revealed before auction starts (5s preview) */
+  'lobby:sets_preview': (data: SetsPreviewData) => void;
 }
 
 /** Events the CLIENT emits to the SERVER */
