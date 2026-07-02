@@ -37,10 +37,11 @@ This is a real product targeting real users — Nepali cricket fans.
 - Player stats include `hs` (highest score, e.g. "34*") and `bbi` (best bowling innings, e.g. "4/16") as nullable strings
 - `src/lib/prisma.ts` — singleton Prisma client
 - `src/routes/lobby.ts` — `POST /lobby/create`, `POST /lobby/join/:code`, `POST /lobby/leave`, `GET /lobby/stats`, `GET /lobby/:id`
-- `src/bots/botPersonalities.ts` — all 5 personality configs
+- `src/bots/botPersonalities.ts` — all 5 personality configs + `CATEGORY_QUALITY_FLOOR` (A≥65, B≥55, C≥45)
 - `src/bots/claudeBot.ts` — mock heuristic bot (real Claude API deferred)
-- `src/bots/botManager.ts` — think delay + `AbortSignal` cancellation
-- `src/socket/auctionEngine.ts` — full auction engine (state machine, timer, bid validation, lucky draw, bots, phase transitions) + all Task 5b optimizations applied
+- `src/bots/botManager.ts` — think delay + `AbortSignal` cancellation; `BotSession.floorSkipPhases` stores which group phase per category a BALANCED bot will skip floor-quality players in
+- `src/bots/botDecision.ts` — fit score + mood decision engine; AGGRESSIVE skips floor-quality players every round; BALANCED randomly skips floor-quality players in one of the two groups per category (pre-decided at auction start, not per-player)
+- `src/socket/auctionEngine.ts` — full auction engine (state machine, timer, bid validation, lucky draw, bots, phase transitions) + all Task 5b optimizations applied; unsold round includes all eligible unsold players (no cap) — a player is eligible if at least one seat still has category quota and role quota available
 - `packages/types/index.ts` — `lobby:join` + `lobby:start` added to `ClientToServerEvents`
 - `apps/web/` — Next.js 14 scaffold (Tailwind, App Router, Auth.js v5, socket.io-client, framer-motion)
 - `apps/web/auth.ts` — Auth.js v5 config (Google + Resend providers, JWT strategy, custom session fields: `id`, `username`, `hasSeenLobbyTour`, `hasSeenAuctionTour`)
@@ -144,10 +145,10 @@ Bid increment: 25,000 NPR minimum.
 ### Auction flow
 
 1. Marquee draw — random assignment of 8 marquee players to 8 teams
-2. Category A auction (all A players, one by one)
-3. Category B auction
-4. Category C auction
-5. Unsold players second round — teams that haven't filled quotas get another shot
+2. Category A auction — split into group 1 (first 11) then group 2 (remaining)
+3. Category B auction — group 1 (first 15) then group 2 (remaining)
+4. Category C auction — group 1 (first 17) then group 2 (remaining)
+5. Unsold players second round — only players where ≥1 team still has category quota AND role quota available; no cap on pool size
 6. Lucky draw — if max price is hit by 2+ teams, random winner
 
 ### Bid validation (server-side only)
@@ -178,24 +179,16 @@ Bots use `claude-sonnet-4-6` to reason about each bid. Personality shapes the sy
 
 | Personality | Behaviour |
 |---|---|
-| AGGRESSIVE | Bids hard on star players, willing to go to max, risks budget |
+| AGGRESSIVE | Bids hard on star players, willing to go to max, risks budget; skips floor-quality players every round |
 | CONSERVATIVE | Rarely exceeds base price by much, saves for later |
 | ROLE_HUNTER | Only competes hard for specific roles the squad needs |
 | BUDGET_SNIPER | Passes Cat A, swoops with saved budget in Cat B/C |
-| BALANCED | Sensible manager — no extreme behaviour |
+| BALANCED | Sensible manager — no extreme behaviour; per-auction randomly skips floor-quality players in one of the two groups for each category (decided at auction start, independent per category) |
 
 Bot thinking delay: **1.5–3.5s** (random). Always emit `lobby:bot_thinking` first.
 Bots run entirely server-side — the client never sees bot logic or Claude API calls.
 
-### Bot `minQuality` thresholds (calibrated for real 2024 tournament stats, quality range 25–88)
-
-| Personality | minQuality | Bids on ~% of pool |
-|---|---|---|
-| AGGRESSIVE | 25 | ~100% |
-| BALANCED | 35 | ~55% |
-| CONSERVATIVE | 45 | ~46% |
-| ROLE_HUNTER | 38 priority / 58 non-priority | varies |
-| BUDGET_SNIPER | 45 | ~100% (low aggression wins naturally) |
+**Floor quality** = quality at the category minimum threshold (`CATEGORY_QUALITY_FLOOR`: A=65, B=55, C=45). In the unsold round, floor-skip rules are lifted — bots fill quota normally.
 
 ---
 

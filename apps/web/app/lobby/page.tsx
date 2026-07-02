@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import type { Lobby, LobbySeat } from "@npl-auction/types";
+import type { Lobby, LobbySeat, SetsPreviewData, PlayerPreview } from "@npl-auction/types";
 import socket from "../../lib/socket";
 import TutorialOverlay, { type TourStep } from "../auction/[lobbyId]/TutorialOverlay";
 
@@ -159,6 +159,10 @@ function LobbyPage() {
   const [marqueeAssignments, setMarqueeAssignments] = useState<
     MarqueeAssignment[]
   >([]);
+  const [marqueeDone, setMarqueeDone] = useState(false);
+  const [setsPreview, setSetsPreview] = useState<SetsPreviewData | null>(null);
+  const [setsCountdown, setSetsCountdown] = useState<number | null>(null);
+  const setsStartedRef = useRef(false);
 
   // Tour state
   const [showTour, setShowTour] = useState(false);
@@ -193,11 +197,17 @@ function LobbyPage() {
       setMarqueeAssignments((prev) => [...prev, data]);
     });
 
+    socket.on("lobby:sets_preview", (data: SetsPreviewData) => {
+      setSetsPreview(data);
+      try { sessionStorage.setItem("npl_sets_preview", JSON.stringify(data)); } catch {}
+    });
+
     return () => {
       socket.off("connect");
       socket.off("lobby:state");
       socket.off("lobby:error");
       socket.off("lobby:marquee_assigned");
+      socket.off("lobby:sets_preview");
       socket.disconnect();
     };
   }, [lobbyId, seatId, userId, router]);
@@ -231,6 +241,39 @@ function LobbyPage() {
     };
   }, []);
 
+  // ── Start sets countdown after marquee draw + preview data both ready ─────
+  useEffect(() => {
+    if (!marqueeDone || !setsPreview || setsStartedRef.current) return;
+    setsStartedRef.current = true;
+    setSetsCountdown(5);
+  }, [marqueeDone, setsPreview]);
+
+  // ── Fallback: navigate directly if sets preview never arrives ──────────────
+  useEffect(() => {
+    if (!marqueeDone || setsStartedRef.current) return;
+    const t = setTimeout(() => {
+      if (!setsStartedRef.current) {
+        setsStartedRef.current = true;
+        router.push(`/auction/${lobbyId}?seatId=${seatId}`);
+      }
+    }, 1_500);
+    return () => clearTimeout(t);
+  }, [marqueeDone, router, lobbyId, seatId]);
+
+  // ── Sets preview countdown → navigate on 0 ─────────────────────────────────
+  useEffect(() => {
+    if (setsCountdown === null) return;
+    if (setsCountdown <= 0) {
+      setSetsPreview(null);
+      setSetsCountdown(null);
+      router.push(`/auction/${lobbyId}?seatId=${seatId}`);
+      return;
+    }
+    const t = setTimeout(() => setSetsCountdown((c) => (c ?? 1) - 1), 1_000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setsCountdown]);
+
   // ── Tour auto-trigger ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!userId) return;
@@ -243,15 +286,18 @@ function LobbyPage() {
     }
   }, [userId]); // intentionally excludes tourDismissed to avoid loop
 
-  // ── Marquee draw screen ────────────────────────────────────────────────────
+  // ── Marquee draw + post-draw sets preview ─────────────────────────────────
 
   if (showMarquee && lobby) {
+    if (marqueeDone && setsPreview && setsCountdown !== null) {
+      return <SetsPreviewOverlay data={setsPreview} secondsLeft={setsCountdown} />;
+    }
     return (
       <MarqueeDrawScreen
         seats={lobby.seats}
         assignments={marqueeAssignments}
         mySeatId={seatId}
-        onNavigate={() => router.push(`/auction/${lobbyId}?seatId=${seatId}`)}
+        onNavigate={() => setMarqueeDone(true)}
       />
     );
   }
@@ -1248,6 +1294,235 @@ function MarqueeDrawScreen({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── SetsPreviewOverlay ───────────────────────────────────────────────────────
+
+const CAT_COLORS: Record<string, string> = {
+  A: "#F59E0B",
+  B: "#60A5FA",
+  C: "#34D399",
+};
+
+function SetsPreviewOverlay({
+  data,
+  secondsLeft,
+}: {
+  data: SetsPreviewData;
+  secondsLeft: number;
+}) {
+  const [selectedCat, setSelectedCat] = useState<"A" | "B" | "C">("A");
+  const color = CAT_COLORS[selectedCat];
+
+  return (
+    <div
+      style={{
+        height: "100vh",
+        background: "var(--bg)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "24px",
+      }}
+    >
+      {/* Header */}
+      <div style={{ textAlign: "center", marginBottom: 24 }}>
+        <div
+          style={{
+            fontSize: 11,
+            color: "var(--muted)",
+            letterSpacing: 2,
+            marginBottom: 6,
+          }}
+        >
+          AUCTION DRAW
+        </div>
+        <div
+          style={{
+            fontFamily: "Rajdhani, sans-serif",
+            fontWeight: 700,
+            fontSize: 32,
+            color: "var(--text)",
+          }}
+        >
+          PLAYER GROUPS
+        </div>
+        <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>
+          The auction runs two rounds per category — here are the sets
+        </div>
+      </div>
+
+      {/* Category tabs */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        {(["A", "B", "C"] as const).map((cat) => {
+          const isActive = cat === selectedCat;
+          const c = CAT_COLORS[cat];
+          return (
+            <button
+              key={cat}
+              onClick={() => setSelectedCat(cat)}
+              style={{
+                padding: "8px 32px",
+                borderRadius: 8,
+                border: `1px solid ${isActive ? c : "var(--border2)"}`,
+                background: isActive ? `${c}20` : "var(--s2)",
+                color: isActive ? c : "var(--muted2)",
+                fontFamily: "Rajdhani, sans-serif",
+                fontWeight: 700,
+                fontSize: 15,
+                letterSpacing: 1,
+                cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+            >
+              CAT {cat}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Two groups side by side for selected category */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 16,
+          width: "100%",
+          maxWidth: 680,
+          maxHeight: "calc(100vh - 340px)",
+          overflowY: "auto",
+        }}
+      >
+        <SetsGroupList label="SET 1" players={data[selectedCat].group1} color={color} />
+        <SetsGroupList label="SET 2" players={data[selectedCat].group2} color={color} />
+      </div>
+
+      {/* Countdown */}
+      <div style={{ marginTop: 24, textAlign: "center" }}>
+        <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>
+          Auction starts in
+        </div>
+        <div
+          style={{
+            fontFamily: "Rajdhani, sans-serif",
+            fontWeight: 700,
+            fontSize: 48,
+            color: "var(--gold)",
+            lineHeight: 1,
+          }}
+        >
+          {secondsLeft}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SetsCategoryColumn({
+  cat,
+  groups,
+  color,
+}: {
+  cat: string;
+  groups: { group1: PlayerPreview[]; group2: PlayerPreview[] };
+  color: string;
+}) {
+  return (
+    <div>
+      {/* Category header */}
+      <div
+        style={{
+          background: `${color}15`,
+          border: `1px solid ${color}40`,
+          borderRadius: 8,
+          padding: "7px 12px",
+          marginBottom: 10,
+          textAlign: "center",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "Rajdhani, sans-serif",
+            fontWeight: 700,
+            fontSize: 13,
+            color,
+            letterSpacing: 1,
+          }}
+        >
+          CATEGORY {cat}
+        </span>
+      </div>
+
+      <SetsGroupList label="SET 1" players={groups.group1} color={color} />
+      <div style={{ height: 8 }} />
+      <SetsGroupList label="SET 2" players={groups.group2} color={color} />
+    </div>
+  );
+}
+
+function SetsGroupList({
+  label,
+  players,
+  color,
+}: {
+  label: string;
+  players: PlayerPreview[];
+  color: string;
+}) {
+  return (
+    <div
+      style={{
+        background: "var(--s1)",
+        border: "1px solid var(--border)",
+        borderRadius: 6,
+        padding: "8px 10px",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 10,
+          color,
+          fontWeight: 700,
+          letterSpacing: 1,
+          marginBottom: 6,
+          fontFamily: "Rajdhani, sans-serif",
+        }}
+      >
+        {label}
+      </div>
+      {players.map((p) => (
+        <div
+          key={p.id}
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontSize: 11,
+            color: "var(--text)",
+            padding: "2px 0",
+          }}
+        >
+          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {p.name}
+          </span>
+          <span
+            style={{
+              color: "var(--muted)",
+              fontFamily: "Rajdhani, sans-serif",
+              fontWeight: 700,
+              fontSize: 10,
+              letterSpacing: 0.5,
+              marginLeft: 6,
+              flexShrink: 0,
+            }}
+          >
+            {p.role}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

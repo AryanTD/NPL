@@ -10,6 +10,8 @@ import type {
   Player,
   PlayerCategory,
   PlayerRole,
+  SetsPreviewData,
+  PlayerPreview,
 } from "@npl-auction/types";
 import { SPENDING_FLOOR } from "@npl-auction/types";
 import socket from "../../../lib/socket";
@@ -117,6 +119,9 @@ const CAT_LABEL: Record<string, string> = {
   CATEGORY_A: "Category A",
   CATEGORY_B: "Category B",
   CATEGORY_C: "Category C",
+  CATEGORY_A_2: "Category A",
+  CATEGORY_B_2: "Category B",
+  CATEGORY_C_2: "Category C",
   MARQUEE_DRAW: "Marquee Draw",
   UNSOLD_ROUND: "Unsold Round",
 };
@@ -420,6 +425,10 @@ function AuctionPage() {
   const [showTour, setShowTour] = useState(false);
   const [tourDismissed, setTourDismissed] = useState(false);
 
+  // Sets preview state
+  const [setsData, setSetsData] = useState<SetsPreviewData | null>(null);
+  const [showSets, setShowSets] = useState(false);
+
   // Sold/unsold counts
   const [soldCount, setSoldCount] = useState(0);
 
@@ -455,6 +464,14 @@ function AuctionPage() {
   const luckyActiveRef = useRef(false);
   // Buffer for player_revealed events that arrive while the lucky draw overlay is showing
   const pendingRevealRef = useRef<Player | null>(null);
+
+  // ── Load sets preview from sessionStorage ────────────────────────────────
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem("npl_sets_preview");
+      if (stored) setSetsData(JSON.parse(stored) as SetsPreviewData);
+    } catch {}
+  }, []);
 
   // ── Socket lifecycle ──────────────────────────────────────────────────────
 
@@ -945,6 +962,28 @@ function AuctionPage() {
             gap: 10,
           }}
         >
+          {setsData && (
+            <button
+              onClick={() => setShowSets(true)}
+              title="View Player Groups"
+              style={{
+                height: 26,
+                padding: "0 9px",
+                borderRadius: 5,
+                background: "var(--s3)",
+                border: "1px solid var(--border2)",
+                color: "var(--muted2)",
+                fontSize: 10,
+                fontFamily: "Rajdhani",
+                fontWeight: 700,
+                letterSpacing: 1,
+                cursor: "pointer",
+                flexShrink: 0,
+              }}
+            >
+              SETS
+            </button>
+          )}
           {tourDismissed && !showTour && (
             <button
               onClick={() => {
@@ -2310,6 +2349,225 @@ function AuctionPage() {
           initiallyPaused={luckyActive}
         />
       )}
+
+      {/* Player sets modal */}
+      {showSets && setsData && (
+        <SetsModal data={setsData} onClose={() => setShowSets(false)} />
+      )}
+    </div>
+  );
+}
+
+// ─── SetsModal ────────────────────────────────────────────────────────────────
+
+const SETS_CAT_COLORS: Record<string, string> = {
+  A: "#F59E0B",
+  B: "#60A5FA",
+  C: "#34D399",
+};
+
+function SetsModal({
+  data,
+  onClose,
+}: {
+  data: SetsPreviewData;
+  onClose: () => void;
+}) {
+  const [selectedCat, setSelectedCat] = useState<"A" | "B" | "C">("A");
+  const color = SETS_CAT_COLORS[selectedCat];
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.75)",
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: "var(--s1)",
+          border: "1px solid var(--border2)",
+          borderRadius: 14,
+          padding: "24px 28px",
+          maxWidth: 680,
+          width: "100%",
+          maxHeight: "85vh",
+          overflowY: "auto",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 20,
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: 11,
+                color: "var(--muted)",
+                letterSpacing: 2,
+                marginBottom: 3,
+              }}
+            >
+              AUCTION DRAW
+            </div>
+            <div
+              style={{
+                fontFamily: "Rajdhani, sans-serif",
+                fontWeight: 700,
+                fontSize: 22,
+                color: "var(--text)",
+              }}
+            >
+              PLAYER GROUPS
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: "50%",
+              background: "var(--s3)",
+              border: "1px solid var(--border2)",
+              color: "var(--muted2)",
+              fontSize: 14,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Category tabs */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+          {(["A", "B", "C"] as const).map((cat) => {
+            const isActive = cat === selectedCat;
+            const c = SETS_CAT_COLORS[cat];
+            return (
+              <button
+                key={cat}
+                onClick={() => setSelectedCat(cat)}
+                style={{
+                  padding: "7px 28px",
+                  borderRadius: 7,
+                  border: `1px solid ${isActive ? c : "var(--border2)"}`,
+                  background: isActive ? `${c}20` : "var(--s2)",
+                  color: isActive ? c : "var(--muted2)",
+                  fontFamily: "Rajdhani, sans-serif",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  letterSpacing: 1,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                CAT {cat}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Two groups side by side for selected category */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 16,
+          }}
+        >
+          <SetsPlayerList label="SET 1" players={data[selectedCat].group1} color={color} />
+          <SetsPlayerList label="SET 2" players={data[selectedCat].group2} color={color} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SetsPlayerList({
+  label,
+  players,
+  color,
+}: {
+  label: string;
+  players: PlayerPreview[];
+  color: string;
+}) {
+  return (
+    <div
+      style={{
+        background: "var(--s2)",
+        border: "1px solid var(--border)",
+        borderRadius: 6,
+        padding: "8px 10px",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 10,
+          color,
+          fontWeight: 700,
+          letterSpacing: 1,
+          marginBottom: 6,
+          fontFamily: "Rajdhani, sans-serif",
+        }}
+      >
+        {label}
+      </div>
+      {players.map((p) => (
+        <div
+          key={p.id}
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontSize: 11,
+            color: "var(--text)",
+            padding: "2px 0",
+          }}
+        >
+          <span
+            style={{
+              flex: 1,
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {p.name}
+          </span>
+          <span
+            style={{
+              color: "var(--muted)",
+              fontFamily: "Rajdhani, sans-serif",
+              fontWeight: 700,
+              fontSize: 10,
+              letterSpacing: 0.5,
+              marginLeft: 6,
+              flexShrink: 0,
+            }}
+          >
+            {p.role}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
