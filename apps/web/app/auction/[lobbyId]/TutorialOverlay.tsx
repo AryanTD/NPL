@@ -230,17 +230,6 @@ export default function TutorialOverlay({
 
   return (
     <>
-      {/* Dim overlay */}
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(7,8,15,0.82)",
-          zIndex: 200,
-          pointerEvents: "none",
-        }}
-      />
-
       {/* Spotlight cutout */}
       {rect && phase === "active" && (
         <div
@@ -271,11 +260,11 @@ export default function TutorialOverlay({
             position: "fixed",
             top: tooltipPos.top,
             left: tooltipPos.left,
-            width: 280,
+            width: 260,
             background: "var(--s2)",
             border: "1px solid var(--border2)",
             borderRadius: 12,
-            padding: 16,
+            padding: 14,
             zIndex: 202,
             pointerEvents: "all",
           }}
@@ -284,32 +273,10 @@ export default function TutorialOverlay({
 
           <div
             style={{
-              fontSize: 10,
-              color: "var(--muted)",
-              letterSpacing: 1,
-              marginBottom: 6,
-            }}
-          >
-            STEP {step + 1} OF {steps.length}
-          </div>
-
-          <div
-            style={{
-              fontFamily: "Rajdhani",
-              fontWeight: 700,
-              fontSize: 16,
-              color: "var(--text)",
-              marginBottom: 8,
-            }}
-          >
-            {steps[step].title}
-          </div>
-
-          <div
-            style={{
-              fontSize: 12,
+              fontSize: 13,
               color: "var(--muted2)",
-              lineHeight: 1.65,
+              lineHeight: 1.55,
+              marginBottom: 12,
             }}
           >
             {steps[step].body}

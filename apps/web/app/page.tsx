@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signIn, signOut } from "next-auth/react";
 
@@ -112,6 +112,18 @@ export default function LandingPage() {
   );
   const [isGuest, setIsGuest] = useState(false);
   const [totalGamesPlayed, setTotalGamesPlayed] = useState<number | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const avatarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    if (dropdownOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [dropdownOpen]);
 
   // ── Restore guest state from localStorage ─────────────────────────────────
 
@@ -350,161 +362,247 @@ export default function LandingPage() {
   const showDefaultCard = isSignedIn || isGuest;
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-6 py-16">
+    <div className="relative min-h-screen flex flex-col items-center overflow-hidden">
       {/* Grid texture overlay */}
       <div className="grid-texture absolute inset-0" />
 
-      {/* Logo lockup */}
-      <div className="relative flex flex-col items-center gap-3 mb-6 animate-slide-up">
-        {/* Nepal flag color bars */}
-        <div className="flex items-end gap-[3px] mb-1">
-          <div
+      {/* Profile avatar — top right */}
+      {showDefaultCard && name.trim() && (
+        <div ref={avatarRef} style={{ position: "absolute", top: 16, right: 16, zIndex: 10 }}>
+          <button
+            onClick={() => setDropdownOpen((o) => !o)}
             style={{
-              width: 4,
-              height: 24,
-              background: "#dc2626",
-              borderRadius: 2,
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              background: "var(--s2)",
+              border: "1px solid var(--gold)",
+              color: "var(--gold)",
+              fontFamily: "Rajdhani, sans-serif",
+              fontWeight: 700,
+              fontSize: 16,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
-          />
-          <div
-            style={{
-              width: 4,
-              height: 16,
-              background: "#1B3A6B",
-              borderRadius: 2,
-            }}
-          />
-        </div>
-
-        <div
-          style={{
-            fontFamily: "Rajdhani, sans-serif",
-            fontWeight: 700,
-            fontSize: 52,
-            color: "var(--text)",
-            letterSpacing: 3,
-            lineHeight: 1,
-          }}
-        >
-          NPL AUCTION
-        </div>
-
-        <div
-          style={{
-            fontFamily: "Rajdhani, sans-serif",
-            fontWeight: 500,
-            fontSize: 18,
-            color: "var(--gold)",
-            letterSpacing: 6,
-          }}
-        >
-          2025 · SEASON 3
-        </div>
-
-        <p
-          style={{
-            fontSize: 14,
-            color: "var(--muted)",
-            maxWidth: 360,
-            textAlign: "center",
-            lineHeight: 1.6,
-          }}
-        >
-          Build your NPL franchise. Bid on Nepali cricketers. Compete in
-          real-time against managers across Nepal.
-        </p>
-      </div>
-
-      {/* Ticker */}
-      {totalGamesPlayed !== null && totalGamesPlayed > 0 && (
-        <div className="ticker-strip" style={{ marginBottom: 20 }}>
-          <span className="ticker-content">
-            {Array.from({ length: 6 }, (_, i) => (
-              <span key={i} style={{ marginRight: 56 }}>
-                {totalGamesPlayed.toLocaleString()} AUCTIONS PLAYED
-                &nbsp;·&nbsp;
-              </span>
-            ))}
-          </span>
+          >
+            {name.trim()[0].toUpperCase()}
+          </button>
+          {dropdownOpen && (
+            <div
+              style={{
+                position: "absolute",
+                top: 44,
+                right: 0,
+                background: "var(--s1)",
+                border: "1px solid var(--border)",
+                borderRadius: 10,
+                padding: "12px 16px",
+                minWidth: 160,
+                zIndex: 20,
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+              }}
+            >
+              <p style={{ fontSize: 13, color: "var(--text)", fontWeight: 600, margin: 0 }}>
+                {name.trim()}
+              </p>
+              {isSignedIn && (
+                <button
+                  onClick={() => signOut({ callbackUrl: "/" })}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    color: "var(--muted)",
+                    padding: 0,
+                    textAlign: "left",
+                    textDecoration: "underline",
+                  }}
+                >
+                  Sign out
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Auth card */}
-      <div
-        className="relative animate-slide-up w-full"
+      {/* Main content */}
+      <main className="relative flex-1 flex flex-col items-center justify-center w-full px-6 py-16">
+        {/* Logo lockup */}
+        <div className="flex flex-col items-center gap-3 mb-6 animate-slide-up">
+          {/* Nepal flag color bars */}
+          <div className="flex items-end gap-[3px] mb-1">
+            <div style={{ width: 4, height: 24, background: "#dc2626", borderRadius: 2 }} />
+            <div style={{ width: 4, height: 16, background: "#1B3A6B", borderRadius: 2 }} />
+          </div>
+
+          <div
+            style={{
+              fontFamily: "Rajdhani, sans-serif",
+              fontWeight: 700,
+              fontSize: 52,
+              color: "var(--text)",
+              letterSpacing: 3,
+              lineHeight: 1,
+            }}
+          >
+            NPL AUCTION
+          </div>
+
+          <div
+            style={{
+              fontFamily: "Rajdhani, sans-serif",
+              fontWeight: 500,
+              fontSize: 18,
+              color: "var(--gold)",
+              letterSpacing: 6,
+            }}
+          >
+            2025 · SEASON 3
+          </div>
+
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--muted)",
+              maxWidth: 360,
+              textAlign: "center",
+              lineHeight: 1.6,
+            }}
+          >
+            Build your NPL franchise. Bid on Nepali cricketers. Compete in
+            real-time against managers across Nepal.
+          </p>
+        </div>
+
+        {/* Ticker */}
+        {totalGamesPlayed !== null && totalGamesPlayed > 0 && (
+          <div className="ticker-strip" style={{ marginBottom: 20 }}>
+            <span className="ticker-content">
+              {Array.from({ length: 6 }, (_, i) => (
+                <span key={i} style={{ marginRight: 56 }}>
+                  {totalGamesPlayed.toLocaleString()} AUCTIONS PLAYED
+                  &nbsp;·&nbsp;
+                </span>
+              ))}
+            </span>
+          </div>
+        )}
+
+        {/* Auth card */}
+        <div
+          className="animate-slide-up w-full"
+          style={{
+            maxWidth: 520,
+            background: "var(--s1)",
+            border: "1px solid var(--border)",
+            borderRadius: 14,
+            padding: "32px 36px",
+            animationDelay: "0.1s",
+          }}
+        >
+          {!isLoaded ? (
+            <div style={{ textAlign: "center", color: "var(--muted)", fontSize: 14 }}>
+              Loading…
+            </div>
+          ) : !showDefaultCard ? (
+            <SignedOutView onContinueAsGuest={handleContinueAsGuest} />
+          ) : nameLoaded && !name.trim() && view === "default" ? (
+            <NameSetupView
+              onNameChange={handleNameChange}
+              onNameBlur={handleNameBlur}
+            />
+          ) : view === "default" ? (
+            <DefaultView
+              name={name}
+              onNameChange={handleNameChange}
+              onNameBlur={handleNameBlur}
+              error={error}
+              loading={loading}
+              activeSession={activeSession}
+              onRejoin={handleRejoin}
+              onDismissRejoin={handleDismissRejoin}
+              onCreate={() => {
+                setError(null);
+                setView("create");
+              }}
+              onJoin={() => {
+                setError(null);
+                setView("join");
+              }}
+              onQuickPlay={() => createLobby()}
+            />
+          ) : view === "create" ? (
+            <CreateView
+              name={name}
+              loading={loading}
+              error={error}
+              warmingUp={warmingUp}
+              onBack={() => {
+                setView("default");
+                setError(null);
+                setWarmingUp(false);
+              }}
+              onSelect={(shortName) => createLobby(shortName)}
+            />
+          ) : (
+            <JoinView
+              name={name}
+              code={code}
+              setCode={setCode}
+              loading={loading}
+              error={error}
+              warmingUp={warmingUp}
+              onBack={() => {
+                setView("default");
+                setError(null);
+                setWarmingUp(false);
+              }}
+              onJoin={joinLobby}
+            />
+          )}
+        </div>
+
+        {/* How to Play */}
+        <HowToPlaySection />
+
+        {/* NPL Rules */}
+        <NPLRulesSection />
+      </main>
+
+      {/* Footer */}
+      <footer
         style={{
-          maxWidth: 520,
-          background: "var(--s1)",
-          border: "1px solid var(--border)",
-          borderRadius: 14,
-          padding: "32px 36px",
-          animationDelay: "0.1s",
+          position: "relative",
+          width: "100%",
+          borderTop: "1px solid var(--border)",
+          padding: "14px 24px",
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "8px 20px",
+          justifyContent: "center",
         }}
       >
-        {!isLoaded ? (
-          <div
-            style={{ textAlign: "center", color: "var(--muted)", fontSize: 14 }}
+        {[
+          { label: "More Information", href: "/info" },
+          { label: "Terms & Conditions", href: "/terms" },
+          { label: "Privacy Policy", href: "/privacy" },
+          { label: "Cookie Policy", href: "/cookies" },
+        ].map(({ label, href }) => (
+          <a
+            key={href}
+            href={href}
+            style={{ fontSize: 12, color: "var(--muted)", textDecoration: "none" }}
           >
-            Loading…
-          </div>
-        ) : !showDefaultCard ? (
-          <SignedOutView onContinueAsGuest={handleContinueAsGuest} />
-        ) : nameLoaded && !name.trim() && view === "default" ? (
-          <NameSetupView
-            onNameChange={handleNameChange}
-            onNameBlur={handleNameBlur}
-          />
-        ) : view === "default" ? (
-          <DefaultView
-            name={name}
-            onNameChange={handleNameChange}
-            onNameBlur={handleNameBlur}
-            error={error}
-            loading={loading}
-            activeSession={activeSession}
-            onRejoin={handleRejoin}
-            onDismissRejoin={handleDismissRejoin}
-            onCreate={() => {
-              setError(null);
-              setView("create");
-            }}
-            onJoin={() => {
-              setError(null);
-              setView("join");
-            }}
-            onQuickPlay={() => createLobby()}
-            isSignedIn={isSignedIn}
-          />
-        ) : view === "create" ? (
-          <CreateView
-            name={name}
-            loading={loading}
-            error={error}
-            warmingUp={warmingUp}
-            onBack={() => {
-              setView("default");
-              setError(null);
-              setWarmingUp(false);
-            }}
-            onSelect={(shortName) => createLobby(shortName)}
-          />
-        ) : (
-          <JoinView
-            name={name}
-            code={code}
-            setCode={setCode}
-            loading={loading}
-            error={error}
-            warmingUp={warmingUp}
-            onBack={() => {
-              setView("default");
-              setError(null);
-              setWarmingUp(false);
-            }}
-            onJoin={joinLobby}
-          />
-        )}
-      </div>
+            {label}
+          </a>
+        ))}
+      </footer>
     </div>
   );
 }
@@ -694,7 +792,6 @@ function DefaultView({
   onCreate,
   onJoin,
   onQuickPlay,
-  isSignedIn,
 }: {
   name: string;
   onNameChange: (v: string) => void;
@@ -707,7 +804,6 @@ function DefaultView({
   onCreate: () => void;
   onJoin: () => void;
   onQuickPlay: () => void;
-  isSignedIn: boolean;
 }) {
   const [isEditingName, setIsEditingName] = useState(false);
   if (activeSession) {
@@ -917,23 +1013,6 @@ function DefaultView({
         Quick Play (vs bots only)
       </button>
 
-      {isSignedIn && (
-        <button
-          onClick={() => signOut({ callbackUrl: "/" })}
-          style={{
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            fontSize: 12,
-            color: "var(--muted)",
-            textAlign: "center",
-            padding: "2px 0",
-            textDecoration: "underline",
-          }}
-        >
-          Sign out
-        </button>
-      )}
     </div>
   );
 }
@@ -1141,6 +1220,179 @@ function JoinView({
       >
         {loading ? "JOINING…" : "JOIN"}
       </button>
+    </div>
+  );
+}
+
+// ─── How to Play ─────────────────────────────────────────────────────────────
+
+const HOW_TO_PLAY_STEPS = [
+  { title: "Join or create a room", desc: "Up to 8 managers compete. Empty seats are filled by AI bots." },
+  { title: "Marquee draw", desc: "Each franchise is randomly assigned a marquee player before bidding starts." },
+  { title: "Bid on players", desc: "Categories A (10L base), B (5L base), C (2L base). Each team builds 3A + 4B + 3C." },
+  { title: "Lucky draw", desc: "If two or more teams hit the max price, a random draw picks the winner." },
+  { title: "Build your squad", desc: "90 lakhs budget. Spend wisely to build the best 16-player franchise." },
+];
+
+function HowToPlaySection() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div style={{ maxWidth: 520, width: "100%", marginTop: 12 }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          width: "100%",
+          background: "none",
+          border: "1px solid var(--border)",
+          borderRadius: open ? "10px 10px 0 0" : 10,
+          padding: "12px 18px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          cursor: "pointer",
+          fontFamily: "Rajdhani, sans-serif",
+          fontWeight: 700,
+          fontSize: 13,
+          letterSpacing: 1.5,
+          color: "var(--muted)",
+        }}
+      >
+        HOW TO PLAY
+        <span style={{ fontSize: 10, display: "inline-block", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+      </button>
+      {open && (
+        <div
+          style={{
+            background: "var(--s1)",
+            border: "1px solid var(--border)",
+            borderTop: "none",
+            borderRadius: "0 0 10px 10px",
+            padding: "16px 18px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+          }}
+        >
+          {HOW_TO_PLAY_STEPS.map((step, i) => (
+            <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+              <span
+                style={{
+                  fontFamily: "Rajdhani, sans-serif",
+                  fontWeight: 700,
+                  fontSize: 18,
+                  color: "var(--gold)",
+                  lineHeight: 1.2,
+                  minWidth: 20,
+                  flexShrink: 0,
+                }}
+              >
+                {i + 1}
+              </span>
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", margin: "0 0 3px" }}>{step.title}</p>
+                <p style={{ fontSize: 12, color: "var(--muted)", margin: 0, lineHeight: 1.5 }}>{step.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── NPL Rules ───────────────────────────────────────────────────────────────
+
+const NPL_RULES = [
+  {
+    title: "Starting purse",
+    desc: "Each franchise receives NPR 90 lakhs (90,00,000) to spend across the entire auction.",
+  },
+  {
+    title: "Player categories",
+    desc: "Category A — base 10L, max 15L · Category B — base 5L, max 10L · Category C — base 2L, max 5L. Minimum bid increment: 25,000.",
+  },
+  {
+    title: "Squad composition",
+    desc: "Each team must sign exactly 3 Cat-A + 4 Cat-B + 3 Cat-C players at auction, plus 1 pre-assigned marquee, 4 overseas, and 1 iconic local (16 total).",
+  },
+  {
+    title: "Bidding restrictions",
+    desc: "You cannot bid if you can't afford it, have filled that category's quota, or the spend would leave you unable to fill your remaining slots at base price.",
+  },
+  {
+    title: "Lucky draw",
+    desc: "If two or more teams reach the max price for a player, the winner is decided by a random lucky draw — not by bidding further.",
+  },
+  {
+    title: "Unsold round",
+    desc: "After all three categories, unsold players get a second chance. Any player where at least one team still has quota and roster space is re-listed.",
+  },
+];
+
+function NPLRulesSection() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div style={{ maxWidth: 520, width: "100%", marginTop: 8, marginBottom: 8 }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          width: "100%",
+          background: "none",
+          border: "1px solid var(--border)",
+          borderRadius: open ? "10px 10px 0 0" : 10,
+          padding: "12px 18px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          cursor: "pointer",
+          fontFamily: "Rajdhani, sans-serif",
+          fontWeight: 700,
+          fontSize: 13,
+          letterSpacing: 1.5,
+          color: "var(--muted)",
+        }}
+      >
+        NPL AUCTION RULES
+        <span style={{ fontSize: 10, display: "inline-block", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+      </button>
+      {open && (
+        <div
+          style={{
+            background: "var(--s1)",
+            border: "1px solid var(--border)",
+            borderTop: "none",
+            borderRadius: "0 0 10px 10px",
+            padding: "16px 18px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+          }}
+        >
+          {NPL_RULES.map((rule, i) => (
+            <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+              <span
+                style={{
+                  fontFamily: "Rajdhani, sans-serif",
+                  fontWeight: 700,
+                  fontSize: 18,
+                  color: "var(--gold)",
+                  lineHeight: 1.2,
+                  minWidth: 20,
+                  flexShrink: 0,
+                }}
+              >
+                {i + 1}
+              </span>
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", margin: "0 0 3px" }}>{rule.title}</p>
+                <p style={{ fontSize: 12, color: "var(--muted)", margin: 0, lineHeight: 1.5 }}>{rule.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

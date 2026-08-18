@@ -20,23 +20,23 @@ import TutorialOverlay, { type TourStep } from "./TutorialOverlay";
 const AUCTION_TOUR_STEPS: TourStep[] = [
   {
     targetId: "tour-player-card",
-    title: "The Player Card",
-    body: "Category (A/B/C) sets the price band. The colored header shows base price — the opening bid — and max price — the ceiling before a lucky draw kicks in.",
+    title: "",
+    body: "The category shows the price band. Base price is where bidding starts and max price is the ceiling.",
   },
   {
     targetId: "tour-bid-panel",
-    title: "Bidding & Timer",
-    body: "Each bid raises the price by at least रू25K. The bar drains in real time — if nobody bids before zero, the player goes unsold and returns in the second round.",
+    title: "",
+    body: "Every bid must raise the price by at least 25K. If the timer runs out with no bids, the player goes unsold.",
   },
   {
     targetId: "tour-bid-actions",
-    title: "Lucky Draw",
-    body: "If 2+ teams bid max price, a lucky draw decides the winner — nobody can outbid their way out. Click ENTER LUCKY DRAW to throw your hat in. The tour pauses if a draw starts.",
+    title: "",
+    body: "If two or more teams reach max price, a lucky draw picks the winner. Press ENTER LUCKY DRAW to join.",
   },
   {
     targetId: "tour-squad-panel",
-    title: "Your Squad",
-    body: "Track quota progress and purse here. The server blocks bids that would leave you unable to fill remaining slots at base price — the bid button greys out when you're overextended.",
+    title: "",
+    body: "Track your remaining quota and budget here. The bid button turns off if a bid would leave your squad incomplete.",
   },
 ];
 

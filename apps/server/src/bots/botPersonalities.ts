@@ -13,7 +13,7 @@ export interface BotPersonality {
   humanRivalMult: number; // ceiling boost when a human (not bot) is winning
   delayFast: [number, number]; // [lo, hi] ms — quick bid mode
   delaySlow: [number, number]; // [lo, hi] ms — calm/deliberate mode
-  fastChance: number;          // probability (0–1) of using fast mode
+  fastChance: number; // probability (0–1) of using fast mode
   normalIncrement: number;
   urgentIncrement: number;
 }
@@ -59,7 +59,7 @@ export const PERSONALITIES: Record<PersonalityType, BotPersonality> = {
     humanRivalMult: 1.05,
     delayFast: [2500, 4500],
     delaySlow: [500, 1000],
-    fastChance: 0.10,
+    fastChance: 0.1,
     normalIncrement: 25_000,
     urgentIncrement: 25_000,
   },
@@ -70,7 +70,7 @@ export const PERSONALITIES: Record<PersonalityType, BotPersonality> = {
     humanRivalMult: 1.08,
     delayFast: [1200, 2500],
     delaySlow: [400, 800],
-    fastChance: 0.30,
+    fastChance: 0.3,
     normalIncrement: 25_000,
     urgentIncrement: 50_000,
   },
@@ -81,7 +81,7 @@ export const PERSONALITIES: Record<PersonalityType, BotPersonality> = {
     humanRivalMult: 1.12,
     delayFast: [700, 1800],
     delaySlow: [2500, 3500],
-    fastChance: 0.70,
+    fastChance: 0.7,
     normalIncrement: 50_000,
     urgentIncrement: 100_000,
   },

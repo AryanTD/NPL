@@ -10,23 +10,23 @@ import TutorialOverlay, { type TourStep } from "../auction/[lobbyId]/TutorialOve
 const LOBBY_TOUR_STEPS: TourStep[] = [
   {
     targetId: "tour-seat-grid",
-    title: "Your Franchise",
-    body: "You're one of 8 NPL franchises. Empty seats are filled by AI bot managers — each with a distinct personality (aggressive, conservative, budget sniper…). Every team starts with the same NPR 90L purse.",
+    title: "",
+    body: "You are 1 of 8 NPL franchises. Empty seats are filled by AI bots. Every team starts with NPR 90L.",
   },
   {
     targetId: "tour-auction-format",
-    title: "Auction Phases",
-    body: "Bidding runs in order: a marquee draw assigns each team a star player for free, then three rounds of bidding (Cat A → B → C). Any player nobody buys gets a second chance in the Unsold Round.",
+    title: "",
+    body: "The auction starts with a free marquee draw, then moves through Cat A, B and C bidding rounds. Unsold players get one more chance at the end.",
   },
   {
     targetId: "tour-cat-phases",
-    title: "Categories & Lucky Draw",
-    body: "Cat A players go up to रू15L, B up to रू10L, C up to रू5L. If two or more teams bid max price for the same player, a lucky draw picks the winner at random — nobody can outbid their way out.",
+    title: "",
+    body: "Cat A goes up to 15L, B up to 10L and C up to 5L. If two or more teams hit max price, a lucky draw picks the winner.",
   },
   {
     targetId: "tour-info-strip",
-    title: "Squad Requirements",
-    body: "You must finish with exactly 3 Cat A, 4 Cat B, and 3 Cat C auction players. The game blocks bids that would leave you unable to complete your roster at base price — budget carefully from the start.",
+    title: "",
+    body: "You need exactly 3A, 4B and 3C players. Bids that would leave your roster incomplete are automatically blocked.",
   },
 ];
 
