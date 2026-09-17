@@ -575,34 +575,6 @@ export default function LandingPage() {
         <NPLRulesSection />
       </main>
 
-      {/* Footer */}
-      <footer
-        style={{
-          position: "relative",
-          width: "100%",
-          borderTop: "1px solid var(--border)",
-          padding: "14px 24px",
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "8px 20px",
-          justifyContent: "center",
-        }}
-      >
-        {[
-          { label: "More Information", href: "/info" },
-          { label: "Terms & Conditions", href: "/terms" },
-          { label: "Privacy Policy", href: "/privacy" },
-          { label: "Cookie Policy", href: "/cookies" },
-        ].map(({ label, href }) => (
-          <a
-            key={href}
-            href={href}
-            style={{ fontSize: 12, color: "var(--muted)", textDecoration: "none" }}
-          >
-            {label}
-          </a>
-        ))}
-      </footer>
     </div>
   );
 }
