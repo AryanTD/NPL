@@ -11,8 +11,8 @@ out/
 .env.local
 .env.*.local
 
-# Prisma
-apps/server/prisma/migrations/
+# Prisma — migrations ARE tracked on purpose.
+# The schema history must be reproducible from a fresh clone; do not ignore this directory.
 
 # Logs
 *.log
