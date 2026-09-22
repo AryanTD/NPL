@@ -17,7 +17,7 @@ This is a real product targeting real users — Nepali cricket fans.
 - **Backend**: Node.js + Express + Socket.io — in `apps/server/`
 - **Database**: PostgreSQL + Prisma ORM (in `apps/server/prisma/`)
 - **Auth**: Auth.js v5 (next-auth@5.0.0-beta.31) — Google OAuth, Email Magic Link (Resend), JWT sessions
-- **AI Bots**: Anthropic Claude API (claude-sonnet-4-6)
+- **Bots**: Algorithmic decision engine, no LLM — `apps/server/src/bots/`
 - **Hosting**: Vercel (web) + Render (server) + Neon (PostgreSQL, free tier)
 - **Monorepo**: npm workspaces, shared types in `packages/types/`
 
@@ -30,15 +30,14 @@ This is a real product targeting real users — Nepali cricket fans.
 - `apps/server/src/index.ts` — Express + Socket.io bootstrap, CORS, graceful shutdown
 - `apps/server/prisma/schema.prisma` — full schema (12 models, all enums); Auth.js models (User, Account, Session, VerificationToken) added alongside game models
 - `apps/server/prisma/seed.ts` — bulk-insert franchises + players via `createMany`; quality formula calibrated for single-tournament stats (batting_avg ref=25, wickets ref=15)
-- `data/players/npl-2024.json` — **82 real NPL 2024 players** (8 marquee + 74 non-marquee); sourced from Kaggle dataset, overseas players excluded; `npl-2025.json` is no longer used
+- `data/players/npl-2024.json` — **96 real NPL 2024 players** (8 marquee + 88 non-marquee); sourced from Kaggle dataset, overseas players excluded; `npl-2025.json` is no longer used
 - `data/scripts/clean_players.py` — Python script that built npl-2024.json from the Kaggle CSVs; re-run to regenerate if raw data changes
-- DB migrations applied through `add_authjs_models` (latest), DB seeded with real players on Neon
+- DB migrations applied through `add_phase_groups` (latest), DB seeded with real players on Neon
 - Quality range in DB: 45–89; per-category floor applied in seed.ts (A≥65, B≥55, C≥45); marquee quality is manually set in npl-2024.json and preserved as-is
 - Player stats include `hs` (highest score, e.g. "34*") and `bbi` (best bowling innings, e.g. "4/16") as nullable strings
 - `src/lib/prisma.ts` — singleton Prisma client
 - `src/routes/lobby.ts` — `POST /lobby/create`, `POST /lobby/join/:code`, `POST /lobby/leave`, `GET /lobby/stats`, `GET /lobby/:id`
-- `src/bots/botPersonalities.ts` — all 5 personality configs + `CATEGORY_QUALITY_FLOOR` (A≥65, B≥55, C≥45)
-- `src/bots/claudeBot.ts` — mock heuristic bot (real Claude API deferred)
+- `src/bots/botPersonalities.ts` — all 6 personality configs (incl. STAR_CHASER) + `CATEGORY_QUALITY_FLOOR` (A≥65, B≥55, C≥45)
 - `src/bots/botManager.ts` — think delay + `AbortSignal` cancellation; `BotSession.floorSkipPhases` stores which group phase per category a BALANCED bot will skip floor-quality players in
 - `src/bots/botDecision.ts` — fit score + mood decision engine; AGGRESSIVE skips floor-quality players every round; BALANCED randomly skips floor-quality players in one of the two groups per category (pre-decided at auction start, not per-player)
 - `src/socket/auctionEngine.ts` — full auction engine (state machine, timer, bid validation, lucky draw, bots, phase transitions) + all Task 5b optimizations applied; unsold round includes all eligible unsold players (no cap) — a player is eligible if at least one seat still has category quota and role quota available
@@ -65,9 +64,16 @@ This is a real product targeting real users — Nepali cricket fans.
 
 ### Not yet built
 - Fantasy scoring system (post-auction)
-- Real Claude API integration for bots (currently mock heuristic)
 
-See `ROADMAP.md` for the full ordered task list.
+### Deliberate non-goals
+- **LLM-backed bots.** The `@anthropic-ai/sdk` dependency is a leftover from the original plan and
+  is unused. Bots are algorithmic by decision: no per-bid API cost, no added latency, and testable.
+  Do not reintroduce an LLM call into the bid path.
+- **Crash recovery for in-flight auctions.** Deferred deliberately — see `V2.md`. Reliability work
+  is prevention (keep the server warm, never strand a lobby), not rehydration.
+
+See `V2.md` for the current roadmap and `CONTRIBUTING.md` for how topics are built.
+`ROADMAP.md` is historical and superseded.
 
 ---
 
@@ -77,9 +83,12 @@ See `ROADMAP.md` for the full ordered task list.
 NPL/
 ├── package.json              ← npm workspaces root
 ├── CLAUDE.md                 ← this file
-├── ROADMAP.md                ← ordered build plan with task breakdown
+├── V2.md                     ← current roadmap (9 topics)
+├── CONTRIBUTING.md           ← how topics are designed, built and merged
+├── docs/design/              ← one design note per topic (problem, decision, criteria)
+├── ROADMAP.md                ← historical build plan (superseded)
 ├── data/players/
-│   └── npl-2024.json          ← 82 real NPL 2024 players (npl-2025.json removed)
+│   └── npl-2024.json          ← 96 real NPL 2024 players (npl-2025.json removed)
 ├── data/scripts/
 │   └── clean_players.py       ← generates npl-2024.json from Kaggle CSVs
 ├── packages/types/
@@ -91,7 +100,7 @@ NPL/
     │   │   ├── lib/prisma.ts
     │   │   ├── routes/lobby.ts
     │   │   ├── socket/       ← auctionEngine.ts
-    │   │   └── bots/         ← botManager.ts, claudeBot.ts (mock), botPersonalities.ts
+    │   │   └── bots/         ← botManager.ts, botDecision.ts, botPersonalities.ts
     │   └── prisma/
     │       ├── schema.prisma
     │       └── seed.ts
@@ -104,9 +113,12 @@ NPL/
         │   ├── page.tsx      ← landing page (sign-in/guest, ticker, persistent name, create/join)
         │   ├── api/
         │   │   ├── auth/[...nextauth]/route.ts ← Auth.js route handler
+        │   │   ├── ping/route.ts           ← GET, proxies server /health (keep-warm)
         │   │   └── user/
         │   │       ├── tour/route.ts      ← PATCH tour seen flag to DB
         │   │       └── username/route.ts  ← PATCH display name to DB
+        │   ├── players/          ← player browser (server component + PlayersClient.tsx)
+        │   ├── info/ terms/ privacy/ cookies/  ← footer pages
         │   ├── lobby/
         │   │   └── page.tsx  ← lobby waiting room (socket, seat grid, start, marquee draw)
         │   └── auction/
@@ -175,18 +187,33 @@ A team **cannot** bid if:
 
 ## Bot Personalities
 
-Bots use `claude-sonnet-4-6` to reason about each bid. Personality shapes the system prompt.
+Bots are **algorithmic**. `botDecision.ts` scores each player with a fit score and compares it
+against a personality-specific threshold and price ceiling. No LLM is involved and there is no
+API call anywhere in the bid path.
 
-| Personality | Behaviour |
+Each personality is a config in `botPersonalities.ts`:
+
+| Field | Meaning |
 |---|---|
-| AGGRESSIVE | Bids hard on star players, willing to go to max, risks budget; skips floor-quality players every round |
-| CONSERVATIVE | Rarely exceeds base price by much, saves for later |
-| ROLE_HUNTER | Only competes hard for specific roles the squad needs |
-| BUDGET_SNIPER | Passes Cat A, swoops with saved budget in Cat B/C |
-| BALANCED | Sensible manager — no extreme behaviour; per-auction randomly skips floor-quality players in one of the two groups for each category (decided at auction start, independent per category) |
+| `fitThreshold` | Base pickiness (0–1); higher = more selective |
+| `ceilingMult` | Scales maximum willingness to pay |
+| `humanRivalMult` | Ceiling boost when a human, not a bot, is currently winning |
+| `delayFast` / `delaySlow` | Think-delay ranges in ms |
+| `fastChance` | Probability of using the fast range |
+| `normalIncrement` / `urgentIncrement` | Bid step sizes |
 
-Bot thinking delay: **1.5–3.5s** (random). Always emit `lobby:bot_thinking` first.
-Bots run entirely server-side — the client never sees bot logic or Claude API calls.
+| Personality | fit | ceiling | Behaviour |
+|---|---|---|---|
+| AGGRESSIVE | 0.25 | 1.18 | Fast and wide; randomly ignores ~1/3 of players (chaotic, not quality-driven); skips floor-quality players every round |
+| CONSERVATIVE | 0.60 | 1.32 | Picky and deliberate; the only personality that never takes the unsold-round ceiling boost |
+| ROLE_HUNTER | 0.35 | 1.40 | Role-adjusted threshold and ceiling; competes hard only for the `priorityRoles` its squad needs |
+| BUDGET_SNIPER | 0.28 | 0.65 | Bluffs early, snipes in the last 3 slots and the unsold round; will still go to category max for a standout athlete |
+| BALANCED | 0.45 | 1.10 | Sensible middle; per-auction randomly skips floor-quality players in one of the two groups per category (decided at auction start, independent per category) |
+| STAR_CHASER | 0.65 | 1.60 | Only bids on the top 5 remaining per category outside the unsold round, and pays heavily for them |
+
+Think delay is personality-specific — `delayFast` vs `delaySlow`, chosen by `fastChance`, spanning
+roughly 300ms–4.5s. Always emit `lobby:bot_thinking` first.
+Bots run entirely server-side — the client never sees the decision logic.
 
 **Floor quality** = quality at the category minimum threshold (`CATEGORY_QUALITY_FLOOR`: A=65, B=55, C=45). In the unsold round, floor-skip rules are lifted — bots fill quota normally.
 
@@ -277,12 +304,13 @@ Tours are stored in two places — clear both to force the overlay to reappear:
 
 ## Environment Variables
 
+Canonical copies live in `apps/server/.env.example` and `apps/web/.env.example` — keep those in sync with this section.
+
 ### apps/server/.env
 
 ```
 DATABASE_URL=postgresql://...@...neon.tech/neondb?sslmode=require   # pooled (Neon)
 DIRECT_URL=postgresql://...@...neon.tech/neondb?sslmode=require      # unpooled, used by Prisma migrations
-ANTHROPIC_API_KEY=sk-ant-...
 CLIENT_URL=http://localhost:3000
 PORT=3001
 ```
@@ -305,13 +333,14 @@ DIRECT_URL=postgresql://...@...neon.tech/neondb?sslmode=require      # same dire
 
 - **Game state lives on the server** — `Map<lobbyId, AuctionState>` in memory, never trust client
 - **All bid validation server-side** — client optimistically disables the button but server decides
-- **Bots are server-only** — Claude API key never touches the browser
+- **Bots are server-only** — decision logic never reaches the browser; clients see only `lobby:bot_thinking` and the resulting bid
 - **Socket rooms = lobby IDs** — `socket.join(lobbyId)` on connect, all broadcasts to room
 - **Prices always NPR integers** — no decimals, no paisa in business logic
 - **Player IDs are stable strings** — not cuid, set from JSON (e.g. `npl-sandeep-lamichhane`)
 - **Single season (2024)** — only `npl-2024.json` is seeded; both lobby creation and the auction engine use `season: 2024`; do not hardcode `2025` anywhere
 - **tsconfig rootDir is `.`** — covers both `src/` and `prisma/` so `tsc --noEmit` catches seed.ts too
 - **start script is `dist/src/index.js`** — not `dist/index.js`, because rootDir is `.`
+- **Migrations are tracked in git** — `apps/server/prisma/migrations/` was once gitignored, which left the schema unreproducible from a clone. The directory must stay tracked; `.gitignore` carries a comment saying so
 - **Neon DB requires `directUrl`** — `schema.prisma` uses `DATABASE_URL` (pooled) for queries and `DIRECT_URL` (unpooled) for migrations; both must be set in `.env`
 - **Server must be started manually** — `npx ts-node --project tsconfig.json src/index.ts` from `apps/server/`; nodemon orphan issue not yet fixed
 - **Auth: Auth.js v5, JWT sessions, Google + Resend (magic link)** — no Clerk. `userId` on `LobbySeat`/`Lobby` is either an Auth.js cuid (signed-in) or `guest_${UUID}` (guest); server treats it as an opaque string. Resend requires `AUTH_RESEND_KEY` and uses the `VerificationToken` model for one-time tokens
@@ -335,4 +364,5 @@ DIRECT_URL=postgresql://...@...neon.tech/neondb?sslmode=require      # same dire
 - Don't hardcode `season: 2025` anywhere — only season 2024 data exists; using 2025 causes empty player queries and auction crashes
 - Don't add a separate `apps/web/prisma/schema.prisma` — the server schema is the single source of truth; running `prisma generate` in `apps/web` will overwrite the server's generated client
 - Don't augment `next-auth` module for session types — augment `@auth/core/types` instead (see Architecture Decisions above)
+- Don't reintroduce an LLM call into the bot bid path — bots are algorithmic by decision (see Deliberate non-goals)
 - Don't reference Clerk anywhere — it has been fully removed; `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` are no longer used
